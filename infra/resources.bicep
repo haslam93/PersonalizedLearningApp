@@ -6,38 +6,27 @@ param location string = resourceGroup().location
 @description('Tags to apply to all resources.')
 param tags object = {}
 
+@description('Access PIN shown by the app login screen. Stored as a secure app setting in Azure.')
+@secure()
+param accessPin string = ''
+
 @description('Name of the App Service plan.')
 param appServicePlanName string
 
 @description('SKU for the App Service plan.')
 @allowed([
   'B1'
+  'B2'
   'P0v3'
   'P1v3'
 ])
-param appServicePlanSku string = 'B1'
+param appServicePlanSku string = 'B2'
 
 @description('Name of the App Service web app.')
 param webAppName string
 
 @description('Optional custom hostname to bind to the App Service web app.')
 param customHostname string = ''
-
-@description('Enable App Service Authentication with Microsoft Entra ID.')
-param enableAppServiceAuth bool = false
-
-@description('Tenant ID used for App Service Authentication.')
-param authTenantId string = ''
-
-@description('Client ID of the Microsoft Entra app registration used for App Service Authentication.')
-param authClientId string = ''
-
-@description('Client secret for the Microsoft Entra app registration used for App Service Authentication.')
-@secure()
-param authClientSecret string = ''
-
-@description('Allowed Microsoft Entra object IDs that can access the app when App Service Authentication is enabled.')
-param allowedUserObjectIds array = []
 
 @description('Name of the Log Analytics workspace.')
 param logAnalyticsWorkspaceName string
@@ -50,17 +39,6 @@ var hostingTags = union(tags, {
   'azd-service-name': serviceName
 })
 var linuxRuntime = 'DOTNETCORE|8.0'
-var authClientSecretSettingName = 'MICROSOFT_PROVIDER_AUTHENTICATION_SECRET'
-var authOpenIdIssuer = '${environment().authentication.loginEndpoint}${authTenantId}/v2.0'
-var authValidation = empty(allowedUserObjectIds)
-  ? {}
-  : {
-      defaultAuthorizationPolicy: {
-        allowedPrincipals: {
-          identities: allowedUserObjectIds
-        }
-      }
-    }
 
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2025-02-01' = {
   name: logAnalyticsWorkspaceName
@@ -132,6 +110,10 @@ resource webApp 'Microsoft.Web/sites@2024-11-01' = {
           value: 'Production'
         }
         {
+          name: 'AccessPin'
+          value: accessPin
+        }
+        {
           name: 'ENABLE_ORYX_BUILD'
           value: 'false'
         }
@@ -147,60 +129,13 @@ resource webApp 'Microsoft.Web/sites@2024-11-01' = {
           name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
           value: 'true'
         }
-      ], enableAppServiceAuth ? [
-        {
-          name: authClientSecretSettingName
-          value: authClientSecret
-        }
-      ] : [])
+      ])
       metadata: [
         {
           name: 'CURRENT_STACK'
           value: 'dotnetcore'
         }
       ]
-    }
-  }
-}
-
-resource authSettings 'Microsoft.Web/sites/config@2022-09-01' = if (enableAppServiceAuth) {
-  name: 'authsettingsV2'
-  parent: webApp
-  properties: {
-    platform: {
-      enabled: true
-      runtimeVersion: '~1'
-    }
-    globalValidation: {
-      requireAuthentication: true
-      unauthenticatedClientAction: 'RedirectToLoginPage'
-      redirectToProvider: 'azureActiveDirectory'
-    }
-    httpSettings: {
-      requireHttps: true
-      routes: {
-        apiPrefix: '/.auth'
-      }
-      forwardProxy: {
-        convention: 'NoProxy'
-      }
-    }
-    login: {
-      tokenStore: {
-        enabled: true
-      }
-      preserveUrlFragmentsForLogins: true
-    }
-    identityProviders: {
-      azureActiveDirectory: {
-        enabled: true
-        registration: {
-          openIdIssuer: authOpenIdIssuer
-          clientId: authClientId
-          clientSecretSettingName: authClientSecretSettingName
-        }
-        validation: authValidation
-      }
     }
   }
 }

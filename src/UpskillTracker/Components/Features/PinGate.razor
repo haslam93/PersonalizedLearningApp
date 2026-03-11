@@ -1,0 +1,140 @@
+@using Microsoft.AspNetCore.Components.Web
+@using MudBlazor
+@inject IConfiguration Configuration
+@inject IJSRuntime JS
+
+@if (!_initialized)
+{
+    <div class="pin-gate-shell">
+        <MudPaper Class="pin-card pin-card-loading" Elevation="0">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+            <MudText Typo="Typo.body1">Preparing your training hub...</MudText>
+        </MudPaper>
+    </div>
+}
+else if (_isUnlocked)
+{
+    @ChildContent
+}
+else
+{
+    <div class="pin-gate-shell">
+        <MudPaper Class="pin-card" Elevation="0">
+            <MudStack Spacing="3">
+                <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Lock">
+                    PIN protected
+                </MudChip>
+
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.h4">Enter your access PIN</MudText>
+                    <MudText Typo="Typo.body1" Class="mud-secondary-text">
+                        Use the personal PIN to open the tracker and keep notes, resources,
+                        and plan updates out of casual view.
+                    </MudText>
+                </MudStack>
+
+                <MudTextField @bind-Value="_enteredPin"
+                              Label="6-digit PIN"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Password"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Password"
+                              Immediate="true"
+                              MaxLength="6"
+                              Class="w-100"
+                              OnKeyDown="HandleKeyDown" />
+
+                @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true">
+                        @_errorMessage
+                    </MudAlert>
+                }
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Size="Size.Large"
+                           FullWidth="true"
+                           OnClick="UnlockAsync">
+                    Unlock hub
+                </MudButton>
+
+                <MudText Typo="Typo.caption" Class="mud-secondary-text">
+                    This PIN is loaded from secure configuration, not from source code.
+                </MudText>
+            </MudStack>
+        </MudPaper>
+    </div>
+}
+
+@code {
+    private const string SessionStorageKey = "upskilltracker.pin-unlocked";
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private bool _initialized;
+    private bool _isUnlocked;
+    private string _enteredPin = string.Empty;
+    private string? _errorMessage;
+    private string _requiredPin = string.Empty;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        _requiredPin = Configuration["AccessPin"] ?? string.Empty;
+
+        try
+        {
+            var storedValue = await JS.InvokeAsync<string?>("sessionStorage.getItem", SessionStorageKey);
+            _isUnlocked = string.Equals(storedValue, bool.TrueString, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (JSException)
+        {
+            _isUnlocked = false;
+        }
+
+        _initialized = true;
+        StateHasChanged();
+    }
+
+    private async Task UnlockAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_requiredPin))
+        {
+            _errorMessage = "PIN is not configured yet.";
+            return;
+        }
+
+        if (_enteredPin == _requiredPin)
+        {
+            _isUnlocked = true;
+            _errorMessage = null;
+
+            try
+            {
+                await JS.InvokeVoidAsync("sessionStorage.setItem", SessionStorageKey, bool.TrueString);
+            }
+            catch (JSException)
+            {
+                // Ignore client storage failures and keep the session unlocked in memory.
+            }
+
+            return;
+        }
+
+        _errorMessage = "Incorrect PIN. Try again.";
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await UnlockAsync();
+        }
+    }
+}
