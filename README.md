@@ -160,16 +160,21 @@ resolves paths correctly even when run from the `scripts` folder:
 
 After the first Azure deployment:
 
-1. Export the publish profile:
+1. Create a Microsoft Entra app registration or user-assigned identity for
+   GitHub Actions OpenID Connect access.
+2. Grant the identity access to the App Service deployment scope.
+3. Add these GitHub Actions secrets:
 
-   ```powershell
-   .\scripts\get-publish-profile.ps1 -ResourceGroupName rg-upskilltracker -WebAppName <unique-web-app-name>
-   ```
+   * `AZURE_CLIENT_ID`
+   * `AZURE_TENANT_ID`
+   * `AZURE_SUBSCRIPTION_ID`
 
-2. Copy the publish profile contents into the GitHub secret
-   `AZURE_WEBAPP_PUBLISH_PROFILE`.
-3. Add a repository variable named `AZURE_WEBAPP_NAME` with the App Service name.
-4. Push to `main` or run the CD workflow manually.
+4. Add a repository variable named `AZURE_WEBAPP_NAME` with the App Service name.
+5. Push to `main` or run the CD workflow manually.
+
+This repository now uses OpenID Connect for GitHub Actions CD instead of a
+publish profile, which avoids basic authentication and aligns with App Service
+policy restrictions.
 
 ## Repository automation
 
