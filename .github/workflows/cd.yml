@@ -17,9 +17,15 @@ permissions:
   id-token: write
 
 env:
+  APPSERVICE_AUTH_ALLOWED_USER_ID: ${{ vars.APPSERVICE_AUTH_ALLOWED_USER_ID }}
+  APPSERVICE_AUTH_CLIENT_ID: ${{ vars.APPSERVICE_AUTH_CLIENT_ID }}
+  APPSERVICE_AUTH_ENABLED: true
   AZURE_CUSTOM_HOSTNAME: skilling.hammadaslam.com
+  AZURE_APPINSIGHTS_NAME: appi-personal-learning-tn33sb
   AZURE_LOCATION: eastus2
+  AZURE_LOG_ANALYTICS_NAME: log-personal-learning-tn33sb
   AZURE_RESOURCE_GROUP: hammadlearningapp
+  AZURE_APP_SERVICE_PLAN_NAME: plan-personal-learning-tn33sb
   AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
   AZD_ENVIRONMENT_NAME: personal-learning
   PROJECT_PATH: ./src/UpskillTracker/UpskillTracker.csproj
@@ -70,16 +76,24 @@ jobs:
       - name: Deploy infrastructure
         if: steps.changes.outputs.infra == 'true' || github.event.inputs.deployInfra == 'true'
         run: |
-          az deployment sub create \
+          ALLOWED_USER_JSON='["${{ env.APPSERVICE_AUTH_ALLOWED_USER_ID }}"]'
+
+          az deployment group create \
             --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }} \
-            --location ${{ env.AZURE_LOCATION }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --name infra-${{ github.run_id }} \
-            --template-file infra/main.bicep \
-            --parameters environmentName=${{ env.AZD_ENVIRONMENT_NAME }} \
-                         location=${{ env.AZURE_LOCATION }} \
-                         resourceGroupName=${{ env.AZURE_RESOURCE_GROUP }} \
+            --template-file infra/resources.bicep \
+            --parameters location=${{ env.AZURE_LOCATION }} \
+                         appInsightsName=${{ env.AZURE_APPINSIGHTS_NAME }} \
+                         appServicePlanName=${{ env.AZURE_APP_SERVICE_PLAN_NAME }} \
+                         authClientId=${{ env.APPSERVICE_AUTH_CLIENT_ID }} \
+                         authClientSecret=${{ secrets.APPSERVICE_AUTH_CLIENT_SECRET }} \
+                         authTenantId=${{ secrets.AZURE_TENANT_ID }} \
+                         allowedUserObjectIds="$ALLOWED_USER_JSON" \
                          webAppName=${{ env.AZURE_WEBAPP_NAME }} \
+                         enableAppServiceAuth=${{ env.APPSERVICE_AUTH_ENABLED }} \
                          customHostname=${{ env.AZURE_CUSTOM_HOSTNAME }}
+                         logAnalyticsWorkspaceName=${{ env.AZURE_LOG_ANALYTICS_NAME }}
 
       - name: Deploy to Azure App Service
         run: |

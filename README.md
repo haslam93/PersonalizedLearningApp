@@ -23,7 +23,7 @@ App Innovation learning.
 The app is organized as a lightweight interactive Blazor experience hosted on
 Azure App Service.
 
-* The browser loads a Blazor web app with a simple PIN gate in the main layout.
+* The browser loads a Blazor web app protected by Azure App Service Authentication.
 * Feature views for Dashboard, Plan, Timeline, Resources, and Notes run through
    a shared `TrackerService`.
 * EF Core writes training data, resources, and notes into a SQLite database.
@@ -51,7 +51,7 @@ It is designed to help you:
 * Timeline tab grouped by month
 * Resources tab with editable sections and links
 * Notes tab for reflections, architecture notes, and lab takeaways
-* Simple PIN login with the personal code `022193`
+* Microsoft Entra sign-in enforced by Azure App Service Authentication
 * Seeded content for the March to September 2026 plan, including Azure SRE Agent
 
 ## Local development
@@ -71,6 +71,9 @@ It is designed to help you:
 3. Open the local URL shown in the terminal.
 
 The app stores its SQLite database in the local `Data` folder by default.
+
+Local development does not enforce App Service Authentication. Authentication is
+applied by Azure App Service in the deployed environment.
 
 ## Azure deployment
 
@@ -168,13 +171,22 @@ After the first Azure deployment:
    * `AZURE_CLIENT_ID`
    * `AZURE_TENANT_ID`
    * `AZURE_SUBSCRIPTION_ID`
+   * `APPSERVICE_AUTH_CLIENT_SECRET`
 
-4. Add a repository variable named `AZURE_WEBAPP_NAME` with the App Service name.
+4. Add these repository variables:
+
+   * `AZURE_WEBAPP_NAME`
+   * `APPSERVICE_AUTH_CLIENT_ID`
+   * `APPSERVICE_AUTH_ALLOWED_USER_ID`
+
 5. Push to `main` or run the CD workflow manually.
 
 This repository now uses OpenID Connect for GitHub Actions CD instead of a
 publish profile, which avoids basic authentication and aligns with App Service
 policy restrictions.
+
+The CD workflow also applies App Service Authentication through Bicep so the
+site requires Microsoft Entra sign-in in Azure.
 
 ## Repository automation
 

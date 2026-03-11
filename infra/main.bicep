@@ -15,6 +15,22 @@ param webAppName string = ''
 @description('Optional custom hostname to bind to the web app. Leave empty to skip custom domain deployment.')
 param customHostname string = ''
 
+@description('Enable App Service Authentication with Microsoft Entra ID.')
+param enableAppServiceAuth bool = false
+
+@description('Tenant ID used for App Service Authentication.')
+param authTenantId string = ''
+
+@description('Client ID of the Microsoft Entra app registration used for App Service Authentication.')
+param authClientId string = ''
+
+@description('Client secret for the Microsoft Entra app registration used for App Service Authentication.')
+@secure()
+param authClientSecret string = ''
+
+@description('Allowed Microsoft Entra object IDs that can access the app when App Service Authentication is enabled.')
+param allowedUserObjectIds array = []
+
 @description('Optional override for the app service plan SKU.')
 @allowed([
   'B1'
@@ -49,7 +65,12 @@ module resources './resources.bicep' = {
     appInsightsName: effectiveInsightsName
     appServicePlanName: effectivePlanName
     appServicePlanSku: appServicePlanSku
+    authClientId: authClientId
+    authClientSecret: authClientSecret
+    authTenantId: authTenantId
+    allowedUserObjectIds: allowedUserObjectIds
     customHostname: customHostname
+    enableAppServiceAuth: enableAppServiceAuth
     location: location
     logAnalyticsWorkspaceName: effectiveWorkspaceName
     tags: tags
