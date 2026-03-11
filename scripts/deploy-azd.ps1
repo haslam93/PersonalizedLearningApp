@@ -5,7 +5,8 @@ param(
     [string]$WebAppName = '',
     [string]$SubscriptionId = '',
     [switch]$ProvisionOnly,
-    [switch]$DeployOnly
+    [switch]$DeployOnly,
+    [switch]$UseDeviceCode
 )
 
 $ErrorActionPreference = 'Stop'
@@ -24,8 +25,34 @@ Assert-Command -Name 'az'
 
 Set-Location $repoRoot
 
+function Invoke-NativeCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [scriptblock]$Command,
+
+        [Parameter(Mandatory = $true)]
+        [string]$FailureMessage
+    )
+
+    & $Command
+    if ($LASTEXITCODE -ne 0) {
+        throw $FailureMessage
+    }
+}
+
 if (-not [string]::IsNullOrWhiteSpace($SubscriptionId)) {
-    az account set --subscription $SubscriptionId | Out-Null
+    Invoke-NativeCommand -Command { az account set --subscription $SubscriptionId } -FailureMessage 'Unable to select the requested Azure subscription.'
+}
+
+$resolvedSubscriptionId = if ([string]::IsNullOrWhiteSpace($SubscriptionId)) {
+    az account show --query id --output tsv
+}
+else {
+    $SubscriptionId
+}
+
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($resolvedSubscriptionId)) {
+    throw 'Unable to determine the active Azure subscription. Run az login first or pass -SubscriptionId.'
 }
 
 $resolvedResourceGroupName = if ([string]::IsNullOrWhiteSpace($ResourceGroupName)) {
@@ -42,30 +69,50 @@ else {
     $WebAppName.ToLowerInvariant()
 }
 
+Write-Host "Preparing azd environment '$EnvironmentName'..." -ForegroundColor Cyan
 $existingEnvironment = azd env list --output json | ConvertFrom-Json | Where-Object { $_.Name -eq $EnvironmentName }
 if (-not $existingEnvironment) {
-    azd env new $EnvironmentName --no-prompt | Out-Host
+    Invoke-NativeCommand -Command { azd env new $EnvironmentName --no-prompt } -FailureMessage "Failed to create azd environment '$EnvironmentName'."
 }
 else {
-    azd env select $EnvironmentName | Out-Host
+    Invoke-NativeCommand -Command { azd env select $EnvironmentName } -FailureMessage "Failed to select azd environment '$EnvironmentName'."
 }
 
-azd env set AZURE_LOCATION $Location | Out-Host
-azd env set AZURE_RESOURCE_GROUP $resolvedResourceGroupName | Out-Host
-azd env set AZURE_WEB_APP_NAME $resolvedWebAppName | Out-Host
+Invoke-NativeCommand -Command { azd env set AZURE_LOCATION $Location } -FailureMessage 'Failed to set AZURE_LOCATION in the azd environment.'
+Invoke-NativeCommand -Command { azd env set AZURE_RESOURCE_GROUP $resolvedResourceGroupName } -FailureMessage 'Failed to set AZURE_RESOURCE_GROUP in the azd environment.'
+Invoke-NativeCommand -Command { azd env set AZURE_WEB_APP_NAME $resolvedWebAppName } -FailureMessage 'Failed to set AZURE_WEB_APP_NAME in the azd environment.'
+Invoke-NativeCommand -Command { azd env set AZURE_SUBSCRIPTION_ID $resolvedSubscriptionId } -FailureMessage 'Failed to set AZURE_SUBSCRIPTION_ID in the azd environment.'
+
+Write-Host 'Checking azd authentication state...' -ForegroundColor Cyan
+Invoke-NativeCommand -Command { azd auth login --check-status --no-prompt } -FailureMessage 'azd is not authenticated. Run azd auth login and try again.'
+
+if ($UseDeviceCode) {
+    Write-Host 'Refreshing azd authentication by using device code...' -ForegroundColor Yellow
+    Invoke-NativeCommand -Command { azd auth login --use-device-code } -FailureMessage 'azd device-code authentication failed.'
+}
 
 if ($ProvisionOnly -and $DeployOnly) {
     throw 'Use either -ProvisionOnly or -DeployOnly, not both.'
 }
 
 if ($ProvisionOnly) {
-    azd provision | Out-Host
+    Write-Host 'Running azd provision...' -ForegroundColor Cyan
+    Invoke-NativeCommand -Command { azd provision --no-prompt } -FailureMessage 'azd provision failed. If the error mentions expired auth, run azd auth login and retry.'
     return
 }
 
 if ($DeployOnly) {
-    azd deploy | Out-Host
+    Write-Host 'Running azd deploy...' -ForegroundColor Cyan
+    Invoke-NativeCommand -Command { azd deploy --no-prompt } -FailureMessage 'azd deploy failed.'
     return
 }
 
-azd up | Out-Host
+Write-Host 'Running azd provision...' -ForegroundColor Cyan
+Invoke-NativeCommand -Command { azd provision --no-prompt } -FailureMessage 'azd provision failed. If the error mentions expired auth, run azd auth login and retry.'
+
+Write-Host 'Running azd deploy...' -ForegroundColor Cyan
+Invoke-NativeCommand -Command { azd deploy --no-prompt } -FailureMessage 'azd deploy failed.'
+
+Write-Host ''
+Write-Host 'azd deployment completed successfully.' -ForegroundColor Green
+Write-Host 'Tip: If azd ever appears stuck at "Initialize bicep provider", refresh auth with: azd auth login' -ForegroundColor DarkYellow

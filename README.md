@@ -79,6 +79,9 @@ The easiest deployment path is now `azd`.
    azd deploy
    ```
 
+The wrapper runs `azd provision` and `azd deploy` as separate steps so failures
+are easier to identify.
+
 The `azd` path uses these files:
 
 * [azure.yaml](azure.yaml)
@@ -93,6 +96,22 @@ This deployment provisions:
 * Linux App Service web app
 * Log Analytics workspace
 * Application Insights
+
+### Common azd auth issue
+
+If deployment appears stuck around `Initialize bicep provider` or you see an
+AAD refresh token expiration error, refresh the Azure Developer CLI login and
+run the wrapper again:
+
+```powershell
+azd auth login
+```
+
+If browser login is inconvenient, use device code:
+
+```powershell
+.\scripts\deploy-azd.ps1 -EnvironmentName personal-learning -Location eastus2 -ResourceGroupName rg-personal-learning -WebAppName <unique-web-app-name> -UseDeviceCode
+```
 
 It also configures these app settings:
 
