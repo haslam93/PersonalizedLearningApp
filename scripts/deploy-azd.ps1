@@ -40,6 +40,41 @@ function Invoke-NativeCommand {
     }
 }
 
+function Invoke-AppServiceFallbackDeployment {
+    Write-Host 'Attempting direct App Service deployment fallback...' -ForegroundColor Yellow
+
+    $deployScriptPath = Join-Path $repoRoot 'scripts\deploy-azure.ps1'
+    & $deployScriptPath `
+        -ResourceGroupName $resolvedResourceGroupName `
+        -WebAppName $resolvedWebAppName `
+        -Location $Location `
+        -SubscriptionId $resolvedSubscriptionId `
+        -SkipProvisioning
+
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Direct App Service deployment fallback failed.'
+    }
+}
+
+function Invoke-AzdDeployWithFallback {
+    param(
+        [switch]$AllowFallback
+    )
+
+    Write-Host 'Running azd deploy...' -ForegroundColor Cyan
+    & { azd deploy --no-prompt }
+    if ($LASTEXITCODE -eq 0) {
+        return
+    }
+
+    if (-not $AllowFallback) {
+        throw 'azd deploy failed.'
+    }
+
+    Write-Host 'azd deploy failed. This can happen when Microsoft.Web deployment history calls time out.' -ForegroundColor Yellow
+    Invoke-AppServiceFallbackDeployment
+}
+
 if (-not [string]::IsNullOrWhiteSpace($SubscriptionId)) {
     Invoke-NativeCommand -Command { az account set --subscription $SubscriptionId } -FailureMessage 'Unable to select the requested Azure subscription.'
 }
@@ -102,16 +137,14 @@ if ($ProvisionOnly) {
 }
 
 if ($DeployOnly) {
-    Write-Host 'Running azd deploy...' -ForegroundColor Cyan
-    Invoke-NativeCommand -Command { azd deploy --no-prompt } -FailureMessage 'azd deploy failed.'
+    Invoke-AzdDeployWithFallback -AllowFallback
     return
 }
 
 Write-Host 'Running azd provision...' -ForegroundColor Cyan
 Invoke-NativeCommand -Command { azd provision --no-prompt } -FailureMessage 'azd provision failed. If the error mentions expired auth, run azd auth login and retry.'
 
-Write-Host 'Running azd deploy...' -ForegroundColor Cyan
-Invoke-NativeCommand -Command { azd deploy --no-prompt } -FailureMessage 'azd deploy failed.'
+Invoke-AzdDeployWithFallback -AllowFallback
 
 Write-Host ''
 Write-Host 'azd deployment completed successfully.' -ForegroundColor Green

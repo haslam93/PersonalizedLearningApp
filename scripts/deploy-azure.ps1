@@ -12,7 +12,8 @@ param(
     [string]$PublishOutput = '.\.artifacts\publish',
     [string]$PackagePath = '.\.artifacts\upskilltracker.zip',
     [string]$Runtime = 'DOTNETCORE|8.0',
-    [string]$SubscriptionId = ''
+    [string]$SubscriptionId = '',
+    [switch]$SkipProvisioning
 )
 
 $ErrorActionPreference = 'Stop'
@@ -52,8 +53,92 @@ Assert-Command -Name 'dotnet'
 
 Set-Location $repoRoot
 
+Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+function Invoke-NativeCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [scriptblock]$Command,
+
+        [Parameter(Mandatory = $true)]
+        [string]$FailureMessage
+    )
+
+    & $Command
+    if ($LASTEXITCODE -ne 0) {
+        throw $FailureMessage
+    }
+}
+
+function New-PosixZipArchive {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SourceDirectory,
+
+        [Parameter(Mandatory = $true)]
+        [string]$DestinationPath
+    )
+
+    if (Test-Path $DestinationPath) {
+        Remove-Item $DestinationPath -Force
+    }
+
+    $sourceRoot = (Resolve-Path $SourceDirectory).Path.TrimEnd('\')
+    $sourcePrefix = "$sourceRoot\"
+    $destinationDirectory = Split-Path -Parent $DestinationPath
+
+    if (-not (Test-Path $destinationDirectory)) {
+        New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
+    }
+
+    $fileStream = [System.IO.File]::Open($DestinationPath, [System.IO.FileMode]::CreateNew)
+
+    try {
+        $archive = New-Object System.IO.Compression.ZipArchive($fileStream, [System.IO.Compression.ZipArchiveMode]::Create, $false)
+
+        try {
+            Get-ChildItem -Path $sourceRoot -Recurse -Force | ForEach-Object {
+                $relativePath = $_.FullName.Substring($sourcePrefix.Length).Replace('\', '/')
+
+                if ([string]::IsNullOrWhiteSpace($relativePath)) {
+                    return
+                }
+
+                if ($_.PSIsContainer) {
+                    $archive.CreateEntry($relativePath.TrimEnd('/') + '/') | Out-Null
+                    return
+                }
+
+                $entry = $archive.CreateEntry($relativePath, [System.IO.Compression.CompressionLevel]::Optimal)
+                $entryStream = $entry.Open()
+
+                try {
+                    $inputStream = [System.IO.File]::OpenRead($_.FullName)
+
+                    try {
+                        $inputStream.CopyTo($entryStream)
+                    }
+                    finally {
+                        $inputStream.Dispose()
+                    }
+                }
+                finally {
+                    $entryStream.Dispose()
+                }
+            }
+        }
+        finally {
+            $archive.Dispose()
+        }
+    }
+    finally {
+        $fileStream.Dispose()
+    }
+}
+
 if (-not [string]::IsNullOrWhiteSpace($SubscriptionId)) {
-    az account set --subscription $SubscriptionId | Out-Null
+    Invoke-NativeCommand -Command { az account set --subscription $SubscriptionId } -FailureMessage 'Unable to select the requested Azure subscription.'
 }
 
 Write-Host "Publishing the app..." -ForegroundColor Cyan
@@ -63,39 +148,42 @@ if (Test-Path $resolvedPublishOutput) {
 
 New-Item -ItemType Directory -Path $resolvedPublishOutput -Force | Out-Null
 
-dotnet publish $resolvedProjectPath -c Release -o $resolvedPublishOutput | Out-Host
+Invoke-NativeCommand -Command { dotnet publish $resolvedProjectPath -c Release -o $resolvedPublishOutput } -FailureMessage 'dotnet publish failed.'
 
 if (Test-Path $resolvedPackagePath) {
     Remove-Item $resolvedPackagePath -Force
 }
 
-$packageDirectory = Split-Path -Parent $resolvedPackagePath
-if (-not (Test-Path $packageDirectory)) {
-    New-Item -ItemType Directory -Path $packageDirectory -Force | Out-Null
+New-PosixZipArchive -SourceDirectory $resolvedPublishOutput -DestinationPath $resolvedPackagePath
+
+if (-not $SkipProvisioning) {
+    Write-Host "Provisioning Azure resources..." -ForegroundColor Cyan
+    Invoke-NativeCommand -Command { az group create --name $ResourceGroupName --location $Location } -FailureMessage 'Failed to create or validate the Azure resource group.'
+
+    $planExists = az appservice plan show --resource-group $ResourceGroupName --name $resolvedPlanName --query name --output tsv 2>$null
+    if (-not $planExists) {
+        Invoke-NativeCommand -Command { az appservice plan create --resource-group $ResourceGroupName --name $resolvedPlanName --sku $Sku --is-linux } -FailureMessage 'Failed to create the App Service plan.'
+    }
+
+    $appExists = az webapp show --resource-group $ResourceGroupName --name $WebAppName --query name --output tsv 2>$null
+    if (-not $appExists) {
+        Invoke-NativeCommand -Command { az webapp create --resource-group $ResourceGroupName --plan $resolvedPlanName --name $WebAppName --runtime $Runtime } -FailureMessage 'Failed to create the App Service web app.'
+    }
 }
 
-Compress-Archive -Path (Join-Path $resolvedPublishOutput '*') -DestinationPath $resolvedPackagePath -Force
-
-Write-Host "Provisioning Azure resources..." -ForegroundColor Cyan
-az group create --name $ResourceGroupName --location $Location | Out-Null
-
-$planExists = az appservice plan show --resource-group $ResourceGroupName --name $resolvedPlanName --query name --output tsv 2>$null
-if (-not $planExists) {
-    az appservice plan create --resource-group $ResourceGroupName --name $resolvedPlanName --sku $Sku --is-linux | Out-Null
-}
-
-$appExists = az webapp show --resource-group $ResourceGroupName --name $WebAppName --query name --output tsv 2>$null
-if (-not $appExists) {
-    az webapp create --resource-group $ResourceGroupName --plan $resolvedPlanName --name $WebAppName --runtime $Runtime | Out-Null
-}
-
-az webapp config appsettings set --resource-group $ResourceGroupName --name $WebAppName --settings `
-    ASPNETCORE_ENVIRONMENT=Production `
-    Storage__ConnectionString='Data Source=/home/data/upskilltracker.db' `
-    WEBSITES_ENABLE_APP_SERVICE_STORAGE=true | Out-Null
+Invoke-NativeCommand -Command {
+    az webapp config appsettings set --resource-group $ResourceGroupName --name $WebAppName --settings `
+        ASPNETCORE_ENVIRONMENT=Production `
+        Storage__ConnectionString='Data Source=/home/data/upskilltracker.db' `
+        WEBSITES_ENABLE_APP_SERVICE_STORAGE=true `
+        SCM_DO_BUILD_DURING_DEPLOYMENT=false `
+        ENABLE_ORYX_BUILD=false
+} -FailureMessage 'Failed to apply App Service application settings.'
 
 Write-Host "Deploying package to Azure App Service..." -ForegroundColor Cyan
-az webapp deploy --resource-group $ResourceGroupName --name $WebAppName --src-path $resolvedPackagePath --type zip --clean true | Out-Null
+Invoke-NativeCommand -Command {
+    az webapp deploy --resource-group $ResourceGroupName --name $WebAppName --src-path $resolvedPackagePath --type zip --clean true --restart true --async true --track-status false --timeout 180000
+} -FailureMessage 'Zip deployment to App Service failed.'
 
 $hostname = az webapp show --resource-group $ResourceGroupName --name $WebAppName --query defaultHostName --output tsv
 

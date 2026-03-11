@@ -1,5 +1,7 @@
 ﻿@inherits LayoutComponentBase
 
+<MudPopoverProvider />
+
 <MudLayout>
     <MudAppBar Elevation="0" Class="tracker-appbar">
         <MudIconButton Icon="@Icons.Material.Filled.School" Color="Color.Inherit" Edge="Edge.Start" />
@@ -14,9 +16,11 @@
     </MudAppBar>
 
     <MudMainContent>
-        <div class="shell-container">
-            @Body
-        </div>
+        <PinGate>
+            <div class="shell-container">
+                @Body
+            </div>
+        </PinGate>
     </MudMainContent>
 </MudLayout>
 

@@ -15,9 +15,6 @@
 
 <body>
     <MudThemeProvider Theme="@Theme" />
-    <MudPopoverProvider />
-    <MudDialogProvider />
-    <MudSnackbarProvider />
     <Routes @rendermode="InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
@@ -26,7 +23,7 @@
 </html>
 
 @code {
-    private static readonly MudTheme Theme = new()
+    public static readonly MudTheme Theme = new()
     {
         PaletteLight = new PaletteLight
         {

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "18402748209940780175"
+      "templateHash": "4225031676596575755"
     }
   },
   "parameters": {
@@ -108,7 +108,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "11353050897629786878"
+              "templateHash": "14089836511350176779"
             }
           },
           "parameters": {
@@ -245,6 +245,14 @@
                     {
                       "name": "ASPNETCORE_ENVIRONMENT",
                       "value": "Production"
+                    },
+                    {
+                      "name": "ENABLE_ORYX_BUILD",
+                      "value": "false"
+                    },
+                    {
+                      "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
+                      "value": "false"
                     },
                     {
                       "name": "Storage__ConnectionString",

@@ -18,6 +18,23 @@ estimated_reading_time: 6
 This repository contains a small Blazor-based training tracker for Azure AI and
 App Innovation learning.
 
+## High-level architecture
+
+The app is organized as a lightweight interactive Blazor experience hosted on
+Azure App Service.
+
+* The browser loads a Blazor web app with a simple PIN gate in the main layout.
+* Feature views for Dashboard, Plan, Timeline, Resources, and Notes run through
+   a shared `TrackerService`.
+* EF Core writes training data, resources, and notes into a SQLite database.
+* GitHub Actions builds the app and deploys `main` to the Azure web app.
+
+For the Mermaid version of the architecture, see [arch.md](arch.md).
+
+## Portal screenshot
+
+![Azure AI Upskilling Hub portal](docs/images/portal-home.png)
+
 It is designed to help you:
 
 * Track plan items, notes, evidence, and timelines
@@ -34,6 +51,7 @@ It is designed to help you:
 * Timeline tab grouped by month
 * Resources tab with editable sections and links
 * Notes tab for reflections, architecture notes, and lab takeaways
+* Simple PIN login with the personal code `022193`
 * Seeded content for the March to September 2026 plan, including Azure SRE Agent
 
 ## Local development
@@ -112,6 +130,15 @@ If browser login is inconvenient, use device code:
 ```powershell
 .\scripts\deploy-azd.ps1 -EnvironmentName personal-learning -Location eastus2 -ResourceGroupName rg-personal-learning -WebAppName <unique-web-app-name> -UseDeviceCode
 ```
+
+### Microsoft.Web gateway timeout during azd deploy
+
+If `azd deploy` fails while checking App Service deployment history with a
+`504 Gateway Timeout` from `Microsoft.Web`, the wrapper now falls back to a
+direct zip deployment to the existing App Service.
+
+This means you can rerun the same command and let the script continue with the
+fallback path automatically.
 
 It also configures these app settings:
 

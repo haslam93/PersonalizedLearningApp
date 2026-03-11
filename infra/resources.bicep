@@ -102,6 +102,14 @@ resource webApp 'Microsoft.Web/sites@2024-11-01' = {
           value: 'Production'
         }
         {
+          name: 'ENABLE_ORYX_BUILD'
+          value: 'false'
+        }
+        {
+          name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
+          value: 'false'
+        }
+        {
           name: 'Storage__ConnectionString'
           value: 'Data Source=/home/data/upskilltracker.db'
         }
