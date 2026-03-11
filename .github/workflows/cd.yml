@@ -76,7 +76,11 @@ jobs:
       - name: Deploy infrastructure
         if: steps.changes.outputs.infra == 'true' || github.event.inputs.deployInfra == 'true'
         run: |
-          ALLOWED_USER_JSON='["${{ env.APPSERVICE_AUTH_ALLOWED_USER_ID }}"]'
+          if [ -n "${{ env.APPSERVICE_AUTH_ALLOWED_USER_ID }}" ]; then
+            ALLOWED_USER_JSON='["${{ env.APPSERVICE_AUTH_ALLOWED_USER_ID }}"]'
+          else
+            ALLOWED_USER_JSON='[]'
+          fi
 
           az deployment group create \
             --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }} \

@@ -52,6 +52,15 @@ var hostingTags = union(tags, {
 var linuxRuntime = 'DOTNETCORE|8.0'
 var authClientSecretSettingName = 'MICROSOFT_PROVIDER_AUTHENTICATION_SECRET'
 var authOpenIdIssuer = '${environment().authentication.loginEndpoint}${authTenantId}/v2.0'
+var authValidation = empty(allowedUserObjectIds)
+  ? {}
+  : {
+      defaultAuthorizationPolicy: {
+        allowedPrincipals: {
+          identities: allowedUserObjectIds
+        }
+      }
+    }
 
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2025-02-01' = {
   name: logAnalyticsWorkspaceName
@@ -190,13 +199,7 @@ resource authSettings 'Microsoft.Web/sites/config@2022-09-01' = if (enableAppSer
           clientId: authClientId
           clientSecretSettingName: authClientSecretSettingName
         }
-        validation: {
-          defaultAuthorizationPolicy: {
-            allowedPrincipals: {
-              identities: allowedUserObjectIds
-            }
-          }
-        }
+        validation: authValidation
       }
     }
   }
