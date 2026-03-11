@@ -1,0 +1,176 @@
+@inject UpskillTracker.Services.TrackerService TrackerService
+
+@if (isLoading)
+{
+    <MudSkeleton Height="280px" Class="mb-4" />
+    <MudSkeleton Height="280px" />
+}
+else if (snapshot is not null)
+{
+    <MudGrid>
+        <MudItem xs="12" md="8">
+            <MudPaper Class="hero-card mb-4" Elevation="0">
+                <MudText Typo="Typo.overline" Class="text-uppercase mud-secondary-text">FY26 upskilling cockpit</MudText>
+                <MudText Typo="Typo.h4" Class="mb-2">Balanced for weekly progress and fast pivots</MudText>
+                <MudText Typo="Typo.body1" Class="mb-4 mud-secondary-text">
+                    Keep the Core lane moving every week. When customer work spikes, switch to Rapid-Ramp items and capture the outcome as evidence.
+                </MudText>
+                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2">
+                    <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Bolt">Foundry fast ramp ready</MudChip>
+                    <MudChip T="string" Color="Color.Info" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Insights">Azure AI + App Innovation focus</MudChip>
+                    <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Icon="@Icons.Material.Filled.AutoGraph">SRE + operations included</MudChip>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudPaper Class="surface-card mb-4 stat-card" Elevation="0">
+                <MudText Typo="Typo.subtitle2" Class="mud-secondary-text">Completion rate</MudText>
+                <MudText Typo="Typo.h3" Class="mb-3">@snapshot.CompletionRate%</MudText>
+                <MudProgressLinear Value="@completionRate" Rounded="true" Color="Color.Primary" Size="Size.Large" />
+                <MudText Typo="Typo.body2" Class="mt-3 mud-secondary-text">
+                    @snapshot.CompletedItems of @snapshot.TotalItems planned items are done.
+                </MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Class="mb-4">
+        <MudItem xs="6" md="3">
+            <MudPaper Class="surface-card metric-card" Elevation="0">
+                <MudIcon Icon="@Icons.Material.Filled.TaskAlt" Color="Color.Success" Size="Size.Large" />
+                <MudText Typo="Typo.h5">@snapshot.CompletedItems</MudText>
+                <MudText Typo="Typo.body2" Class="mud-secondary-text">Completed</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <MudPaper Class="surface-card metric-card" Elevation="0">
+                <MudIcon Icon="@Icons.Material.Filled.PendingActions" Color="Color.Info" Size="Size.Large" />
+                <MudText Typo="Typo.h5">@snapshot.InProgressItems</MudText>
+                <MudText Typo="Typo.body2" Class="mud-secondary-text">In progress</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <MudPaper Class="surface-card metric-card" Elevation="0">
+                <MudIcon Icon="@Icons.Material.Filled.Schedule" Color="Color.Warning" Size="Size.Large" />
+                <MudText Typo="Typo.h5">@snapshot.DueThisMonth</MudText>
+                <MudText Typo="Typo.body2" Class="mud-secondary-text">Due this month</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <MudPaper Class="surface-card metric-card" Elevation="0">
+                <MudIcon Icon="@Icons.Material.Filled.Bolt" Color="Color.Error" Size="Size.Large" />
+                <MudText Typo="Typo.h5">@snapshot.RapidRampItems</MudText>
+                <MudText Typo="Typo.body2" Class="mud-secondary-text">Rapid-ramp ready</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudPaper Class="surface-card mb-4" Elevation="0">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                    <MudText Typo="Typo.h6">Current focus</MudText>
+                    <MudChip T="string" Variant="Variant.Outlined" Color="Color.Primary">Top 5</MudChip>
+                </MudStack>
+                <MudList T="string">
+                    @foreach (var item in snapshot.FocusItems)
+                    {
+                        <MudListItem T="string" Class="focus-item">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="w-100">
+                                <div>
+                                    <MudText Typo="Typo.subtitle2">@item.Title</MudText>
+                                    <MudText Typo="Typo.body2" Class="mud-secondary-text">@item.Domain • @item.Lane • due @item.TargetDate.ToString("MMM d")</MudText>
+                                </div>
+                                <MudChip T="string" Variant="Variant.Filled" Color="@GetStatusColor(item.Status)">@item.Status</MudChip>
+                            </MudStack>
+                        </MudListItem>
+                    }
+                </MudList>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudPaper Class="surface-card mb-4" Elevation="0">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                    <MudText Typo="Typo.h6">Upcoming timeline</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-secondary-text">Next 6 items</MudText>
+                </MudStack>
+                @foreach (var item in snapshot.UpcomingItems)
+                {
+                    <MudPaper Class="timeline-entry mb-3" Elevation="0">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                            <div>
+                                <MudText Typo="Typo.subtitle2">@item.Title</MudText>
+                                <MudText Typo="Typo.body2" Class="mud-secondary-text">@item.TargetDate.ToString("MMM d, yyyy") • @item.Type • @item.Domain</MudText>
+                            </div>
+                            <MudChip T="string" Variant="Variant.Filled" Color="@GetStatusColor(item.Status)">@item.Status</MudChip>
+                        </MudStack>
+                    </MudPaper>
+                }
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="7">
+            <MudPaper Class="surface-card mb-4" Elevation="0">
+                <MudText Typo="Typo.h6" Class="mb-3">Pinned resources</MudText>
+                <MudGrid>
+                    @foreach (var resource in snapshot.PinnedResources)
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudPaper Class="resource-card" Elevation="0">
+                                <MudText Typo="Typo.subtitle2">@resource.Title</MudText>
+                                <MudText Typo="Typo.body2" Class="mud-secondary-text mb-2">@resource.Section • @resource.Kind</MudText>
+                                <MudText Typo="Typo.body2" Class="mb-3">@resource.Summary</MudText>
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="@resource.Url" Target="_blank" EndIcon="@Icons.Material.Filled.OpenInNew">
+                                    Open resource
+                                </MudButton>
+                            </MudPaper>
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="5">
+            <MudPaper Class="surface-card mb-4" Elevation="0">
+                <MudText Typo="Typo.h6" Class="mb-3">Recent notes</MudText>
+                @foreach (var note in snapshot.RecentNotes)
+                {
+                    <MudPaper Class="note-card mb-3" Elevation="0">
+                        <MudText Typo="Typo.subtitle2">@note.Title</MudText>
+                        <MudText Typo="Typo.caption" Class="mud-secondary-text">@note.Category • updated @note.UpdatedUtc.ToLocalTime().ToString("MMM d")</MudText>
+                        <MudText Typo="Typo.body2" Class="mt-2">@Truncate(note.Content, 170)</MudText>
+                    </MudPaper>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private bool isLoading = true;
+    private UpskillTracker.Models.DashboardSnapshot? snapshot;
+    private double completionRate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        snapshot = await TrackerService.GetDashboardSnapshotAsync();
+        completionRate = snapshot is null ? 0 : (double)snapshot.CompletionRate;
+        isLoading = false;
+    }
+
+    private static Color GetStatusColor(UpskillTracker.Models.TrackerStatus status) => status switch
+    {
+        UpskillTracker.Models.TrackerStatus.Completed => Color.Success,
+        UpskillTracker.Models.TrackerStatus.InProgress => Color.Info,
+        UpskillTracker.Models.TrackerStatus.Blocked => Color.Error,
+        _ => Color.Default
+    };
+
+    private static string Truncate(string value, int length)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length <= length)
+        {
+            return value;
+        }
+
+        return string.Concat(value[..length], "…");
+    }
+}

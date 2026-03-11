@@ -1,0 +1,179 @@
+@inject UpskillTracker.Services.TrackerService TrackerService
+@inject ISnackbar Snackbar
+
+<MudGrid>
+    <MudItem xs="12" lg="7">
+        <MudPaper Class="surface-card mb-4" Elevation="0">
+            <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" Class="mb-4">
+                <MudTextField @bind-Value="searchText" Placeholder="Search resources" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="flex-1" />
+                <MudSelect T="string" @bind-Value="selectedSection" Label="Section" Variant="Variant.Outlined" Clearable="true">
+                    @foreach (var sectionName in sections)
+                    {
+                        <MudSelectItem T="string" Value="@sectionName">@sectionName</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudStack>
+
+            <MudExpansionPanels MultiExpansion="true">
+                @foreach (var sectionGroup in FilteredResources.GroupBy(resource => resource.Section))
+                {
+                    <MudExpansionPanel Text="@GetSectionLabel(sectionGroup)" Expanded="@IsSectionExpanded(sectionGroup.Key)">
+                        <MudGrid>
+                            @foreach (var resource in sectionGroup)
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <MudPaper Class="resource-card mb-3" Elevation="0">
+                                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                                            <div>
+                                                <MudText Typo="Typo.subtitle2">@resource.Title</MudText>
+                                                <MudText Typo="Typo.caption" Class="mud-secondary-text">@resource.Kind • @resource.Tags</MudText>
+                                            </div>
+                                            @if (resource.IsPinned)
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Filled.PushPin" Color="Color.Primary" />
+                                            }
+                                        </MudStack>
+                                        <MudText Typo="Typo.body2" Class="my-3">@resource.Summary</MudText>
+                                        <MudStack Row="true" Spacing="1">
+                                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="@resource.Url" Target="_blank" EndIcon="@Icons.Material.Filled.OpenInNew">
+                                                Open
+                                            </MudButton>
+                                            <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="@(() => BeginEdit(resource))">
+                                                Edit
+                                            </MudButton>
+                                        </MudStack>
+                                    </MudPaper>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudExpansionPanel>
+                }
+            </MudExpansionPanels>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" lg="5">
+        <MudPaper Class="surface-card mb-4" Elevation="0">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                <MudText Typo="Typo.h6">@(editingResource.Id == 0 ? "Add resource" : "Edit resource")</MudText>
+                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.AddLink" OnClick="CreateNew">New</MudButton>
+            </MudStack>
+
+            <MudStack Spacing="2">
+                <MudTextField @bind-Value="editingResource.Title" Label="Title" Variant="Variant.Outlined" Required="true" />
+                <MudTextField @bind-Value="editingResource.Section" Label="Section" Variant="Variant.Outlined" Required="true" HelperText="Examples: Microsoft Foundry, GitHub Copilot, App Service, Container Apps, Azure SRE Agent" />
+                <MudTextField @bind-Value="editingResource.Url" Label="URL" Variant="Variant.Outlined" Required="true" />
+                <MudSelect T="UpskillTracker.Models.ResourceKind" @bind-Value="editingResource.Kind" Label="Resource type" Variant="Variant.Outlined">
+                    @foreach (var kind in Enum.GetValues<UpskillTracker.Models.ResourceKind>())
+                    {
+                        <MudSelectItem T="UpskillTracker.Models.ResourceKind" Value="@kind">@kind</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudTextField @bind-Value="editingResource.Summary" Label="Summary" Variant="Variant.Outlined" Lines="3" />
+                <MudTextField @bind-Value="editingResource.Tags" Label="Tags" Variant="Variant.Outlined" HelperText="Comma-separated tags" />
+                <MudTextField @bind-Value="editingResource.Notes" Label="Notes" Variant="Variant.Outlined" Lines="3" />
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudNumericField T="int" @bind-Value="editingResource.SortOrder" Label="Sort order" Variant="Variant.Outlined" Min="0" Max="999" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudCheckBox @bind-Value="editingResource.IsPinned" Label="Pinned" Color="Color.Primary" />
+                    </MudItem>
+                </MudGrid>
+            </MudStack>
+
+            <MudStack Row="true" Spacing="2" Class="mt-4">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync">Save resource</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="CreateNew">Reset</MudButton>
+                @if (editingResource.Id != 0)
+                {
+                    <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="DeleteAsync">Delete</MudButton>
+                }
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private List<UpskillTracker.Models.ResourceEntry> resources = [];
+    private List<string> sections = [];
+    private UpskillTracker.Models.ResourceEntry editingResource = CreateEmptyResource();
+    private string searchText = string.Empty;
+    private string? selectedSection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private IEnumerable<UpskillTracker.Models.ResourceEntry> FilteredResources => resources.Where(resource =>
+        (string.IsNullOrWhiteSpace(searchText) || resource.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) || resource.Section.Contains(searchText, StringComparison.OrdinalIgnoreCase) || resource.Tags.Contains(searchText, StringComparison.OrdinalIgnoreCase)) &&
+        (string.IsNullOrWhiteSpace(selectedSection) || resource.Section.Equals(selectedSection, StringComparison.OrdinalIgnoreCase)));
+
+    private async Task LoadAsync()
+    {
+        resources = await TrackerService.GetResourcesAsync();
+        sections = resources.Select(resource => resource.Section).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(section => section).ToList();
+
+        if (editingResource.Id != 0)
+        {
+            var refreshed = resources.FirstOrDefault(resource => resource.Id == editingResource.Id);
+            if (refreshed is not null)
+            {
+                BeginEdit(refreshed);
+            }
+        }
+    }
+
+    private void BeginEdit(UpskillTracker.Models.ResourceEntry resource)
+    {
+        editingResource = resource.Clone();
+    }
+
+    private void CreateNew()
+    {
+        editingResource = CreateEmptyResource();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(editingResource.Title) || string.IsNullOrWhiteSpace(editingResource.Section) || string.IsNullOrWhiteSpace(editingResource.Url))
+        {
+            Snackbar.Add("Title, section, and URL are required.", Severity.Warning);
+            return;
+        }
+
+        await TrackerService.SaveResourceAsync(editingResource);
+        Snackbar.Add("Resource saved.", Severity.Success);
+        await LoadAsync();
+        CreateNew();
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (editingResource.Id == 0)
+        {
+            return;
+        }
+
+        await TrackerService.DeleteResourceAsync(editingResource.Id);
+        Snackbar.Add("Resource deleted.", Severity.Info);
+        await LoadAsync();
+        CreateNew();
+    }
+
+    private static UpskillTracker.Models.ResourceEntry CreateEmptyResource()
+    {
+        return new UpskillTracker.Models.ResourceEntry
+        {
+            Kind = UpskillTracker.Models.ResourceKind.Documentation,
+            Section = "Microsoft Foundry"
+        };
+    }
+
+    private static string GetSectionLabel(IGrouping<string, UpskillTracker.Models.ResourceEntry> sectionGroup)
+        => $"{sectionGroup.Key} ({sectionGroup.Count()})";
+
+    private bool IsSectionExpanded(string section)
+        => section.Equals(selectedSection ?? "Microsoft Foundry", StringComparison.OrdinalIgnoreCase);
+}

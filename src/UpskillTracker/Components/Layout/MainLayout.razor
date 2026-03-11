@@ -1,0 +1,27 @@
+﻿@inherits LayoutComponentBase
+
+<MudLayout>
+    <MudAppBar Elevation="0" Class="tracker-appbar">
+        <MudIconButton Icon="@Icons.Material.Filled.School" Color="Color.Inherit" Edge="Edge.Start" />
+        <MudStack Spacing="0">
+            <MudText Typo="Typo.h6">Azure AI Upskilling Hub</MudText>
+            <MudText Typo="Typo.caption">Training plan, notes, timelines, and resources in one place</MudText>
+        </MudStack>
+        <MudSpacer />
+        <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Icon="@Icons.Material.Filled.CalendarMonth">
+            Mar to Sep 2026
+        </MudChip>
+    </MudAppBar>
+
+    <MudMainContent>
+        <div class="shell-container">
+            @Body
+        </div>
+    </MudMainContent>
+</MudLayout>
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>

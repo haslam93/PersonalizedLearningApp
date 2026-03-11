@@ -1,0 +1,59 @@
+@inject UpskillTracker.Services.TrackerService TrackerService
+
+@if (items.Count == 0)
+{
+    <MudPaper Class="surface-card" Elevation="0">
+        <MudText Typo="Typo.body1">No timeline items yet. Add your first learning item in the planner tab.</MudText>
+    </MudPaper>
+}
+else
+{
+    <MudGrid>
+        @foreach (var monthGroup in items.GroupBy(item => new DateTime(item.TargetDate.Year, item.TargetDate.Month, 1)))
+        {
+            <MudItem xs="12" md="6">
+                <MudPaper Class="surface-card mb-4" Elevation="0">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                        <MudText Typo="Typo.h6">@monthGroup.Key.ToString("MMMM yyyy")</MudText>
+                        <MudChip T="string" Variant="Variant.Outlined" Color="Color.Primary">@monthGroup.Count() item(s)</MudChip>
+                    </MudStack>
+
+                    @foreach (var item in monthGroup.OrderBy(entry => entry.TargetDate).ThenByDescending(entry => entry.Priority))
+                    {
+                        <MudPaper Class="timeline-entry mb-3" Elevation="0">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                                <div>
+                                    <MudText Typo="Typo.subtitle2">@item.Title</MudText>
+                                    <MudText Typo="Typo.body2" Class="mud-secondary-text">@item.Domain • @item.Category</MudText>
+                                    <MudText Typo="Typo.caption" Class="mud-secondary-text">@item.TargetDate.ToString("ddd, MMM d") • @item.Lane • @item.Type</MudText>
+                                </div>
+                                <MudChip T="string" Variant="Variant.Filled" Color="@GetStatusColor(item.Status)">@item.Status</MudChip>
+                            </MudStack>
+                            <MudProgressLinear Class="mt-3" Value="@item.ProgressPercent" Rounded="true" Color="Color.Primary" />
+                            <MudText Typo="Typo.caption" Class="mud-secondary-text mt-2 d-block">
+                                @item.ProgressPercent% complete • @item.EstimatedHours hour(s) • priority @item.Priority
+                            </MudText>
+                        </MudPaper>
+                    }
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private List<UpskillTracker.Models.TrainingItem> items = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        items = await TrackerService.GetTrainingItemsAsync();
+    }
+
+    private static Color GetStatusColor(UpskillTracker.Models.TrackerStatus status) => status switch
+    {
+        UpskillTracker.Models.TrackerStatus.Completed => Color.Success,
+        UpskillTracker.Models.TrackerStatus.InProgress => Color.Info,
+        UpskillTracker.Models.TrackerStatus.Blocked => Color.Error,
+        _ => Color.Default
+    };
+}

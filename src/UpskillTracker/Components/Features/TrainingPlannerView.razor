@@ -1,0 +1,232 @@
+@inject UpskillTracker.Services.TrackerService TrackerService
+@inject ISnackbar Snackbar
+
+<MudGrid>
+    <MudItem xs="12" lg="7">
+        <MudPaper Class="surface-card mb-4" Elevation="0">
+            <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" Class="mb-4">
+                <MudTextField @bind-Value="searchText" Placeholder="Search training items" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="flex-1" />
+                <MudSelect T="UpskillTracker.Models.TrackerStatus?" @bind-Value="selectedStatus" Label="Status" Variant="Variant.Outlined" Clearable="true">
+                    @foreach (var status in Enum.GetValues<UpskillTracker.Models.TrackerStatus>())
+                    {
+                        <MudSelectItem T="UpskillTracker.Models.TrackerStatus?" Value="@status">@status</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="UpskillTracker.Models.LearningLane?" @bind-Value="selectedLane" Label="Lane" Variant="Variant.Outlined" Clearable="true">
+                    @foreach (var lane in Enum.GetValues<UpskillTracker.Models.LearningLane>())
+                    {
+                        <MudSelectItem T="UpskillTracker.Models.LearningLane?" Value="@lane">@lane</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudStack>
+
+            <MudTable Items="FilteredItems" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" RowClassFunc="GetRowClass">
+                <HeaderContent>
+                    <MudTh>Item</MudTh>
+                    <MudTh>Domain</MudTh>
+                    <MudTh>Due</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Progress</MudTh>
+                    <MudTh></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Item">
+                        <MudText Typo="Typo.subtitle2">@context.Title</MudText>
+                        <MudText Typo="Typo.caption" Class="mud-secondary-text">@context.Type • @context.Lane</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Domain">@context.Domain</MudTd>
+                    <MudTd DataLabel="Due">@context.TargetDate.ToString("MMM d")</MudTd>
+                    <MudTd DataLabel="Status">
+                        <MudChip T="string" Variant="Variant.Filled" Color="@GetStatusColor(context.Status)">@context.Status</MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Progress">@context.ProgressPercent%</MudTd>
+                    <MudTd Style="text-align: right;">
+                        <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => BeginEdit(context))">Edit</MudButton>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <MudText Typo="Typo.body2">No items match the current filters.</MudText>
+                </NoRecordsContent>
+            </MudTable>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" lg="5">
+        <MudPaper Class="surface-card mb-4" Elevation="0">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                <MudText Typo="Typo.h6">@(editingItem.Id == 0 ? "Add training item" : "Edit training item")</MudText>
+                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateNew">New</MudButton>
+            </MudStack>
+
+            <MudStack Spacing="2">
+                <MudTextField @bind-Value="editingItem.Title" Label="Title" Variant="Variant.Outlined" Required="true" />
+                <MudTextField @bind-Value="editingItem.Domain" Label="Domain" Variant="Variant.Outlined" Required="true" />
+                <MudTextField @bind-Value="editingItem.Category" Label="Category" Variant="Variant.Outlined" />
+                <MudTextField @bind-Value="editingItem.Description" Label="Description" Variant="Variant.Outlined" Lines="3" />
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudDatePicker Label="Target date" Date="@targetDate" DateChanged="OnTargetDateChanged" Variant="Variant.Outlined" Editable="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudNumericField T="decimal" @bind-Value="editingItem.EstimatedHours" Label="Hours" Variant="Variant.Outlined" Min="0.5m" Max="40m" Step="0.5m" />
+                    </MudItem>
+                </MudGrid>
+                <MudGrid>
+                    <MudItem xs="12" sm="4">
+                        <MudSelect T="UpskillTracker.Models.TrackerStatus" @bind-Value="editingItem.Status" Label="Status" Variant="Variant.Outlined">
+                            @foreach (var status in Enum.GetValues<UpskillTracker.Models.TrackerStatus>())
+                            {
+                                <MudSelectItem T="UpskillTracker.Models.TrackerStatus" Value="@status">@status</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudSelect T="UpskillTracker.Models.LearningLane" @bind-Value="editingItem.Lane" Label="Lane" Variant="Variant.Outlined">
+                            @foreach (var lane in Enum.GetValues<UpskillTracker.Models.LearningLane>())
+                            {
+                                <MudSelectItem T="UpskillTracker.Models.LearningLane" Value="@lane">@lane</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudSelect T="UpskillTracker.Models.TrainingItemType" @bind-Value="editingItem.Type" Label="Type" Variant="Variant.Outlined">
+                            @foreach (var itemType in Enum.GetValues<UpskillTracker.Models.TrainingItemType>())
+                            {
+                                <MudSelectItem T="UpskillTracker.Models.TrainingItemType" Value="@itemType">@itemType</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                </MudGrid>
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudSlider T="int" @bind-Value="editingItem.ProgressPercent" Min="0" Max="100" Step="5" Color="Color.Primary" />
+                        <MudText Typo="Typo.caption" Class="mud-secondary-text">Progress: @editingItem.ProgressPercent%</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="3">
+                        <MudNumericField T="int" @bind-Value="editingItem.Priority" Label="Priority" Variant="Variant.Outlined" Min="1" Max="5" Step="1" />
+                    </MudItem>
+                    <MudItem xs="12" sm="3">
+                        <MudCheckBox @bind-Value="editingItem.ProjectDriven" Label="Project-driven" Color="Color.Primary" />
+                    </MudItem>
+                </MudGrid>
+                <MudTextField @bind-Value="editingItem.Notes" Label="Notes" Variant="Variant.Outlined" Lines="4" />
+                <MudTextField @bind-Value="editingItem.Evidence" Label="Evidence or next proof point" Variant="Variant.Outlined" Lines="2" />
+            </MudStack>
+
+            <MudStack Row="true" Spacing="2" Class="mt-4">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync">Save item</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="CreateNew">Reset</MudButton>
+                @if (editingItem.Id != 0)
+                {
+                    <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="DeleteAsync">Delete</MudButton>
+                }
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private List<UpskillTracker.Models.TrainingItem> items = [];
+    private UpskillTracker.Models.TrainingItem editingItem = CreateEmptyItem();
+    private string searchText = string.Empty;
+    private UpskillTracker.Models.TrackerStatus? selectedStatus;
+    private UpskillTracker.Models.LearningLane? selectedLane;
+    private DateTime? targetDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private IEnumerable<UpskillTracker.Models.TrainingItem> FilteredItems => items.Where(item =>
+        (string.IsNullOrWhiteSpace(searchText) || item.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) || item.Domain.Contains(searchText, StringComparison.OrdinalIgnoreCase) || item.Category.Contains(searchText, StringComparison.OrdinalIgnoreCase)) &&
+        (!selectedStatus.HasValue || item.Status == selectedStatus.Value) &&
+        (!selectedLane.HasValue || item.Lane == selectedLane.Value));
+
+    private async Task LoadAsync()
+    {
+        items = await TrackerService.GetTrainingItemsAsync();
+        if (editingItem.Id != 0)
+        {
+            var refreshed = items.FirstOrDefault(item => item.Id == editingItem.Id);
+            if (refreshed is not null)
+            {
+                BeginEdit(refreshed);
+            }
+        }
+    }
+
+    private void BeginEdit(UpskillTracker.Models.TrainingItem item)
+    {
+        editingItem = item.Clone();
+        targetDate = editingItem.TargetDate;
+    }
+
+    private void CreateNew()
+    {
+        editingItem = CreateEmptyItem();
+        targetDate = editingItem.TargetDate;
+    }
+
+    private void OnTargetDateChanged(DateTime? value)
+    {
+        targetDate = value;
+        editingItem.TargetDate = value ?? DateTime.Today;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(editingItem.Title) || string.IsNullOrWhiteSpace(editingItem.Domain))
+        {
+            Snackbar.Add("Title and domain are required.", Severity.Warning);
+            return;
+        }
+
+        editingItem.TargetDate = targetDate ?? editingItem.TargetDate;
+        await TrackerService.SaveTrainingItemAsync(editingItem);
+        Snackbar.Add("Training item saved.", Severity.Success);
+        await LoadAsync();
+        CreateNew();
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (editingItem.Id == 0)
+        {
+            return;
+        }
+
+        await TrackerService.DeleteTrainingItemAsync(editingItem.Id);
+        Snackbar.Add("Training item deleted.", Severity.Info);
+        await LoadAsync();
+        CreateNew();
+    }
+
+    private static string GetRowClass(UpskillTracker.Models.TrainingItem item, int _) => item.Status switch
+    {
+        UpskillTracker.Models.TrackerStatus.Completed => "row-completed",
+        UpskillTracker.Models.TrackerStatus.Blocked => "row-blocked",
+        _ => string.Empty
+    };
+
+    private static Color GetStatusColor(UpskillTracker.Models.TrackerStatus status) => status switch
+    {
+        UpskillTracker.Models.TrackerStatus.Completed => Color.Success,
+        UpskillTracker.Models.TrackerStatus.InProgress => Color.Info,
+        UpskillTracker.Models.TrackerStatus.Blocked => Color.Error,
+        _ => Color.Default
+    };
+
+    private static UpskillTracker.Models.TrainingItem CreateEmptyItem()
+    {
+        return new UpskillTracker.Models.TrainingItem
+        {
+            TargetDate = DateTime.Today.AddDays(7),
+            Priority = 3,
+            EstimatedHours = 2,
+            Lane = UpskillTracker.Models.LearningLane.Core,
+            Type = UpskillTracker.Models.TrainingItemType.Learning,
+            Status = UpskillTracker.Models.TrackerStatus.NotStarted
+        };
+    }
+}

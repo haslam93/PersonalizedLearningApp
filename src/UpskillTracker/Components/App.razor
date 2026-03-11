@@ -1,0 +1,55 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="_content/MudBlazor/MudBlazor.min.css" />
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="UpskillTracker.styles.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <HeadOutlet @rendermode="InteractiveServer" />
+</head>
+
+<body>
+    <MudThemeProvider Theme="@Theme" />
+    <MudPopoverProvider />
+    <MudDialogProvider />
+    <MudSnackbarProvider />
+    <Routes @rendermode="InteractiveServer" />
+    <script src="_framework/blazor.web.js"></script>
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+</body>
+
+</html>
+
+@code {
+    private static readonly MudTheme Theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#4f7cff",
+            Secondary = "#7c4dff",
+            Tertiary = "#0ea5e9",
+            Background = "#f4f7fb",
+            Surface = "#ffffff",
+            DrawerBackground = "#081122",
+            DrawerText = "#f4f7fb",
+            AppbarBackground = "rgba(8, 17, 34, 0.92)",
+            AppbarText = "#ffffff"
+        },
+        LayoutProperties = new LayoutProperties
+        {
+            DefaultBorderRadius = "18px"
+        },
+        Typography = new Typography
+        {
+            Default = new DefaultTypography
+            {
+                FontFamily = ["Segoe UI", "Inter", "Arial", "sans-serif"]
+            }
+        }
+    };
+}

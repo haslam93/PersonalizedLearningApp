@@ -1,0 +1,131 @@
+@inject UpskillTracker.Services.TrackerService TrackerService
+@inject ISnackbar Snackbar
+
+<MudGrid>
+    <MudItem xs="12" lg="7">
+        <MudPaper Class="surface-card mb-4" Elevation="0">
+            <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" Class="mb-4">
+                <MudTextField @bind-Value="searchText" Placeholder="Search notes" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="flex-1" />
+                <MudCheckBox @bind-Value="pinnedOnly" Label="Pinned only" Color="Color.Primary" />
+            </MudStack>
+
+            @foreach (var note in FilteredNotes)
+            {
+                <MudPaper Class="note-card mb-3" Elevation="0">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                        <div>
+                            <MudText Typo="Typo.subtitle2">@note.Title</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-secondary-text">@note.Category • @note.RelatedArea • @note.Tags</MudText>
+                        </div>
+                        <MudStack Row="true" Spacing="1">
+                            @if (note.IsPinned)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.PushPin" Color="Color.Primary" />
+                            }
+                            <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="@(() => BeginEdit(note))">Edit</MudButton>
+                        </MudStack>
+                    </MudStack>
+                    <MudText Typo="Typo.body2" Class="mt-3">@note.Content</MudText>
+                </MudPaper>
+            }
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" lg="5">
+        <MudPaper Class="surface-card mb-4" Elevation="0">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                <MudText Typo="Typo.h6">@(editingNote.Id == 0 ? "Add note" : "Edit note")</MudText>
+                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.NoteAdd" OnClick="CreateNew">New</MudButton>
+            </MudStack>
+
+            <MudStack Spacing="2">
+                <MudTextField @bind-Value="editingNote.Title" Label="Title" Variant="Variant.Outlined" Required="true" />
+                <MudTextField @bind-Value="editingNote.Category" Label="Category" Variant="Variant.Outlined" />
+                <MudTextField @bind-Value="editingNote.RelatedArea" Label="Related area" Variant="Variant.Outlined" />
+                <MudTextField @bind-Value="editingNote.Tags" Label="Tags" Variant="Variant.Outlined" />
+                <MudTextField @bind-Value="editingNote.Content" Label="Content" Variant="Variant.Outlined" Lines="8" Required="true" />
+                <MudCheckBox @bind-Value="editingNote.IsPinned" Label="Pinned" Color="Color.Primary" />
+            </MudStack>
+
+            <MudStack Row="true" Spacing="2" Class="mt-4">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync">Save note</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="CreateNew">Reset</MudButton>
+                @if (editingNote.Id != 0)
+                {
+                    <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="DeleteAsync">Delete</MudButton>
+                }
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private List<UpskillTracker.Models.NoteEntry> notes = [];
+    private UpskillTracker.Models.NoteEntry editingNote = CreateEmptyNote();
+    private string searchText = string.Empty;
+    private bool pinnedOnly;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private IEnumerable<UpskillTracker.Models.NoteEntry> FilteredNotes => notes.Where(note =>
+        (!pinnedOnly || note.IsPinned) &&
+        (string.IsNullOrWhiteSpace(searchText) || note.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) || note.Content.Contains(searchText, StringComparison.OrdinalIgnoreCase) || note.Tags.Contains(searchText, StringComparison.OrdinalIgnoreCase)));
+
+    private async Task LoadAsync()
+    {
+        notes = await TrackerService.GetNotesAsync();
+        if (editingNote.Id != 0)
+        {
+            var refreshed = notes.FirstOrDefault(note => note.Id == editingNote.Id);
+            if (refreshed is not null)
+            {
+                BeginEdit(refreshed);
+            }
+        }
+    }
+
+    private void BeginEdit(UpskillTracker.Models.NoteEntry note)
+    {
+        editingNote = note.Clone();
+    }
+
+    private void CreateNew()
+    {
+        editingNote = CreateEmptyNote();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(editingNote.Title) || string.IsNullOrWhiteSpace(editingNote.Content))
+        {
+            Snackbar.Add("Title and content are required.", Severity.Warning);
+            return;
+        }
+
+        await TrackerService.SaveNoteAsync(editingNote);
+        Snackbar.Add("Note saved.", Severity.Success);
+        await LoadAsync();
+        CreateNew();
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (editingNote.Id == 0)
+        {
+            return;
+        }
+
+        await TrackerService.DeleteNoteAsync(editingNote.Id);
+        Snackbar.Add("Note deleted.", Severity.Info);
+        await LoadAsync();
+        CreateNew();
+    }
+
+    private static UpskillTracker.Models.NoteEntry CreateEmptyNote()
+    {
+        return new UpskillTracker.Models.NoteEntry();
+    }
+}
