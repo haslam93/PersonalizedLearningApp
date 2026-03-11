@@ -92,7 +92,7 @@ jobs:
                          allowedUserObjectIds="$ALLOWED_USER_JSON" \
                          webAppName=${{ env.AZURE_WEBAPP_NAME }} \
                          enableAppServiceAuth=${{ env.APPSERVICE_AUTH_ENABLED }} \
-                         customHostname=${{ env.AZURE_CUSTOM_HOSTNAME }}
+                         customHostname=${{ env.AZURE_CUSTOM_HOSTNAME }} \
                          logAnalyticsWorkspaceName=${{ env.AZURE_LOG_ANALYTICS_NAME }}
 
       - name: Deploy to Azure App Service
