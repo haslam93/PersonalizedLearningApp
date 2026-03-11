@@ -1,0 +1,63 @@
+---
+title: Changelog
+description: Chronological record of major product, infrastructure, deployment, authentication, and documentation changes for the Azure AI Upskilling Hub
+author: Microsoft
+ms.date: 2026-03-11
+ms.topic: reference
+keywords:
+  - changelog
+  - blazor
+  - azure
+  - github actions
+  - deployment
+estimated_reading_time: 6
+---
+
+## 2026-03-11
+
+### Added the project memory file
+
+* Added [./.github/copilot-instruction.md](.github/copilot-instruction.md)
+* Documented the current architecture, Azure resources, GitHub Actions setup, and maintenance rules
+* Recorded the currently configured GitHub Actions secret and variable names without exposing values
+
+### Built the personalized learning tracker
+
+* Created the `UpskillTracker` Blazor Web App for the Azure AI upskilling plan
+* Added MudBlazor-based UI for Dashboard, Plan, Timeline, Resources, and Notes
+* Added EF Core with SQLite storage and seeded learning-plan data
+
+### Added documentation and architecture artifacts
+
+* Updated [README.md](README.md) with deployment guidance and project overview
+* Added [arch.md](arch.md) with Mermaid architecture documentation
+* Added a portal screenshot under `docs/images`
+
+### Added and later refined access control
+
+* Added an initial client-side PIN gate
+* Replaced the hardcoded PIN approach with configuration-backed PIN access
+* Moved the PIN to Azure app settings and GitHub Actions secret `APP_ACCESS_PIN`
+* Restored the PIN model after App Service Authentication introduced live callback failures
+
+### Updated Azure hosting and deployment
+
+* Provisioned Azure App Service, Application Insights, and Log Analytics with Bicep
+* Added custom hostname support for `skilling.hammadaslam.com`
+* Switched GitHub Actions deployment to OIDC-based Azure login
+* Updated the CD workflow to deploy infrastructure conditionally before app deployment
+* Increased the App Service plan target SKU from `B1` to `B2`
+
+### Troubleshot production issues
+
+* Fixed Linux App Service deployment packaging issues related to zip path format
+* Fixed MudBlazor provider placement issues that caused dead tabs in production
+* Investigated App Service Authentication callback `401` failures
+* Disabled App Service Authentication in Azure CLI to restore app access quickly
+* Verified the default production site returned `200` after the live rollback
+
+## Maintenance rule
+
+Whenever a meaningful change is made to the app, infrastructure, authentication,
+GitHub configuration, workflows, or documentation, append a new entry to this
+file in the same commit.
