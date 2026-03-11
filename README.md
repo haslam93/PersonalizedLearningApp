@@ -2,7 +2,7 @@
 title: Azure AI Upskilling Hub
 description: Personal training tracker for Azure AI, App Innovation, notes, resources, timelines, and deployment automation
 author: Microsoft
-ms.date: 2026-03-10
+ms.date: 2026-03-11
 ms.topic: overview
 keywords:
   - azure ai
@@ -56,18 +56,59 @@ The app stores its SQLite database in the local `Data` folder by default.
 
 ## Azure deployment
 
-Use the deployment script to provision an Azure App Service plan, create the web
-app, publish the app, and deploy it.
+The easiest deployment path is now `azd`.
+
+### Recommended: one-command deployment with azd
+
+1. Sign in first:
+
+   ```powershell
+   az login
+   azd auth login
+   ```
+
+2. From the repository root, run:
+
+   ```powershell
+   .\scripts\deploy-azd.ps1 -EnvironmentName personal-learning -Location eastus2 -ResourceGroupName rg-personal-learning -WebAppName <unique-web-app-name>
+   ```
+
+3. For later updates, rerun the same command or use:
+
+   ```powershell
+   azd deploy
+   ```
+
+The `azd` path uses these files:
+
+* [azure.yaml](azure.yaml)
+* [infra/main.bicep](infra/main.bicep)
+* [infra/resources.bicep](infra/resources.bicep)
+* [infra/main.parameters.json](infra/main.parameters.json)
+* [scripts/deploy-azd.ps1](scripts/deploy-azd.ps1)
+
+This deployment provisions:
+
+* Azure App Service plan
+* Linux App Service web app
+* Log Analytics workspace
+* Application Insights
+
+It also configures these app settings:
+
+* `APPLICATIONINSIGHTS_CONNECTION_STRING`
+* `ASPNETCORE_ENVIRONMENT=Production`
+* `Storage__ConnectionString=Data Source=/home/data/upskilltracker.db`
+* `WEBSITES_ENABLE_APP_SERVICE_STORAGE=true`
+
+### Direct deployment script
+
+If you prefer Azure CLI without `azd`, this script is still available and now
+resolves paths correctly even when run from the `scripts` folder:
 
 ```powershell
 .\scripts\deploy-azure.ps1 -ResourceGroupName rg-upskilltracker -WebAppName <unique-web-app-name>
 ```
-
-The script sets these app settings for you:
-
-* `ASPNETCORE_ENVIRONMENT=Production`
-* `Storage__ConnectionString=Data Source=/home/data/upskilltracker.db`
-* `WEBSITES_ENABLE_APP_SERVICE_STORAGE=true`
 
 ## GitHub Actions CD setup
 

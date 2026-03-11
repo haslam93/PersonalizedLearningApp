@@ -1,0 +1,12 @@
+name: personalized-learning-app
+resourceGroup: ${AZURE_RESOURCE_GROUP}
+requiredVersions:
+  azd: '>= 1.23.0'
+infra:
+  provider: bicep
+  path: infra
+services:
+  web:
+    project: ./src/UpskillTracker
+    language: dotnet
+    host: appservice

@@ -16,10 +16,28 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
 $resolvedPlanName = if ([string]::IsNullOrWhiteSpace($AppServicePlanName)) { "$WebAppName-plan" } else { $AppServicePlanName }
-$resolvedProjectPath = Resolve-Path $ProjectPath
-$resolvedPublishOutput = Join-Path (Get-Location) $PublishOutput
-$resolvedPackagePath = Join-Path (Get-Location) $PackagePath
+$resolvedProjectPath = if ([System.IO.Path]::IsPathRooted($ProjectPath)) {
+    Resolve-Path $ProjectPath
+}
+else {
+    Resolve-Path (Join-Path $repoRoot $ProjectPath)
+}
+
+$resolvedPublishOutput = if ([System.IO.Path]::IsPathRooted($PublishOutput)) {
+    $PublishOutput
+}
+else {
+    Join-Path $repoRoot $PublishOutput
+}
+
+$resolvedPackagePath = if ([System.IO.Path]::IsPathRooted($PackagePath)) {
+    $PackagePath
+}
+else {
+    Join-Path $repoRoot $PackagePath
+}
 
 function Assert-Command {
     param([string]$Name)
@@ -31,6 +49,8 @@ function Assert-Command {
 
 Assert-Command -Name 'az'
 Assert-Command -Name 'dotnet'
+
+Set-Location $repoRoot
 
 if (-not [string]::IsNullOrWhiteSpace($SubscriptionId)) {
     az account set --subscription $SubscriptionId | Out-Null
