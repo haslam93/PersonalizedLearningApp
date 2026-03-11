@@ -12,6 +12,9 @@ param resourceGroupName string = 'rg-${environmentName}-${take(uniqueString(subs
 @description('Optional override for the web app name. Must be globally unique when provided.')
 param webAppName string = ''
 
+@description('Optional custom hostname to bind to the web app. Leave empty to skip custom domain deployment.')
+param customHostname string = ''
+
 @description('Optional override for the app service plan SKU.')
 @allowed([
   'B1'
@@ -46,6 +49,7 @@ module resources './resources.bicep' = {
     appInsightsName: effectiveInsightsName
     appServicePlanName: effectivePlanName
     appServicePlanSku: appServicePlanSku
+    customHostname: customHostname
     location: location
     logAnalyticsWorkspaceName: effectiveWorkspaceName
     tags: tags

@@ -2,6 +2,12 @@ name: cd
 
 on:
   workflow_dispatch:
+    inputs:
+      deployInfra:
+        description: Force infrastructure deployment before app deployment
+        required: false
+        default: false
+        type: boolean
   push:
     branches:
       - main
@@ -11,8 +17,11 @@ permissions:
   id-token: write
 
 env:
+  AZURE_CUSTOM_HOSTNAME: skilling.hammadaslam.com
+  AZURE_LOCATION: eastus2
   AZURE_RESOURCE_GROUP: hammadlearningapp
   AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+  AZD_ENVIRONMENT_NAME: personal-learning
   PROJECT_PATH: ./src/UpskillTracker/UpskillTracker.csproj
   PUBLISH_PATH: ./publish
   PACKAGE_PATH: ./upskilltracker.zip
@@ -25,6 +34,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Detect infrastructure changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            infra:
+              - 'infra/**'
+              - 'azure.yaml'
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -48,6 +66,20 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           allow-no-subscriptions: true
+
+      - name: Deploy infrastructure
+        if: steps.changes.outputs.infra == 'true' || github.event.inputs.deployInfra == 'true'
+        run: |
+          az deployment sub create \
+            --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }} \
+            --location ${{ env.AZURE_LOCATION }} \
+            --name infra-${{ github.run_id }} \
+            --template-file infra/main.bicep \
+            --parameters environmentName=${{ env.AZD_ENVIRONMENT_NAME }} \
+                         location=${{ env.AZURE_LOCATION }} \
+                         resourceGroupName=${{ env.AZURE_RESOURCE_GROUP }} \
+                         webAppName=${{ env.AZURE_WEBAPP_NAME }} \
+                         customHostname=${{ env.AZURE_CUSTOM_HOSTNAME }}
 
       - name: Deploy to Azure App Service
         run: |

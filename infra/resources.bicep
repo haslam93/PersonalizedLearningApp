@@ -20,6 +20,9 @@ param appServicePlanSku string = 'B1'
 @description('Name of the App Service web app.')
 param webAppName string
 
+@description('Optional custom hostname to bind to the App Service web app.')
+param customHostname string = ''
+
 @description('Name of the Log Analytics workspace.')
 param logAnalyticsWorkspaceName string
 
@@ -150,6 +153,19 @@ resource webLogs 'Microsoft.Web/sites/config@2024-04-01' = {
         retentionInMb: 35
       }
     }
+  }
+}
+
+resource customHostnameBinding 'Microsoft.Web/sites/hostNameBindings@2024-11-01' = if (!empty(customHostname)) {
+  parent: webApp
+  name: customHostname
+  properties: {
+    azureResourceName: webApp.name
+    azureResourceType: 'Website'
+    customHostNameDnsRecordType: 'CName'
+    hostNameType: 'Verified'
+    siteName: webApp.name
+    sslState: 'Disabled'
   }
 }
 
