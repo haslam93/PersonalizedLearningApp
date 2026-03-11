@@ -6,9 +6,6 @@ param environmentName string
 @description('Azure location for all resources.')
 param location string
 
-@description('Principal ID for deployment-time role assignments when needed.')
-param principalId string
-
 @description('Resource group name for the environment.')
 param resourceGroupName string = 'rg-${environmentName}-${take(uniqueString(subscription().id, environmentName, location), 6)}'
 

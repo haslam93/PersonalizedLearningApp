@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "11497045469769651891"
+      "templateHash": "18402748209940780175"
     }
   },
   "parameters": {
@@ -19,12 +19,6 @@
       "type": "string",
       "metadata": {
         "description": "Azure location for all resources."
-      }
-    },
-    "principalId": {
-      "type": "string",
-      "metadata": {
-        "description": "Principal ID for deployment-time role assignments when needed."
       }
     },
     "resourceGroupName": {
