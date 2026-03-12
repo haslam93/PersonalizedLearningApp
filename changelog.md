@@ -15,6 +15,12 @@ estimated_reading_time: 6
 
 ## 2026-03-12
 
+### Added a live Microsoft announcement feed
+
+* Added a dashboard feed for official Microsoft announcement sources covering Foundry, GitHub Copilot, APIM, App Service, and related Azure updates
+* Added dashboard actions to open official posts, mark items as seen, and save useful announcements into the shared resource library
+* Kept the first version server-side and memory-cached so the app can avoid browser feed parsing and database schema changes
+
 ### Added task-level learning links
 
 * Updated the Plan tab so each training item now shows matching links from the shared resource library

@@ -10,10 +10,16 @@ var connectionString = ResolveSqliteConnectionString(builder.Configuration, buil
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddMemoryCache();
 builder.Services.AddMudServices();
 builder.Services.AddApplicationInsightsTelemetry();
 builder.Services.AddDbContextFactory<TrackerDbContext>(options => options.UseSqlite(connectionString));
 builder.Services.AddScoped<TrackerService>();
+builder.Services.AddHttpClient<AnnouncementFeedService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("UpskillTracker/1.0");
+});
 
 var app = builder.Build();
 

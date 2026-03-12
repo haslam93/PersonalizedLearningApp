@@ -1,4 +1,6 @@
 @inject UpskillTracker.Services.TrackerService TrackerService
+@inject UpskillTracker.Services.AnnouncementFeedService AnnouncementFeedService
+@inject ISnackbar Snackbar
 
 @if (isLoading)
 {
@@ -153,25 +155,215 @@ else if (snapshot is not null)
                 }
             </MudPaper>
         </MudItem>
+        <MudItem xs="12">
+            <MudPaper Class="surface-card mb-4" Elevation="0">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                    <div>
+                        <MudText Typo="Typo.h6">Latest Microsoft announcements</MudText>
+                        <MudText Typo="Typo.body2" Class="mud-secondary-text">Official feed items for Foundry, GitHub Copilot, APIM, App Service, and related Azure updates.</MudText>
+                    </div>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshAnnouncementsAsync">
+                        Refresh
+                    </MudButton>
+                </MudStack>
+
+                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" Class="mb-4">
+                    <MudSelect T="string" Value="@selectedAnnouncementTopic" ValueChanged="OnAnnouncementTopicChanged" Label="Topic" Variant="Variant.Outlined" Dense="true" Style="min-width: 220px;">
+                        @foreach (var topic in announcementTopics)
+                        {
+                            <MudSelectItem T="string" Value="@topic">@topic</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudSelect T="string" Value="@selectedAnnouncementSource" ValueChanged="OnAnnouncementSourceChanged" Label="Source" Variant="Variant.Outlined" Dense="true" Style="min-width: 220px;">
+                        @foreach (var source in announcementSources)
+                        {
+                            <MudSelectItem T="string" Value="@source">@source</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudStack>
+
+                @if (isLoadingAnnouncements)
+                {
+                    <MudSkeleton Height="220px" />
+                }
+                else if (!string.IsNullOrWhiteSpace(announcementError))
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">@announcementError</MudAlert>
+                }
+                else if (FilteredAnnouncements.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">No announcement items match the current filters yet.</MudAlert>
+                }
+                else
+                {
+                    @foreach (var announcement in FilteredAnnouncements)
+                    {
+                        <MudPaper Class="timeline-entry mb-3" Elevation="0">
+                            <MudStack Spacing="2">
+                                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                                    <div>
+                                        <MudText Typo="Typo.subtitle1">@announcement.Title</MudText>
+                                        <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-1">
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetAnnouncementTopicColor(announcement.Topic)">@announcement.Topic</MudChip>
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">@announcement.Source</MudChip>
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default">@FormatAnnouncementDate(announcement.PublishedUtc)</MudChip>
+                                        </MudStack>
+                                    </div>
+                                    @if (seenAnnouncements.Contains(announcement.Url))
+                                    {
+                                        <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Size="Size.Small">Seen</MudChip>
+                                    }
+                                </MudStack>
+
+                                @if (!string.IsNullOrWhiteSpace(announcement.Summary))
+                                {
+                                    <MudText Typo="Typo.body2" Class="mud-secondary-text">@announcement.Summary</MudText>
+                                }
+
+                                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="@announcement.Url" Target="_blank" EndIcon="@Icons.Material.Filled.OpenInNew">
+                                        Open
+                                    </MudButton>
+                                    <MudButton Variant="Variant.Text" Color="Color.Default" StartIcon="@Icons.Material.Filled.Visibility" OnClick="@(() => MarkAnnouncementSeen(announcement))">
+                                        @(seenAnnouncements.Contains(announcement.Url) ? "Seen" : "Mark as seen")
+                                    </MudButton>
+                                    <MudButton Variant="Variant.Text" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.AddLink" OnClick="@(() => SaveAnnouncementAsResourceAsync(announcement))">
+                                        Save to resources
+                                    </MudButton>
+                                </MudStack>
+                            </MudStack>
+                        </MudPaper>
+                    }
+                }
+            </MudPaper>
+        </MudItem>
     </MudGrid>
 }
 
 @code {
     private bool isLoading = true;
+    private bool isLoadingAnnouncements = true;
     private UpskillTracker.Models.DashboardSnapshot? snapshot;
     private List<UpskillTracker.Models.ResourceEntry> resources = [];
+    private List<UpskillTracker.Models.AnnouncementItem> announcements = [];
+    private HashSet<string> seenAnnouncements = new(StringComparer.OrdinalIgnoreCase);
+    private List<string> announcementTopics = ["All topics"];
+    private List<string> announcementSources = ["All sources"];
+    private string selectedAnnouncementTopic = "All topics";
+    private string selectedAnnouncementSource = "All sources";
+    private string? announcementError;
     private double completionRate;
 
     protected override async Task OnInitializedAsync()
     {
-        snapshot = await TrackerService.GetDashboardSnapshotAsync();
-        resources = await TrackerService.GetResourcesAsync();
+        var snapshotTask = TrackerService.GetDashboardSnapshotAsync();
+        var resourcesTask = TrackerService.GetResourcesAsync();
+        var announcementsTask = LoadAnnouncementsAsync();
+
+        snapshot = await snapshotTask;
+        resources = await resourcesTask;
+        await announcementsTask;
+
         completionRate = snapshot is null ? 0 : (double)snapshot.CompletionRate;
         isLoading = false;
     }
 
+    private IReadOnlyList<UpskillTracker.Models.AnnouncementItem> FilteredAnnouncements => announcements
+        .Where(item => selectedAnnouncementTopic == "All topics" || item.Topic.Equals(selectedAnnouncementTopic, StringComparison.OrdinalIgnoreCase))
+        .Where(item => selectedAnnouncementSource == "All sources" || item.Source.Equals(selectedAnnouncementSource, StringComparison.OrdinalIgnoreCase))
+        .Take(6)
+        .ToList();
+
     private IReadOnlyList<UpskillTracker.Models.ResourceEntry> GetSuggestedResources(UpskillTracker.Models.TrainingItem item)
         => TaskResourceMatcher.GetMatches(item, resources, 2);
+
+    private async Task LoadAnnouncementsAsync(bool forceRefresh = false)
+    {
+        try
+        {
+            isLoadingAnnouncements = true;
+            announcementError = null;
+            var items = forceRefresh
+                ? await AnnouncementFeedService.RefreshAsync()
+                : await AnnouncementFeedService.GetAnnouncementsAsync();
+
+            announcements = items.ToList();
+            announcementTopics = ["All topics", .. announcements.Select(item => item.Topic).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(topic => topic)];
+            announcementSources = ["All sources", .. announcements.Select(item => item.Source).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(source => source)];
+
+            if (!announcementTopics.Contains(selectedAnnouncementTopic, StringComparer.OrdinalIgnoreCase))
+            {
+                selectedAnnouncementTopic = "All topics";
+            }
+
+            if (!announcementSources.Contains(selectedAnnouncementSource, StringComparer.OrdinalIgnoreCase))
+            {
+                selectedAnnouncementSource = "All sources";
+            }
+        }
+        catch (Exception)
+        {
+            announcementError = "The live feed could not be loaded right now. Try refreshing again in a moment.";
+        }
+        finally
+        {
+            isLoadingAnnouncements = false;
+        }
+    }
+
+    private Task OnAnnouncementTopicChanged(string value)
+    {
+        selectedAnnouncementTopic = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnAnnouncementSourceChanged(string value)
+    {
+        selectedAnnouncementSource = value;
+        return Task.CompletedTask;
+    }
+
+    private async Task RefreshAnnouncementsAsync()
+    {
+        await LoadAnnouncementsAsync(forceRefresh: true);
+        Snackbar.Add("Announcement feed refreshed.", Severity.Success);
+    }
+
+    private void MarkAnnouncementSeen(UpskillTracker.Models.AnnouncementItem announcement)
+    {
+        seenAnnouncements.Add(announcement.Url);
+    }
+
+    private async Task SaveAnnouncementAsResourceAsync(UpskillTracker.Models.AnnouncementItem announcement)
+    {
+        if (resources.Any(resource => resource.Url.Equals(announcement.Url, StringComparison.OrdinalIgnoreCase)))
+        {
+            Snackbar.Add("That link is already in your resource library.", Severity.Info);
+            return;
+        }
+
+        var nextSortOrder = resources
+            .Where(resource => resource.Section.Equals(announcement.Topic, StringComparison.OrdinalIgnoreCase))
+            .Select(resource => resource.SortOrder)
+            .DefaultIfEmpty(0)
+            .Max() + 10;
+
+        var resource = new UpskillTracker.Models.ResourceEntry
+        {
+            Title = announcement.Title,
+            Section = announcement.Topic,
+            Url = announcement.Url,
+            Kind = UpskillTracker.Models.ResourceKind.Documentation,
+            Summary = announcement.Summary,
+            Tags = string.Join(", ", new[] { "announcement", announcement.Topic, announcement.Source }.Where(value => !string.IsNullOrWhiteSpace(value))),
+            Notes = $"Saved from the official {announcement.Source} feed on {DateTime.UtcNow:yyyy-MM-dd}.",
+            SortOrder = nextSortOrder
+        };
+
+        await TrackerService.SaveResourceAsync(resource);
+        resources = await TrackerService.GetResourcesAsync();
+        Snackbar.Add("Announcement saved to resources.", Severity.Success);
+    }
 
     private static Color GetStatusColor(UpskillTracker.Models.TrackerStatus status) => status switch
     {
@@ -189,5 +381,34 @@ else if (snapshot is not null)
         }
 
         return string.Concat(value[..length], "…");
+    }
+
+    private static Color GetAnnouncementTopicColor(string topic) => topic switch
+    {
+        "Azure AI Foundry" => Color.Primary,
+        "GitHub Copilot" => Color.Secondary,
+        "Azure API Management" => Color.Warning,
+        "App Service" => Color.Info,
+        _ => Color.Success
+    };
+
+    private static string FormatAnnouncementDate(DateTime publishedUtc)
+    {
+        var now = DateTime.UtcNow;
+        var age = now - publishedUtc;
+
+        if (age.TotalDays < 1)
+        {
+            return age.TotalHours < 1
+                ? "Updated recently"
+                : $"{Math.Max(1, (int)age.TotalHours)}h ago";
+        }
+
+        if (age.TotalDays < 7)
+        {
+            return $"{Math.Max(1, (int)age.TotalDays)}d ago";
+        }
+
+        return publishedUtc.ToLocalTime().ToString("MMM d");
     }
 }
