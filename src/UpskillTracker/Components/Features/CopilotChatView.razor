@@ -1,0 +1,357 @@
+@using GitHub.Copilot.SDK
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject CopilotAuthService CopilotAuthService
+@inject CopilotChatService CopilotChatService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<div class="chat-shell">
+    <MudPaper Class="surface-card chat-panel" Elevation="0">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h6">GitHub Copilot chat</MudText>
+                <MudText Typo="Typo.body2" Class="mud-secondary-text">
+                    Ask questions about your learning plan, saved notes, and resources, then apply small updates without leaving the app.
+                </MudText>
+            </MudStack>
+
+            <MudStack Row="true" Spacing="1">
+                <MudButton Variant="Variant.Text"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           Disabled="@IsBusy"
+                           OnClick="RefreshAsync">
+                    Refresh
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           StartIcon="@Icons.Material.Filled.AutoAwesome"
+                           Disabled="@(!AuthState.CanUseCopilot || IsBusy)"
+                           OnClick="StartNewChatAsync">
+                    New chat
+                </MudButton>
+            </MudStack>
+        </MudStack>
+
+        @if (!AuthState.IsGitHubConfigured)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                GitHub OAuth is not configured yet. Add the GitHub OAuth client settings before using Copilot chat.
+            </MudAlert>
+        }
+        else if (!AuthState.IsSignedIn || !AuthState.HasCopilotToken)
+        {
+            <div class="chat-empty">
+                <MudStack Spacing="2" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.Login" Size="Size.Large" Color="Color.Primary" />
+                    <MudText Typo="Typo.h6">Sign in with GitHub to use Copilot</MudText>
+                    <MudText Typo="Typo.body2">
+                        The app uses your GitHub Copilot entitlement and exposes the live model catalog returned by the SDK for your account.
+                    </MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="@LoginUrl">
+                        Sign in with GitHub
+                    </MudButton>
+                </MudStack>
+            </div>
+        }
+        else
+        {
+            @if (Messages.Count == 0)
+            {
+                <div class="chat-empty">
+                    <MudStack Spacing="2" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Large" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Start a grounded Copilot conversation</MudText>
+                        <MudText Typo="Typo.body2">
+                            Try asking what to focus on this month, which resource best matches a task, or to save a note or task update after you confirm it.
+                        </MudText>
+                    </MudStack>
+                </div>
+            }
+            else
+            {
+                <div class="chat-transcript">
+                    @foreach (var message in Messages)
+                    {
+                        <MudPaper Class="@($"chat-message {GetMessageClass(message)}")" Elevation="0">
+                            <MudStack Spacing="1">
+                                <MudText Typo="Typo.caption" Class="mud-secondary-text">@message.Author</MudText>
+                                <MudText Typo="Typo.body1">@message.Content</MudText>
+                            </MudStack>
+                        </MudPaper>
+                    }
+
+                    @if (IsBusy)
+                    {
+                        <MudPaper Class="chat-message assistant-message typing-indicator" Elevation="0">
+                            <MudText Typo="Typo.body2">Copilot is thinking...</MudText>
+                        </MudPaper>
+                    }
+                </div>
+            }
+
+            <div class="chat-input-area">
+                <MudStack Spacing="2">
+                    <MudTextField @bind-Value="CurrentPrompt"
+                                  Label="Ask Copilot about your learning work"
+                                  Placeholder="For example: What should I focus on next, or save a note about App Service deployment lessons learned."
+                                  Variant="Variant.Outlined"
+                                  Lines="4"
+                                  Disabled="@(!AuthState.CanUseCopilot || IsBusy || Models.Count == 0)"
+                                  OnKeyDown="HandlePromptKeyDown" />
+
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <MudText Typo="Typo.caption" Class="mud-secondary-text">
+                            Copilot can use the live models available to your account through the GitHub Copilot SDK.
+                        </MudText>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Disabled="@(!CanSend)"
+                                   OnClick="SendAsync">
+                            Send
+                        </MudButton>
+                    </MudStack>
+                </MudStack>
+            </div>
+        }
+    </MudPaper>
+
+    <div class="chat-sidebar">
+        <MudPaper Class="surface-card" Elevation="0">
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.subtitle1">GitHub sign-in</MudText>
+                <MudDivider />
+
+                @if (AuthState.IsSignedIn)
+                {
+                    <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Icon="@Icons.Material.Filled.VerifiedUser">
+                        Connected
+                    </MudChip>
+                    <MudText Typo="Typo.body2">@(AuthState.DisplayName ?? AuthState.GitHubLogin ?? "GitHub user")</MudText>
+                    @if (!string.IsNullOrWhiteSpace(AuthState.GitHubLogin))
+                    {
+                        <MudText Typo="Typo.caption" Class="mud-secondary-text">@($"@{AuthState.GitHubLogin}")</MudText>
+                    }
+
+                    <MudButton Variant="Variant.Text" Color="Color.Default" StartIcon="@Icons.Material.Filled.Logout" Href="@LogoutUrl">
+                        Sign out
+                    </MudButton>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2">Not connected</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="@LoginUrl">
+                        Sign in with GitHub
+                    </MudButton>
+                }
+            </MudStack>
+        </MudPaper>
+
+        <MudPaper Class="surface-card" Elevation="0">
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.subtitle1">Model selection</MudText>
+                <MudDivider />
+
+                <MudSelect T="string"
+                           @bind-Value="SelectedModel"
+                           Label="Available models"
+                           Variant="Variant.Outlined"
+                           Disabled="@(!AuthState.CanUseCopilot || IsBusy || Models.Count == 0)">
+                    @foreach (var model in Models)
+                    {
+                        <MudSelectItem T="string" Value="@model.Id">@model.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
+                @if (SelectedModelInfo is not null)
+                {
+                    <MudText Typo="Typo.body2">@SelectedModelInfo.Name</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-secondary-text">ID: @SelectedModelInfo.Id</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-secondary-text">
+                        Context window: @SelectedModelInfo.Capabilities?.Limits?.MaxContextWindowTokens tokens
+                    </MudText>
+                }
+                else if (AuthState.CanUseCopilot)
+                {
+                    <MudText Typo="Typo.caption" Class="mud-secondary-text">
+                        No models are loaded yet. Refresh after signing in.
+                    </MudText>
+                }
+            </MudStack>
+        </MudPaper>
+
+        <MudPaper Class="surface-card" Elevation="0">
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.subtitle1">Suggested prompts</MudText>
+                <MudDivider />
+                <MudButton Variant="Variant.Text" OnClick='@(() => SetPrompt("What should I focus on next based on my current plan and notes?"))'>
+                    Focus next steps
+                </MudButton>
+                <MudButton Variant="Variant.Text" OnClick='@(() => SetPrompt("Which saved resources best support my current overdue or in-progress tasks?"))'>
+                    Match resources to work
+                </MudButton>
+                <MudButton Variant="Variant.Text" OnClick='@(() => SetPrompt("Draft a concise note about the latest thing I learned and save it after I confirm."))'>
+                    Draft and save a note
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+    </div>
+</div>
+
+@code {
+    private CopilotAuthState AuthState = new(false, false, false, null, null, null, null);
+    private List<ModelInfo> Models = [];
+    private List<TranscriptMessage> Messages = [];
+    private string? SelectedModel;
+    private string CurrentPrompt = string.Empty;
+    private bool IsBusy;
+
+    private bool CanSend => AuthState.CanUseCopilot && !IsBusy && !string.IsNullOrWhiteSpace(CurrentPrompt) && !string.IsNullOrWhiteSpace(SelectedModel);
+
+    private string LoginUrl => BuildAuthUrl("/auth/github/login");
+
+    private string LogoutUrl => BuildAuthUrl("/auth/github/logout");
+
+    private ModelInfo? SelectedModelInfo => Models.FirstOrDefault(model => string.Equals(model.Id, SelectedModel, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        AuthState = CopilotAuthService.GetState(authenticationState.User);
+
+        Messages ??= [];
+        Models = [];
+        SelectedModel = null;
+
+        if (!AuthState.CanUseCopilot)
+        {
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        try
+        {
+            Models = [.. await CopilotChatService.GetAvailableModelsAsync(AuthState.SessionId!)];
+            SelectedModel = Models.FirstOrDefault(model => string.Equals(model.Id, "gpt-5", StringComparison.OrdinalIgnoreCase))?.Id
+                ?? Models.FirstOrDefault()?.Id;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not load Copilot models: {ex.Message}", Severity.Error);
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task StartNewChatAsync()
+    {
+        if (!AuthState.CanUseCopilot)
+        {
+            return;
+        }
+
+        await CopilotChatService.ResetSessionAsync(AuthState.SessionId!);
+        Messages.Clear();
+        Snackbar.Add("Started a new Copilot chat session.", Severity.Info);
+    }
+
+    private async Task SendAsync()
+    {
+        if (!CanSend)
+        {
+            return;
+        }
+
+        var prompt = CurrentPrompt.Trim();
+        CurrentPrompt = string.Empty;
+
+        var userMessage = new TranscriptMessage("You", prompt, "user");
+        var assistantMessage = new TranscriptMessage("Copilot", string.Empty, "assistant");
+
+        Messages.Add(userMessage);
+        Messages.Add(assistantMessage);
+
+        IsBusy = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            await CopilotChatService.SendMessageAsync(AuthState.SessionId!, SelectedModel, prompt, update => ApplyUpdate(assistantMessage, update));
+        }
+        catch (Exception ex)
+        {
+            assistantMessage.Author = "System";
+            assistantMessage.Role = "system";
+            assistantMessage.Content = string.IsNullOrWhiteSpace(assistantMessage.Content) ? ex.Message : assistantMessage.Content;
+        }
+        finally
+        {
+            IsBusy = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task HandlePromptKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter" && !args.ShiftKey && CanSend)
+        {
+            await SendAsync();
+        }
+    }
+
+    private void ApplyUpdate(TranscriptMessage target, CopilotChatUpdate update)
+    {
+        switch (update.Type)
+        {
+            case CopilotChatUpdateType.AssistantDelta:
+                target.Content += update.Content;
+                break;
+
+            case CopilotChatUpdateType.AssistantFinal:
+                target.Content = update.Content;
+                break;
+
+            case CopilotChatUpdateType.Error:
+                target.Author = "System";
+                target.Role = "system";
+                target.Content = update.Content;
+                break;
+        }
+
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void SetPrompt(string prompt)
+    {
+        CurrentPrompt = prompt;
+    }
+
+    private string BuildAuthUrl(string path)
+        => $"{path}?returnUrl={Uri.EscapeDataString(GetCurrentReturnUrl())}";
+
+    private string GetCurrentReturnUrl()
+    {
+        var relativePath = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        return string.IsNullOrWhiteSpace(relativePath) ? "/" : $"/{relativePath}";
+    }
+
+    private static string GetMessageClass(TranscriptMessage message) => message.Role switch
+    {
+        "user" => "user-message",
+        "assistant" => "assistant-message",
+        _ => "system-message"
+    };
+
+    private sealed class TranscriptMessage(string author, string content, string role)
+    {
+        public string Author { get; set; } = author;
+
+        public string Content { get; set; } = content;
+
+        public string Role { get; set; } = role;
+    }
+}

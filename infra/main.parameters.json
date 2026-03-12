@@ -13,6 +13,18 @@
     },
     "webAppName": {
       "value": "${AZURE_WEB_APP_NAME}"
+    },
+    "gitHubOAuthClientId": {
+      "value": "${GITHUB_OAUTH_CLIENT_ID}"
+    },
+    "gitHubOAuthClientSecret": {
+      "value": "${GITHUB_OAUTH_CLIENT_SECRET}"
+    },
+    "copilotCliPath": {
+      "value": "${COPILOT_CLI_PATH}"
+    },
+    "copilotDefaultModel": {
+      "value": "${COPILOT_DEFAULT_MODEL}"
     }
   }
 }

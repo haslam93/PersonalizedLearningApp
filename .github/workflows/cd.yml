@@ -29,6 +29,7 @@ env:
   PROJECT_PATH: ./src/UpskillTracker/UpskillTracker.csproj
   PUBLISH_PATH: ./publish
   PACKAGE_PATH: ./upskilltracker.zip
+  COPILOT_DEFAULT_MODEL: gpt-5
 
 jobs:
   deploy:
@@ -57,7 +58,7 @@ jobs:
         run: dotnet restore ${{ env.PROJECT_PATH }}
 
       - name: Publish
-        run: dotnet publish ${{ env.PROJECT_PATH }} --configuration Release --output ${{ env.PUBLISH_PATH }}
+        run: dotnet publish ${{ env.PROJECT_PATH }} --configuration Release --runtime linux-x64 --self-contained false --output ${{ env.PUBLISH_PATH }}
 
       - name: Package deployment artifacts
         run: |
@@ -72,7 +73,6 @@ jobs:
           allow-no-subscriptions: true
 
       - name: Deploy infrastructure
-        if: steps.changes.outputs.infra == 'true' || github.event.inputs.deployInfra == 'true'
         run: |
           az deployment group create \
             --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }} \
@@ -80,6 +80,9 @@ jobs:
             --name infra-${{ github.run_id }} \
             --template-file infra/resources.bicep \
             --parameters accessPin=${{ secrets.APP_ACCESS_PIN }} \
+                         gitHubOAuthClientId=${{ secrets.APP_GH_OAUTH_CLIENT_ID }} \
+                         gitHubOAuthClientSecret=${{ secrets.APP_GH_OAUTH_CLIENT_SECRET }} \
+                         copilotDefaultModel=${{ env.COPILOT_DEFAULT_MODEL }} \
             --parameters location=${{ env.AZURE_LOCATION }} \
                          appInsightsName=${{ env.AZURE_APPINSIGHTS_NAME }} \
                          appServicePlanName=${{ env.AZURE_APP_SERVICE_PLAN_NAME }} \

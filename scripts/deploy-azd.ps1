@@ -4,6 +4,10 @@ param(
     [string]$ResourceGroupName = '',
     [string]$WebAppName = '',
     [string]$SubscriptionId = '',
+    [string]$GitHubOAuthClientId = '',
+    [string]$GitHubOAuthClientSecret = '',
+    [string]$CopilotCliPath = '',
+    [string]$CopilotDefaultModel = 'gpt-5',
     [switch]$ProvisionOnly,
     [switch]$DeployOnly,
     [switch]$UseDeviceCode
@@ -49,11 +53,34 @@ function Invoke-AppServiceFallbackDeployment {
         -WebAppName $resolvedWebAppName `
         -Location $Location `
         -SubscriptionId $resolvedSubscriptionId `
+        -GitHubOAuthClientId $GitHubOAuthClientId `
+        -GitHubOAuthClientSecret $GitHubOAuthClientSecret `
+        -CopilotCliPath $CopilotCliPath `
+        -CopilotDefaultModel $CopilotDefaultModel `
         -SkipProvisioning
 
     if ($LASTEXITCODE -ne 0) {
         throw 'Direct App Service deployment fallback failed.'
     }
+}
+
+function Set-AzdEnvironmentValueIfProvided {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Value,
+
+        [Parameter(Mandatory = $true)]
+        [string]$FailureMessage
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return
+    }
+
+    Invoke-NativeCommand -Command { azd env set $Name $Value } -FailureMessage $FailureMessage
 }
 
 function Invoke-AzdDeployWithFallback {
@@ -117,6 +144,14 @@ Invoke-NativeCommand -Command { azd env set AZURE_LOCATION $Location } -FailureM
 Invoke-NativeCommand -Command { azd env set AZURE_RESOURCE_GROUP $resolvedResourceGroupName } -FailureMessage 'Failed to set AZURE_RESOURCE_GROUP in the azd environment.'
 Invoke-NativeCommand -Command { azd env set AZURE_WEB_APP_NAME $resolvedWebAppName } -FailureMessage 'Failed to set AZURE_WEB_APP_NAME in the azd environment.'
 Invoke-NativeCommand -Command { azd env set AZURE_SUBSCRIPTION_ID $resolvedSubscriptionId } -FailureMessage 'Failed to set AZURE_SUBSCRIPTION_ID in the azd environment.'
+Set-AzdEnvironmentValueIfProvided -Name 'GITHUB_OAUTH_CLIENT_ID' -Value $GitHubOAuthClientId -FailureMessage 'Failed to set GITHUB_OAUTH_CLIENT_ID in the azd environment.'
+Set-AzdEnvironmentValueIfProvided -Name 'GITHUB_OAUTH_CLIENT_SECRET' -Value $GitHubOAuthClientSecret -FailureMessage 'Failed to set GITHUB_OAUTH_CLIENT_SECRET in the azd environment.'
+Set-AzdEnvironmentValueIfProvided -Name 'COPILOT_CLI_PATH' -Value $CopilotCliPath -FailureMessage 'Failed to set COPILOT_CLI_PATH in the azd environment.'
+Set-AzdEnvironmentValueIfProvided -Name 'COPILOT_DEFAULT_MODEL' -Value $CopilotDefaultModel -FailureMessage 'Failed to set COPILOT_DEFAULT_MODEL in the azd environment.'
+
+if ([string]::IsNullOrWhiteSpace($GitHubOAuthClientId) -or [string]::IsNullOrWhiteSpace($GitHubOAuthClientSecret)) {
+    Write-Host 'GitHub OAuth values were not supplied to this script. Copilot sign-in stays disabled until GITHUB_OAUTH_CLIENT_ID and GITHUB_OAUTH_CLIENT_SECRET are set in the azd environment or Azure App Service settings.' -ForegroundColor DarkYellow
+}
 
 Write-Host 'Checking azd authentication state...' -ForegroundColor Cyan
 Invoke-NativeCommand -Command { azd auth login --check-status --no-prompt } -FailureMessage 'azd is not authenticated. Run azd auth login and try again.'

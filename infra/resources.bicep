@@ -10,6 +10,19 @@ param tags object = {}
 @secure()
 param accessPin string = ''
 
+@description('GitHub OAuth client id used by the in-app Copilot sign-in flow.')
+param gitHubOAuthClientId string = ''
+
+@description('GitHub OAuth client secret used by the in-app Copilot sign-in flow.')
+@secure()
+param gitHubOAuthClientSecret string = ''
+
+@description('Optional path to the GitHub Copilot CLI binary when it is bundled with the app.')
+param copilotCliPath string = ''
+
+@description('Default model shown in the Copilot chat model picker.')
+param copilotDefaultModel string = 'gpt-5'
+
 @description('Name of the App Service plan.')
 param appServicePlanName string
 
@@ -112,6 +125,26 @@ resource webApp 'Microsoft.Web/sites@2024-11-01' = {
         {
           name: 'AccessPin'
           value: accessPin
+        }
+        {
+          name: 'GitHubOAuth__ClientId'
+          value: gitHubOAuthClientId
+        }
+        {
+          name: 'GitHubOAuth__ClientSecret'
+          value: gitHubOAuthClientSecret
+        }
+        {
+          name: 'GitHubOAuth__CallbackPath'
+          value: '/signin-github'
+        }
+        {
+          name: 'CopilotSdk__CliPath'
+          value: copilotCliPath
+        }
+        {
+          name: 'CopilotSdk__DefaultModel'
+          value: copilotDefaultModel
         }
         {
           name: 'ENABLE_ORYX_BUILD'

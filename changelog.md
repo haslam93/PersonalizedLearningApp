@@ -15,6 +15,13 @@ estimated_reading_time: 6
 
 ## 2026-03-12
 
+### Added GitHub Copilot SDK chat integration
+
+* Added an in-app Copilot chat tab backed by the official GitHub Copilot SDK for .NET
+* Added GitHub OAuth-based sign-in so users can authenticate from inside the app and use their own GitHub-linked Copilot access
+* Added runtime model discovery, grounded tracker tools, and deployment settings for GitHub OAuth and Copilot defaults
+* Updated Azure deployment files and scripts so GitHub OAuth settings can flow through `azd`, direct App Service deployment, and portal configuration
+
 ### Added a live Microsoft announcement feed
 
 * Added a dashboard feed for official Microsoft announcement sources covering Foundry, GitHub Copilot, APIM, App Service, and related Azure updates

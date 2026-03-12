@@ -19,6 +19,19 @@ param customHostname string = ''
 @secure()
 param accessPin string = ''
 
+@description('GitHub OAuth client id used by the in-app Copilot sign-in flow.')
+param gitHubOAuthClientId string = ''
+
+@description('GitHub OAuth client secret used by the in-app Copilot sign-in flow.')
+@secure()
+param gitHubOAuthClientSecret string = ''
+
+@description('Optional path to the GitHub Copilot CLI binary when it is bundled with the app.')
+param copilotCliPath string = ''
+
+@description('Default model shown in the Copilot chat model picker.')
+param copilotDefaultModel string = 'gpt-5'
+
 @description('Optional override for the app service plan SKU.')
 @allowed([
   'B1'
@@ -55,7 +68,11 @@ module resources './resources.bicep' = {
     appInsightsName: effectiveInsightsName
     appServicePlanName: effectivePlanName
     appServicePlanSku: appServicePlanSku
+    copilotCliPath: copilotCliPath
+    copilotDefaultModel: copilotDefaultModel
     customHostname: customHostname
+    gitHubOAuthClientId: gitHubOAuthClientId
+    gitHubOAuthClientSecret: gitHubOAuthClientSecret
     location: location
     logAnalyticsWorkspaceName: effectiveWorkspaceName
     tags: tags

@@ -76,6 +76,71 @@ Local development uses the configured `AccessPin` value if present. In Azure,
 the PIN is stored as an app setting and supplied through deployment secrets, not
 hardcoded in source.
 
+## GitHub Copilot SDK setup
+
+The app now includes a Copilot chat tab backed by the official GitHub Copilot
+SDK.
+
+### Where to get the real GitHub OAuth values
+
+Create a GitHub OAuth App in GitHub Developer Settings:
+
+1. Sign in to GitHub.
+2. Open `Settings` > `Developer settings` > `OAuth Apps`.
+3. Select `New OAuth App`.
+4. Create one app per environment you want to support.
+
+Recommended callback URLs for this repo:
+
+* Local development: `https://localhost:7172/signin-github`
+* Azure App Service: `https://<your-web-app-host>/signin-github`
+
+Use the values GitHub shows after the app is created:
+
+* `Client ID` -> `GitHubOAuth:ClientId`
+* `Client Secret` -> `GitHubOAuth:ClientSecret`
+
+Because GitHub OAuth Apps use a fixed callback URL, the cleanest setup is one
+OAuth app for local development and a second OAuth app for the Azure site.
+
+### Where to put the values locally
+
+For local development, keep the secret out of source control and use ASP.NET
+Core user secrets:
+
+1. Initialize user secrets for the project if needed:
+
+   ```powershell
+   dotnet user-secrets init --project .\src\UpskillTracker\UpskillTracker.csproj
+   ```
+
+2. Store the GitHub OAuth client id:
+
+   ```powershell
+   dotnet user-secrets set "GitHubOAuth:ClientId" "<your-local-client-id>" --project .\src\UpskillTracker\UpskillTracker.csproj
+   ```
+
+3. Store the GitHub OAuth client secret:
+
+   ```powershell
+   dotnet user-secrets set "GitHubOAuth:ClientSecret" "<your-local-client-secret>" --project .\src\UpskillTracker\UpskillTracker.csproj
+   ```
+
+4. Optionally set the default model:
+
+   ```powershell
+   dotnet user-secrets set "CopilotSdk:DefaultModel" "gpt-5" --project .\src\UpskillTracker\UpskillTracker.csproj
+   ```
+
+The app already uses `/signin-github` as the callback path, so you do not need
+to change code after the secrets are set.
+
+### Local Copilot CLI behavior
+
+The .NET SDK downloads the matching Copilot CLI during build and copies it into
+the app output automatically. On Windows, local development uses the bundled
+Windows CLI from the build output.
+
 ## Azure deployment
 
 The easiest deployment path is now `azd`.
@@ -103,6 +168,29 @@ The easiest deployment path is now `azd`.
 
 The wrapper runs `azd provision` and `azd deploy` as separate steps so failures
 are easier to identify.
+
+Before the first Copilot-enabled Azure deployment, set the GitHub OAuth values
+in the azd environment:
+
+```powershell
+azd env set GITHUB_OAUTH_CLIENT_ID <your-production-client-id>
+azd env set GITHUB_OAUTH_CLIENT_SECRET <your-production-client-secret>
+azd env set COPILOT_DEFAULT_MODEL gpt-5
+```
+
+You can also pass these values directly to the wrapper script:
+
+```powershell
+.\scripts\deploy-azd.ps1 -EnvironmentName personal-learning -Location eastus2 -ResourceGroupName rg-personal-learning -WebAppName <unique-web-app-name> -GitHubOAuthClientId <client-id> -GitHubOAuthClientSecret <client-secret>
+```
+
+If you already have the App Service created, you can place the same values in
+Azure Portal under the web app's `Environment variables` page:
+
+* `GitHubOAuth__ClientId`
+* `GitHubOAuth__ClientSecret`
+* `GitHubOAuth__CallbackPath` = `/signin-github`
+* `CopilotSdk__DefaultModel` = `gpt-5`
 
 The `azd` path uses these files:
 
@@ -159,6 +247,9 @@ resolves paths correctly even when run from the `scripts` folder:
 ```powershell
 .\scripts\deploy-azure.ps1 -ResourceGroupName rg-upskilltracker -WebAppName <unique-web-app-name>
 ```
+
+That script now publishes for `linux-x64` so the bundled Copilot CLI matches
+the Linux App Service host.
 
 ## GitHub Actions CD setup
 

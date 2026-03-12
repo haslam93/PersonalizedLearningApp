@@ -12,7 +12,12 @@ param(
     [string]$PublishOutput = '.\.artifacts\publish',
     [string]$PackagePath = '.\.artifacts\upskilltracker.zip',
     [string]$Runtime = 'DOTNETCORE|8.0',
+    [string]$RuntimeIdentifier = 'linux-x64',
     [string]$SubscriptionId = '',
+    [string]$GitHubOAuthClientId = '',
+    [string]$GitHubOAuthClientSecret = '',
+    [string]$CopilotCliPath = '',
+    [string]$CopilotDefaultModel = 'gpt-5',
     [switch]$SkipProvisioning
 )
 
@@ -106,11 +111,15 @@ function New-PosixZipArchive {
                 }
 
                 if ($_.PSIsContainer) {
-                    $archive.CreateEntry($relativePath.TrimEnd('/') + '/') | Out-Null
+                    $directoryEntry = $archive.CreateEntry($relativePath.TrimEnd('/') + '/')
+                    $directoryEntry.ExternalAttributes = (493 -bor 16384) -shl 16
                     return
                 }
 
                 $entry = $archive.CreateEntry($relativePath, [System.IO.Compression.CompressionLevel]::Optimal)
+                if ($relativePath -like 'runtimes/linux-*/native/copilot') {
+                    $entry.ExternalAttributes = (493 -bor 32768) -shl 16
+                }
                 $entryStream = $entry.Open()
 
                 try {
@@ -148,7 +157,7 @@ if (Test-Path $resolvedPublishOutput) {
 
 New-Item -ItemType Directory -Path $resolvedPublishOutput -Force | Out-Null
 
-Invoke-NativeCommand -Command { dotnet publish $resolvedProjectPath -c Release -o $resolvedPublishOutput } -FailureMessage 'dotnet publish failed.'
+Invoke-NativeCommand -Command { dotnet publish $resolvedProjectPath -c Release -r $RuntimeIdentifier --self-contained false -o $resolvedPublishOutput } -FailureMessage 'dotnet publish failed.'
 
 if (Test-Path $resolvedPackagePath) {
     Remove-Item $resolvedPackagePath -Force
@@ -171,13 +180,30 @@ if (-not $SkipProvisioning) {
     }
 }
 
+$appSettings = @(
+    'ASPNETCORE_ENVIRONMENT=Production',
+    'Storage__ConnectionString=Data Source=/home/data/upskilltracker.db',
+    'WEBSITES_ENABLE_APP_SERVICE_STORAGE=true',
+    'SCM_DO_BUILD_DURING_DEPLOYMENT=false',
+    'ENABLE_ORYX_BUILD=false',
+    'GitHubOAuth__CallbackPath=/signin-github',
+    "CopilotSdk__DefaultModel=$CopilotDefaultModel"
+)
+
+if (-not [string]::IsNullOrWhiteSpace($GitHubOAuthClientId)) {
+    $appSettings += "GitHubOAuth__ClientId=$GitHubOAuthClientId"
+}
+
+if (-not [string]::IsNullOrWhiteSpace($GitHubOAuthClientSecret)) {
+    $appSettings += "GitHubOAuth__ClientSecret=$GitHubOAuthClientSecret"
+}
+
+if (-not [string]::IsNullOrWhiteSpace($CopilotCliPath)) {
+    $appSettings += "CopilotSdk__CliPath=$CopilotCliPath"
+}
+
 Invoke-NativeCommand -Command {
-    az webapp config appsettings set --resource-group $ResourceGroupName --name $WebAppName --settings `
-        ASPNETCORE_ENVIRONMENT=Production `
-        Storage__ConnectionString='Data Source=/home/data/upskilltracker.db' `
-        WEBSITES_ENABLE_APP_SERVICE_STORAGE=true `
-        SCM_DO_BUILD_DURING_DEPLOYMENT=false `
-        ENABLE_ORYX_BUILD=false
+    az webapp config appsettings set --resource-group $ResourceGroupName --name $WebAppName --settings $appSettings
 } -FailureMessage 'Failed to apply App Service application settings.'
 
 Write-Host "Deploying package to Azure App Service..." -ForegroundColor Cyan
