@@ -47,9 +47,9 @@ It is designed to help you:
 ## Main app features
 
 * Dashboard with completion and focus metrics
-* Planner tab for adding and editing training items
+* Planner tab for adding and editing training items, with direct task links suggested from the shared resource library
 * Timeline tab grouped by month
-* Resources tab with editable sections and links
+* Resources tab with editable sections and links that power task-level suggestions across the app
 * Notes tab for reflections, architecture notes, and lab takeaways
 * PIN login backed by a secure Azure app setting and GitHub Actions secret
 * Seeded content for the March to September 2026 plan, including Azure SRE Agent

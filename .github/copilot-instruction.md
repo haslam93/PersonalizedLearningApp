@@ -2,7 +2,7 @@
 title: Copilot project memory
 description: Persistent summary of the Azure AI Upskilling Hub application, GitHub configuration, deployment model, and maintenance instructions for future coding sessions
 author: Microsoft
-ms.date: 2026-03-11
+ms.date: 2026-03-12
 ms.topic: reference
 keywords:
   - copilot
@@ -39,6 +39,10 @@ When making meaningful changes, update this file and also update
   * Timeline
   * Resources
   * Notes
+* Resource suggestion behavior:
+  * the Plan tab shows task-level matching links from the shared Resources library
+  * the Dashboard focus list also surfaces matching links for active items
+  * the Resources tab remains the single place where users add or edit links that power those suggestions
 * Main service: `TrackerService`
 * Database storage:
   * local development uses the project data path
@@ -150,3 +154,4 @@ File: [workflows/cd.yml](workflows/cd.yml)
 * Never write secret values into source-controlled files
 * Prefer documenting secret names and purpose only
 * If authentication is changed again, document both the live Azure change and the long-term Bicep/workflow change here
+* Keep the task-to-resource suggestion experience working so users can share the repo and personalize plans without code changes

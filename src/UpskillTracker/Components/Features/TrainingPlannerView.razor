@@ -4,6 +4,10 @@
 <MudGrid>
     <MudItem xs="12" lg="7">
         <MudPaper Class="surface-card mb-4" Elevation="0">
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-4 reminder-alert">
+                Each task now suggests the best matching links from your resource library so the work can be opened directly from the plan. To personalize it, edit tasks here and add links in the Resources tab.
+            </MudAlert>
+
             <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" Class="mb-4">
                 <MudTextField @bind-Value="searchText" Placeholder="Search training items" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="flex-1" />
                 <MudSelect T="UpskillTracker.Models.TrackerStatus?" @bind-Value="selectedStatus" Label="Status" Variant="Variant.Outlined" Clearable="true">
@@ -33,6 +37,27 @@
                     <MudTd DataLabel="Item">
                         <MudText Typo="Typo.subtitle2">@context.Title</MudText>
                         <MudText Typo="Typo.caption" Class="mud-secondary-text">@context.Type • @context.Lane</MudText>
+                        @if (!string.IsNullOrWhiteSpace(context.Description))
+                        {
+                            <MudText Typo="Typo.body2" Class="mt-1 mud-secondary-text">@context.Description</MudText>
+                        }
+
+                        @{ var suggestedResources = GetSuggestedResources(context); }
+                        @if (suggestedResources.Count > 0)
+                        {
+                            <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-2">
+                                @foreach (var resource in suggestedResources)
+                                {
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Href="@resource.Url" Target="_blank" EndIcon="@Icons.Material.Filled.OpenInNew">
+                                        @resource.Title
+                                    </MudButton>
+                                }
+                            </MudStack>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.caption" Class="mud-secondary-text d-block mt-2">No matching resource yet. Add one in Resources and it will appear here.</MudText>
+                        }
                     </MudTd>
                     <MudTd DataLabel="Domain">@context.Domain</MudTd>
                     <MudTd DataLabel="Due">@context.TargetDate.ToString("MMM d")</MudTd>
@@ -127,6 +152,7 @@
 
 @code {
     private List<UpskillTracker.Models.TrainingItem> items = [];
+    private List<UpskillTracker.Models.ResourceEntry> resources = [];
     private UpskillTracker.Models.TrainingItem editingItem = CreateEmptyItem();
     private string searchText = string.Empty;
     private UpskillTracker.Models.TrackerStatus? selectedStatus;
@@ -146,6 +172,7 @@
     private async Task LoadAsync()
     {
         items = await TrackerService.GetTrainingItemsAsync();
+        resources = await TrackerService.GetResourcesAsync();
         if (editingItem.Id != 0)
         {
             var refreshed = items.FirstOrDefault(item => item.Id == editingItem.Id);
@@ -155,6 +182,9 @@
             }
         }
     }
+
+    private IReadOnlyList<UpskillTracker.Models.ResourceEntry> GetSuggestedResources(UpskillTracker.Models.TrainingItem item)
+        => TaskResourceMatcher.GetMatches(item, resources, 3);
 
     private void BeginEdit(UpskillTracker.Models.TrainingItem item)
     {

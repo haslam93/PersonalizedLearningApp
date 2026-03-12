@@ -2,7 +2,7 @@
 title: Changelog
 description: Chronological record of major product, infrastructure, deployment, authentication, and documentation changes for the Azure AI Upskilling Hub
 author: Microsoft
-ms.date: 2026-03-11
+ms.date: 2026-03-12
 ms.topic: reference
 keywords:
   - changelog
@@ -12,6 +12,19 @@ keywords:
   - deployment
 estimated_reading_time: 6
 ---
+
+## 2026-03-12
+
+### Added task-level learning links
+
+* Updated the Plan tab so each training item now shows matching links from the shared resource library
+* Updated the Dashboard focus area so active items also expose direct links to relevant resources
+* Added Python fundamentals resources so the Python task is directly actionable alongside the existing C# beginner series link
+
+### Improved shared personalization
+
+* Updated seed behavior so new shared resources are added for existing databases without overwriting user content
+* Kept the Resources tab as the single place where each user can add, edit, and personalize links for a shared plan
 
 ## 2026-03-11
 

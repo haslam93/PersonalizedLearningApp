@@ -18,10 +18,7 @@ public static class DatabaseInitializer
             db.TrainingItems.AddRange(GetSeedTrainingItems());
         }
 
-        if (!await db.Resources.AnyAsync())
-        {
-            db.Resources.AddRange(GetSeedResources());
-        }
+        await EnsureSeedResourcesAsync(db);
 
         if (!await db.Notes.AnyAsync())
         {
@@ -30,6 +27,31 @@ public static class DatabaseInitializer
 
         await db.SaveChangesAsync();
     }
+
+    private static async Task EnsureSeedResourcesAsync(TrackerDbContext db)
+    {
+        var existingResourceKeys = await db.Resources
+            .AsNoTracking()
+            .Select(resource => new { resource.Title, resource.Section })
+            .ToListAsync();
+
+        var keySet = existingResourceKeys
+            .Select(resource => BuildResourceKey(resource.Title, resource.Section))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var resource in GetSeedResources())
+        {
+            if (keySet.Contains(BuildResourceKey(resource.Title, resource.Section)))
+            {
+                continue;
+            }
+
+            db.Resources.Add(resource);
+        }
+    }
+
+    private static string BuildResourceKey(string title, string section)
+        => string.Concat(section.Trim(), "::", title.Trim());
 
     private static IEnumerable<TrainingItem> GetSeedTrainingItems()
     {
@@ -212,6 +234,12 @@ public static class DatabaseInitializer
             new ResourceEntry { Title = "Azure SRE Agent GA announcement", Section = "Azure SRE Agent", Url = "https://techcommunity.microsoft.com/blog/appsonazureblog/announcing-general-availability-for-the-azure-sre-agent/4500682", Kind = ResourceKind.Documentation, IsPinned = true, SortOrder = 10, Summary = "Practical framing for how Azure SRE Agent supports diagnostics, knowledge reuse, and governed remediation.", Tags = "sre agent, reliability, operations" },
             new ResourceEntry { Title = "Azure SRE Agent hands-on lab", Section = "Azure SRE Agent", Url = "https://github.com/dm-chelupati/sre-agent-lab/tree/main?tab=readme-ov-file", Kind = ResourceKind.Lab, IsPinned = true, SortOrder = 20, Summary = "Deployable lab for incident investigation, code-aware diagnosis, and GitHub issue triage.", Tags = "sre agent, github, lab, azd" },
             new ResourceEntry { Title = "C# beginner series", Section = "Coding Foundations", Url = "https://www.youtube.com/watch?v=9THmGiSPjBQ&list=PLdo4fOcmZ0oULFjxrOagaERVAMbmG20Xe", Kind = ResourceKind.Video, SortOrder = 10, Summary = "Continue from arrays and lists, then carry the learning into .NET UI and services work.", Tags = "c#, beginner, dotnet, video" },
+            new ResourceEntry { Title = "Python for beginners learning path", Section = "Coding Foundations", Url = "https://learn.microsoft.com/en-us/training/paths/beginner-python/", Kind = ResourceKind.Learn, SortOrder = 20, Summary = "Structured Microsoft Learn path for Python syntax, functions, collections, files, and practical exercises.", Tags = "python, fundamentals, beginner, learn" },
+            new ResourceEntry { Title = "Python tutorial", Section = "Coding Foundations", Url = "https://docs.python.org/3/tutorial/", Kind = ResourceKind.Documentation, SortOrder = 30, Summary = "Official Python tutorial covering control flow, data structures, modules, and classes for day-to-day coding fluency.", Tags = "python, fundamentals, tutorial, docs" },
+            new ResourceEntry { Title = "Build a RAG solution with Azure AI Search", Section = "Azure AI Search", Url = "https://learn.microsoft.com/en-us/azure/search/retrieval-augmented-generation-overview", Kind = ResourceKind.Learn, SortOrder = 20, Summary = "RAG-specific guidance for grounding apps with Azure AI Search, including indexing and retrieval patterns.", Tags = "search, rag, grounding, ai search" },
+            new ResourceEntry { Title = "Well-Architected Framework", Section = "Architecture and Operations", Url = "https://learn.microsoft.com/en-us/azure/well-architected/", Kind = ResourceKind.Documentation, SortOrder = 10, Summary = "Use this to shape production guidance for security, reliability, operational excellence, performance, and cost.", Tags = "architecture, reliability, security, cost, operations" },
+            new ResourceEntry { Title = "Azure Monitor and Application Insights", Section = "Architecture and Operations", Url = "https://learn.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview", Kind = ResourceKind.Documentation, SortOrder = 20, Summary = "Telemetry and observability foundation for productionizing AI and App Innovation workloads.", Tags = "monitoring, telemetry, application insights, observability" },
+            new ResourceEntry { Title = "Choose between App Service, Container Apps, and AKS", Section = "App Innovation", Url = "https://learn.microsoft.com/en-us/azure/architecture/guide/technology-choices/compute-decision-tree", Kind = ResourceKind.Documentation, SortOrder = 10, Summary = "Decision guidance for selecting the right Azure compute platform for APIs, web apps, containers, and AI workloads.", Tags = "app innovation, app service, container apps, hosting, architecture" },
             new ResourceEntry { Title = "Develop generative AI apps in Azure", Section = "Learning Paths", Url = "https://learn.microsoft.com/en-us/training/paths/develop-ai-solutions-azure-openai/", Kind = ResourceKind.Learn, SortOrder = 10, Summary = "Structured Microsoft Learn path to complement Foundry and AI app development work.", Tags = "learn, azure ai, path" }
         ];
     }

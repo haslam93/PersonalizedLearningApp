@@ -80,6 +80,18 @@ else if (snapshot is not null)
                                 <div>
                                     <MudText Typo="Typo.subtitle2">@item.Title</MudText>
                                     <MudText Typo="Typo.body2" Class="mud-secondary-text">@item.Domain • @item.Lane • due @item.TargetDate.ToString("MMM d")</MudText>
+                                    @{ var suggestedResources = GetSuggestedResources(item); }
+                                    @if (suggestedResources.Count > 0)
+                                    {
+                                        <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-2">
+                                            @foreach (var resource in suggestedResources)
+                                            {
+                                                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" Href="@resource.Url" Target="_blank" EndIcon="@Icons.Material.Filled.OpenInNew">
+                                                    @resource.Title
+                                                </MudButton>
+                                            }
+                                        </MudStack>
+                                    }
                                 </div>
                                 <MudChip T="string" Variant="Variant.Filled" Color="@GetStatusColor(item.Status)">@item.Status</MudChip>
                             </MudStack>
@@ -147,14 +159,19 @@ else if (snapshot is not null)
 @code {
     private bool isLoading = true;
     private UpskillTracker.Models.DashboardSnapshot? snapshot;
+    private List<UpskillTracker.Models.ResourceEntry> resources = [];
     private double completionRate;
 
     protected override async Task OnInitializedAsync()
     {
         snapshot = await TrackerService.GetDashboardSnapshotAsync();
+        resources = await TrackerService.GetResourcesAsync();
         completionRate = snapshot is null ? 0 : (double)snapshot.CompletionRate;
         isLoading = false;
     }
+
+    private IReadOnlyList<UpskillTracker.Models.ResourceEntry> GetSuggestedResources(UpskillTracker.Models.TrainingItem item)
+        => TaskResourceMatcher.GetMatches(item, resources, 2);
 
     private static Color GetStatusColor(UpskillTracker.Models.TrackerStatus status) => status switch
     {
