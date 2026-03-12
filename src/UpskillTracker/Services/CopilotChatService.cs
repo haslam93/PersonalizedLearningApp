@@ -231,6 +231,7 @@ public sealed class CopilotChatService(
         runtime.Session = await runtime.Client!.CreateSessionAsync(new SessionConfig
         {
             Model = effectiveModel,
+            OnPermissionRequest = PermissionHandler.ApproveAll,
             Streaming = true,
             Tools = tools,
             AvailableTools = toolNames,
