@@ -1,8 +1,8 @@
 ---
 title: Azure AI Upskilling Hub
-description: Personal training tracker for Azure AI, App Innovation, notes, resources, timelines, and deployment automation
+description: Personal training tracker for Azure AI, live Microsoft announcements, GitHub Copilot chat, notes, resources, timelines, and deployment automation
 author: Microsoft
-ms.date: 2026-03-11
+ms.date: 2026-03-12
 ms.topic: overview
 keywords:
   - azure ai
@@ -15,8 +15,10 @@ estimated_reading_time: 6
 
 ## Overview
 
-This repository contains a small Blazor-based training tracker for Azure AI and
-App Innovation learning.
+This repository contains a Blazor-based learning hub for Azure AI and App
+Innovation upskilling. It combines a structured training tracker, a live
+Microsoft announcement feed, and an in-app GitHub Copilot chat experience that
+is grounded in your saved plan, notes, and resources.
 
 ## High-level architecture
 
@@ -24,8 +26,12 @@ The app is organized as a lightweight interactive Blazor experience hosted on
 Azure App Service.
 
 * The browser loads a Blazor web app with a lightweight PIN gate in the main layout.
-* Feature views for Dashboard, Plan, Timeline, Resources, and Notes run through
-   a shared `TrackerService`.
+* Feature views for Dashboard, Plan, Timeline, Resources, Notes, and Copilot run
+   through shared application services.
+* `AnnouncementFeedService` loads and caches official Microsoft updates for the
+   dashboard feed.
+* `CopilotAuthService` and `CopilotChatService` manage in-app GitHub OAuth and
+   grounded Copilot chat sessions.
 * EF Core writes training data, resources, and notes into a SQLite database.
 * GitHub Actions builds the app and deploys `main` to the Azure web app.
 
@@ -39,20 +45,34 @@ It is designed to help you:
 
 * Track plan items, notes, evidence, and timelines
 * Add new work as customer projects shift priorities
+* Review a live dashboard feed of official Microsoft announcements that matter to your plan
 * Keep a reusable resource library for Microsoft Foundry, GitHub Copilot,
   App Service, Container Apps, and related topics
+* Ask grounded GitHub Copilot questions against your saved learning data
 * Run locally first and deploy easily to Azure App Service
 * Push updates through GitHub Actions CI/CD
 
 ## Main app features
 
 * Dashboard with completion and focus metrics
+* Dynamic home and dashboard summary cards that react to live tracker data instead of fixed promotional copy
+* Live Microsoft announcement feed with actions to open and save useful updates
 * Planner tab for adding and editing training items, with direct task links suggested from the shared resource library
 * Timeline tab grouped by month
 * Resources tab with editable sections and links that power task-level suggestions across the app
 * Notes tab for reflections, architecture notes, and lab takeaways
+* Copilot tab with GitHub OAuth sign-in, runtime model discovery, and tracker-grounded chat tools
 * PIN login backed by a secure Azure app setting and GitHub Actions secret
 * Seeded content for the March to September 2026 plan, including Azure SRE Agent
+
+## UI notes
+
+The current shell avoids fixed labels where tracker data is already available.
+
+* The top app bar uses a minimal title and no hardcoded date badge
+* The home view opens with a tracker-driven workspace overview card
+* The dashboard summary card adapts to overdue, in-progress, and completed work
+* Reminder copy stays short and action-oriented so it remains useful as the plan changes
 
 ## Local development
 
@@ -79,7 +99,8 @@ hardcoded in source.
 ## GitHub Copilot SDK setup
 
 The app now includes a Copilot chat tab backed by the official GitHub Copilot
-SDK.
+SDK. The current Azure production callback URL is
+`https://halearningapp.azurewebsites.net/signin-github`.
 
 ### Where to get the real GitHub OAuth values
 
@@ -264,6 +285,8 @@ After the first Azure deployment:
    * `AZURE_TENANT_ID`
    * `AZURE_SUBSCRIPTION_ID`
    * `APP_ACCESS_PIN`
+   * `APP_GH_OAUTH_CLIENT_ID`
+   * `APP_GH_OAUTH_CLIENT_SECRET`
 
 4. Add these repository variables:
 
@@ -275,8 +298,12 @@ This repository now uses OpenID Connect for GitHub Actions CD instead of a
 publish profile, which avoids basic authentication and aligns with App Service
 policy restrictions.
 
-The CD workflow also applies the secure `AccessPin` app setting through Bicep,
-and the App Service plan is sized to `B2` by default.
+The CD workflow also:
+
+* publishes the app for `linux-x64` so the bundled Copilot CLI matches App Service
+* deploys infrastructure through Bicep on each run so secure app settings stay in sync
+* applies the secure `AccessPin`, GitHub OAuth, and Copilot model settings through Azure deployment parameters
+* targets App Service plan SKU `B2` by default
 
 ## Repository automation
 

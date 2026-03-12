@@ -35,15 +35,28 @@ When making meaningful changes, update this file and also update
 * Data layer: EF Core with SQLite
 * Main functional areas:
   * Dashboard
+  * Live announcements
   * Plan
   * Timeline
   * Resources
   * Notes
+  * Copilot
 * Resource suggestion behavior:
   * the Plan tab shows task-level matching links from the shared Resources library
   * the Dashboard focus list also surfaces matching links for active items
   * the Resources tab remains the single place where users add or edit links that power those suggestions
-* Main service: `TrackerService`
+* UI shell behavior:
+  * the main app bar uses a minimal title and no fixed date badge
+  * the Home page opens with a tracker-driven workspace overview instead of hardcoded focus-area copy
+  * the Dashboard summary card adapts to live completion, in-progress, and overdue counts
+* Live feed behavior:
+  * the Dashboard shows a server-side cached feed of official Microsoft announcements
+  * users can open an announcement directly or save it into the shared Resources library
+* Main services:
+  * `TrackerService`
+  * `AnnouncementFeedService`
+  * `CopilotAuthService`
+  * `CopilotChatService`
 * Database storage:
   * local development uses the project data path
   * Azure uses `Data Source=/home/data/upskilltracker.db`
@@ -53,7 +66,12 @@ When making meaningful changes, update this file and also update
 * App shell: [src/UpskillTracker/Components/App.razor](../src/UpskillTracker/Components/App.razor)
 * Main layout: [src/UpskillTracker/Components/Layout/MainLayout.razor](../src/UpskillTracker/Components/Layout/MainLayout.razor)
 * PIN gate: [src/UpskillTracker/Components/Features/PinGate.razor](../src/UpskillTracker/Components/Features/PinGate.razor)
+* Dashboard: [src/UpskillTracker/Components/Features/DashboardView.razor](../src/UpskillTracker/Components/Features/DashboardView.razor)
+* Home page: [src/UpskillTracker/Components/Pages/Home.razor](../src/UpskillTracker/Components/Pages/Home.razor)
+* Copilot chat UI: [src/UpskillTracker/Components/Features/CopilotChatView.razor](../src/UpskillTracker/Components/Features/CopilotChatView.razor)
 * Styles: [src/UpskillTracker/wwwroot/app.css](../src/UpskillTracker/wwwroot/app.css)
+* Announcement feed service: [src/UpskillTracker/Services/AnnouncementFeedService.cs](../src/UpskillTracker/Services/AnnouncementFeedService.cs)
+* Copilot chat service: [src/UpskillTracker/Services/CopilotChatService.cs](../src/UpskillTracker/Services/CopilotChatService.cs)
 * Infra entry point: [infra/main.bicep](../infra/main.bicep)
 * RG-scoped infra: [infra/resources.bicep](../infra/resources.bicep)
 * CI workflow: [workflows/ci.yml](workflows/ci.yml)
@@ -77,10 +95,13 @@ When making meaningful changes, update this file and also update
 
 * App Service Authentication is intentionally disabled
 * Access is controlled by the Blazor `PinGate` component
+* GitHub OAuth is used inside the app for the Copilot tab only
 * The PIN must not be stored in source code
 * The PIN is read from configuration key `AccessPin`
 * In Azure, `AccessPin` is stored as an app setting
 * In GitHub Actions, the PIN is supplied through a repository secret
+* GitHub OAuth values are read from Azure app settings under `GitHubOAuth__*`
+* The Copilot default model is read from `CopilotSdk__DefaultModel`
 
 ## GitHub Actions configuration
 
@@ -89,6 +110,8 @@ When making meaningful changes, update this file and also update
 Record secret names and purpose only. Do not store secret values in this file.
 
 * `APP_ACCESS_PIN` - access PIN injected into Azure app setting `AccessPin`
+* `APP_GH_OAUTH_CLIENT_ID` - GitHub OAuth app client ID injected into Azure app setting `GitHubOAuth__ClientId`
+* `APP_GH_OAUTH_CLIENT_SECRET` - GitHub OAuth app client secret injected into Azure app setting `GitHubOAuth__ClientSecret`
 * `AZURE_CLIENT_ID` - OIDC app/client ID used by GitHub Actions for Azure login
 * `AZURE_SUBSCRIPTION_ID` - Azure subscription used by deployment workflow
 * `AZURE_TENANT_ID` - Azure tenant used by deployment workflow
@@ -121,14 +144,13 @@ File: [workflows/cd.yml](workflows/cd.yml)
 * Runs on pushes to `main`
 * Can also run manually with `workflow_dispatch`
 * Uses GitHub OIDC with `azure/login@v2`
-* Publishes the app and creates a zip package
-* Deploys infrastructure only when:
-  * files under `infra/**` change, or
-  * `azure.yaml` changes, or
-  * manual run sets `deployInfra=true`
+* Publishes the app for `linux-x64` and creates a zip package
+* Bundles the matching Copilot CLI into the deployment artifact
+* Deploys infrastructure on each run so secure settings remain synchronized
 * Deploys infrastructure with `az deployment group create`
 * Deploys app package with `az webapp deploy`
 * Passes `APP_ACCESS_PIN` into Bicep as secure parameter `accessPin`
+* Passes `APP_GH_OAUTH_CLIENT_ID` and `APP_GH_OAUTH_CLIENT_SECRET` into Bicep for the in-app Copilot sign-in flow
 * Targets App Service plan SKU `B2`
 
 ## Known platform notes
@@ -137,10 +159,13 @@ File: [workflows/cd.yml](workflows/cd.yml)
 * The direct GitHub Actions CD workflow is the more reliable deployment path right now
 * The custom domain currently exists, but HTTPS certificate binding should be revalidated before relying on it
 * The default Azure URL is the most reliable validation endpoint
+* The Copilot SDK requires a permission handler when creating sessions; current code uses `PermissionHandler.ApproveAll`
 
 ## Important historical context
 
 * The app started as a personalized training plan and evolved into a working tracker app
+* The dashboard later gained a live Microsoft announcement feed
+* The app later gained an in-app GitHub Copilot SDK chat experience with GitHub OAuth
 * A client-side hardcoded PIN was originally used
 * The app was migrated to App Service Authentication with Microsoft Entra ID
 * The App Service Authentication callback flow later failed with `401` responses

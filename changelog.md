@@ -15,6 +15,18 @@ estimated_reading_time: 6
 
 ## 2026-03-12
 
+### Modernized the shell and summary experience
+
+* Replaced the hardcoded home hero with a tracker-driven workspace overview
+* Replaced the dashboard marketing hero with a live progress summary card
+* Removed the fixed date badge from the app bar and simplified reminder copy
+
+### Refreshed repository documentation
+
+* Updated [README.md](README.md) to reflect the live Microsoft announcement feed, GitHub Copilot SDK chat, and current GitHub Actions secret names
+* Updated [arch.md](arch.md) with runtime and delivery diagrams for the live feed and Copilot integration
+* Updated [./.github/copilot-instruction.md](.github/copilot-instruction.md) so future sessions inherit the current application, deployment, and authentication model
+
 ### Added GitHub Copilot SDK chat integration
 
 * Added an in-app Copilot chat tab backed by the official GitHub Copilot SDK for .NET

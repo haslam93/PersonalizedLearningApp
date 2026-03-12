@@ -7,9 +7,9 @@
 else if (overdueItems.Count > 0)
 {
     <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Dense="true" Class="mb-6 reminder-alert">
-        <MudText Typo="Typo.subtitle1">@($"{overdueItems.Count} item(s) need attention")</MudText>
+        <MudText Typo="Typo.subtitle1">@($"{overdueItems.Count} item{(overdueItems.Count == 1 ? string.Empty : "s")} need attention")</MudText>
         <MudText Typo="Typo.body2" Class="mb-3">
-            Your quickest win is to update status, capture a note, or move the target date when project reality changes.
+            Review the next due item, update its status, or move the target date when priorities changed.
         </MudText>
         <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2">
             @foreach (var item in overdueItems.Take(3))
@@ -24,8 +24,8 @@ else if (overdueItems.Count > 0)
 else
 {
     <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Dense="true" Class="mb-6 reminder-alert">
-        <MudText Typo="Typo.subtitle1">You are on track</MudText>
-        <MudText Typo="Typo.body2">No overdue items right now. Use Stretch work or a project-driven lab if you have extra bandwidth.</MudText>
+        <MudText Typo="Typo.subtitle1">Everything is current</MudText>
+        <MudText Typo="Typo.body2">No overdue items right now. Use the dashboard, plan, or Copilot tab to decide the next useful step.</MudText>
     </MudAlert>
 }
 

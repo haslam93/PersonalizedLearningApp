@@ -1,35 +1,56 @@
 ﻿@page "/"
+@inject UpskillTracker.Services.TrackerService TrackerService
 
 <PageTitle>Azure AI Upskilling Hub</PageTitle>
 
 <ReminderBanner />
 
-<MudPaper Class="hero-card mb-6" Elevation="0">
-	<MudGrid>
-		<MudItem xs="12" md="8">
-			<MudText Typo="Typo.h3" Class="mb-2">Track the Azure AI plan you actually want to follow</MudText>
-			<MudText Typo="Typo.body1" Class="mud-secondary-text mb-4">
-				This tracker blends your learning plan, project-driven pivots, curated Microsoft resources, notes, and evidence in one place.
-			</MudText>
-			<MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2">
-				<MudChip T="string" Color="Color.Primary" Variant="Variant.Filled">Core lane</MudChip>
-				<MudChip T="string" Color="Color.Info" Variant="Variant.Filled">Stretch lane</MudChip>
-				<MudChip T="string" Color="Color.Error" Variant="Variant.Filled">Rapid-ramp lane</MudChip>
-			</MudStack>
-		</MudItem>
-		<MudItem xs="12" md="4">
-			<MudPaper Class="surface-card glass-panel" Elevation="0">
-				<MudText Typo="Typo.subtitle1">Included focus areas</MudText>
-				<MudList T="string" Dense="true" Class="mt-2">
-					<MudListItem T="string">Microsoft Foundry and current SDK patterns</MudListItem>
-					<MudListItem T="string">Azure AI Search and RAG design</MudListItem>
-					<MudListItem T="string">App Service, Container Apps, APIM, and integration services</MudListItem>
-					<MudListItem T="string">Microsoft Agent Framework and Azure SRE Agent</MudListItem>
-				</MudList>
-			</MudPaper>
-		</MudItem>
-	</MudGrid>
-</MudPaper>
+@if (isLoading)
+{
+	<MudSkeleton Height="210px" Class="mb-6" />
+}
+else if (snapshot is not null)
+{
+	<MudPaper Class="hero-card workspace-overview mb-6" Elevation="0">
+		<MudGrid Style="align-items:center;">
+			<MudItem xs="12" md="7">
+				<MudStack Spacing="2">
+					<div>
+						<MudText Typo="Typo.overline" Class="text-uppercase overview-kicker">Workspace overview</MudText>
+						<MudText Typo="Typo.h3" Class="mb-2">A cleaner view of what matters now</MudText>
+						<MudText Typo="Typo.body1" Class="overview-summary">@GetOverviewSummary()</MudText>
+					</div>
+
+					<MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
+						<MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Icon="@Icons.Material.Filled.TaskAlt">@snapshot.CompletedItems completed</MudChip>
+						<MudChip T="string" Color="Color.Info" Variant="Variant.Filled" Icon="@Icons.Material.Filled.PendingActions">@snapshot.InProgressItems in progress</MudChip>
+						<MudChip T="string" Color="Color.Warning" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Schedule">@snapshot.DueThisMonth due this month</MudChip>
+					</MudStack>
+				</MudStack>
+			</MudItem>
+			<MudItem xs="12" md="5">
+				<div class="overview-stats-grid">
+					<MudPaper Class="overview-stat" Elevation="0">
+						<MudText Typo="Typo.caption" Class="mud-secondary-text">Completion</MudText>
+						<MudText Typo="Typo.h4">@snapshot.CompletionRate%</MudText>
+					</MudPaper>
+					<MudPaper Class="overview-stat" Elevation="0">
+						<MudText Typo="Typo.caption" Class="mud-secondary-text">Pinned resources</MudText>
+						<MudText Typo="Typo.h4">@snapshot.PinnedResources.Count</MudText>
+					</MudPaper>
+					<MudPaper Class="overview-stat" Elevation="0">
+						<MudText Typo="Typo.caption" Class="mud-secondary-text">Recent notes</MudText>
+						<MudText Typo="Typo.h4">@snapshot.RecentNotes.Count</MudText>
+					</MudPaper>
+					<MudPaper Class="overview-stat" Elevation="0">
+						<MudText Typo="Typo.caption" Class="mud-secondary-text">Needs attention</MudText>
+						<MudText Typo="Typo.h4">@snapshot.OverdueItems</MudText>
+					</MudPaper>
+				</div>
+			</MudItem>
+		</MudGrid>
+	</MudPaper>
+}
 
 <MudTabs Elevation="0" Rounded="true" PanelClass="pt-6">
 	<MudTabPanel Text="Dashboard" Icon="@Icons.Material.Filled.Dashboard">
@@ -51,3 +72,29 @@
 		<CopilotChatView />
 	</MudTabPanel>
 </MudTabs>
+
+@code {
+	private UpskillTracker.Models.DashboardSnapshot? snapshot;
+	private bool isLoading = true;
+
+	protected override async Task OnInitializedAsync()
+	{
+		snapshot = await TrackerService.GetDashboardSnapshotAsync();
+		isLoading = false;
+	}
+
+	private string GetOverviewSummary()
+	{
+		if (snapshot is null)
+		{
+			return "Your learning plan, notes, resources, and Copilot workspace live together here.";
+		}
+
+		if (snapshot.OverdueItems > 0)
+		{
+			return $"{snapshot.OverdueItems} item{(snapshot.OverdueItems == 1 ? string.Empty : "s")} need attention, {snapshot.InProgressItems} are already in progress, and {snapshot.DueThisMonth} are due this month.";
+		}
+
+		return $"No overdue items right now. {snapshot.InProgressItems} item{(snapshot.InProgressItems == 1 ? string.Empty : "s")} are in progress, and {snapshot.DueThisMonth} are due this month.";
+	}
+}
