@@ -1,5 +1,6 @@
 @inject UpskillTracker.Services.TrackerService TrackerService
 @inject UpskillTracker.Services.AnnouncementFeedService AnnouncementFeedService
+@inject UpskillTracker.Services.ThoughtLeaderFeedService ThoughtLeaderFeedService
 @inject ISnackbar Snackbar
 
 @if (isLoading)
@@ -157,12 +158,12 @@ else if (snapshot is not null)
                 }
             </MudPaper>
         </MudItem>
-        <MudItem xs="12">
+        <MudItem xs="12" md="6">
             <MudPaper Class="surface-card mb-4" Elevation="0">
-                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-1">
                     <div>
-                        <MudText Typo="Typo.h6">Latest Microsoft announcements</MudText>
-                        <MudText Typo="Typo.body2" Class="mud-secondary-text">Official feed items for Foundry, GitHub Copilot, APIM, App Service, and related Azure updates.</MudText>
+                        <MudText Typo="Typo.h6">Microsoft announcements</MudText>
+                        <MudText Typo="Typo.body2" Class="mud-secondary-text">Official product updates for Foundry, GitHub Copilot, APIM, App Service, and related Azure services.</MudText>
                     </div>
                     <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshAnnouncementsAsync">
                         Refresh
@@ -170,13 +171,13 @@ else if (snapshot is not null)
                 </MudStack>
 
                 <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" Class="mb-4">
-                    <MudSelect T="string" Value="@selectedAnnouncementTopic" ValueChanged="OnAnnouncementTopicChanged" Label="Topic" Variant="Variant.Outlined" Dense="true" Style="min-width: 220px;">
+                    <MudSelect T="string" Value="@selectedAnnouncementTopic" ValueChanged="OnAnnouncementTopicChanged" Label="Topic" Variant="Variant.Outlined" Dense="true" Style="min-width: 180px;">
                         @foreach (var topic in announcementTopics)
                         {
                             <MudSelectItem T="string" Value="@topic">@topic</MudSelectItem>
                         }
                     </MudSelect>
-                    <MudSelect T="string" Value="@selectedAnnouncementSource" ValueChanged="OnAnnouncementSourceChanged" Label="Source" Variant="Variant.Outlined" Dense="true" Style="min-width: 220px;">
+                    <MudSelect T="string" Value="@selectedAnnouncementSource" ValueChanged="OnAnnouncementSourceChanged" Label="Source" Variant="Variant.Outlined" Dense="true" Style="min-width: 180px;">
                         @foreach (var source in announcementSources)
                         {
                             <MudSelectItem T="string" Value="@source">@source</MudSelectItem>
@@ -239,21 +240,102 @@ else if (snapshot is not null)
                 }
             </MudPaper>
         </MudItem>
+        <MudItem xs="12" md="6">
+            <MudPaper Class="surface-card mb-4" Elevation="0">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-1">
+                    <div>
+                        <MudText Typo="Typo.h6">Industry research</MudText>
+                        <MudText Typo="Typo.body2" Class="mud-secondary-text">Posts from thought leaders including Ethan Mollick, Andrej Karpathy, Simon Willison, and others.</MudText>
+                    </div>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshResearchAsync">
+                        Refresh
+                    </MudButton>
+                </MudStack>
+
+                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" Class="mb-4">
+                    <MudSelect T="string" Value="@selectedResearchSource" ValueChanged="OnResearchSourceChanged" Label="Author" Variant="Variant.Outlined" Dense="true" Style="min-width: 180px;">
+                        @foreach (var source in researchSources)
+                        {
+                            <MudSelectItem T="string" Value="@source">@source</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudStack>
+
+                @if (isLoadingResearch)
+                {
+                    <MudSkeleton Height="220px" />
+                }
+                else if (!string.IsNullOrWhiteSpace(researchError))
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">@researchError</MudAlert>
+                }
+                else if (FilteredResearchPosts.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">No research posts match the current filter yet.</MudAlert>
+                }
+                else
+                {
+                    @foreach (var post in FilteredResearchPosts)
+                    {
+                        <MudPaper Class="timeline-entry mb-3" Elevation="0">
+                            <MudStack Spacing="2">
+                                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                                    <div>
+                                        <MudText Typo="Typo.subtitle1">@post.Title</MudText>
+                                        <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-1">
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Tertiary">@post.Source</MudChip>
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">@post.Topic</MudChip>
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default">@FormatAnnouncementDate(post.PublishedUtc)</MudChip>
+                                        </MudStack>
+                                    </div>
+                                    @if (seenAnnouncements.Contains(post.Url))
+                                    {
+                                        <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Size="Size.Small">Seen</MudChip>
+                                    }
+                                </MudStack>
+
+                                @if (!string.IsNullOrWhiteSpace(post.Summary))
+                                {
+                                    <MudText Typo="Typo.body2" Class="mud-secondary-text">@post.Summary</MudText>
+                                }
+
+                                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="@post.Url" Target="_blank" EndIcon="@Icons.Material.Filled.OpenInNew">
+                                        Open
+                                    </MudButton>
+                                    <MudButton Variant="Variant.Text" Color="Color.Default" StartIcon="@Icons.Material.Filled.Visibility" OnClick="@(() => MarkAnnouncementSeen(post))">
+                                        @(seenAnnouncements.Contains(post.Url) ? "Seen" : "Mark as seen")
+                                    </MudButton>
+                                    <MudButton Variant="Variant.Text" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.AddLink" OnClick="@(() => SaveResearchPostAsResourceAsync(post))">
+                                        Save to resources
+                                    </MudButton>
+                                </MudStack>
+                            </MudStack>
+                        </MudPaper>
+                    }
+                }
+            </MudPaper>
+        </MudItem>
     </MudGrid>
 }
 
 @code {
     private bool isLoading = true;
     private bool isLoadingAnnouncements = true;
+    private bool isLoadingResearch = true;
     private UpskillTracker.Models.DashboardSnapshot? snapshot;
     private List<UpskillTracker.Models.ResourceEntry> resources = [];
     private List<UpskillTracker.Models.AnnouncementItem> announcements = [];
+    private List<UpskillTracker.Models.AnnouncementItem> researchPosts = [];
     private HashSet<string> seenAnnouncements = new(StringComparer.OrdinalIgnoreCase);
     private List<string> announcementTopics = ["All topics"];
     private List<string> announcementSources = ["All sources"];
+    private List<string> researchSources = ["All authors"];
     private string selectedAnnouncementTopic = "All topics";
     private string selectedAnnouncementSource = "All sources";
+    private string selectedResearchSource = "All authors";
     private string? announcementError;
+    private string? researchError;
     private double completionRate;
 
     protected override async Task OnInitializedAsync()
@@ -261,10 +343,12 @@ else if (snapshot is not null)
         var snapshotTask = TrackerService.GetDashboardSnapshotAsync();
         var resourcesTask = TrackerService.GetResourcesAsync();
         var announcementsTask = LoadAnnouncementsAsync();
+        var researchTask = LoadResearchAsync();
 
         snapshot = await snapshotTask;
         resources = await resourcesTask;
         await announcementsTask;
+        await researchTask;
 
         completionRate = snapshot is null ? 0 : (double)snapshot.CompletionRate;
         isLoading = false;
@@ -273,6 +357,11 @@ else if (snapshot is not null)
     private IReadOnlyList<UpskillTracker.Models.AnnouncementItem> FilteredAnnouncements => announcements
         .Where(item => selectedAnnouncementTopic == "All topics" || item.Topic.Equals(selectedAnnouncementTopic, StringComparison.OrdinalIgnoreCase))
         .Where(item => selectedAnnouncementSource == "All sources" || item.Source.Equals(selectedAnnouncementSource, StringComparison.OrdinalIgnoreCase))
+        .Take(6)
+        .ToList();
+
+    private IReadOnlyList<UpskillTracker.Models.AnnouncementItem> FilteredResearchPosts => researchPosts
+        .Where(item => selectedResearchSource == "All authors" || item.Source.Equals(selectedResearchSource, StringComparison.OrdinalIgnoreCase))
         .Take(6)
         .ToList();
 
@@ -331,6 +420,46 @@ else if (snapshot is not null)
         Snackbar.Add("Announcement feed refreshed.", Severity.Success);
     }
 
+    private async Task LoadResearchAsync(bool forceRefresh = false)
+    {
+        try
+        {
+            isLoadingResearch = true;
+            researchError = null;
+            var items = forceRefresh
+                ? await ThoughtLeaderFeedService.RefreshAsync()
+                : await ThoughtLeaderFeedService.GetPostsAsync();
+
+            researchPosts = items.ToList();
+            researchSources = ["All authors", .. researchPosts.Select(item => item.Source).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(source => source)];
+
+            if (!researchSources.Contains(selectedResearchSource, StringComparer.OrdinalIgnoreCase))
+            {
+                selectedResearchSource = "All authors";
+            }
+        }
+        catch (Exception)
+        {
+            researchError = "The research feed could not be loaded right now. Try refreshing again in a moment.";
+        }
+        finally
+        {
+            isLoadingResearch = false;
+        }
+    }
+
+    private Task OnResearchSourceChanged(string value)
+    {
+        selectedResearchSource = value;
+        return Task.CompletedTask;
+    }
+
+    private async Task RefreshResearchAsync()
+    {
+        await LoadResearchAsync(forceRefresh: true);
+        Snackbar.Add("Research feed refreshed.", Severity.Success);
+    }
+
     private void MarkAnnouncementSeen(UpskillTracker.Models.AnnouncementItem announcement)
     {
         seenAnnouncements.Add(announcement.Url);
@@ -365,6 +494,37 @@ else if (snapshot is not null)
         await TrackerService.SaveResourceAsync(resource);
         resources = await TrackerService.GetResourcesAsync();
         Snackbar.Add("Announcement saved to resources.", Severity.Success);
+    }
+
+    private async Task SaveResearchPostAsResourceAsync(UpskillTracker.Models.AnnouncementItem post)
+    {
+        if (resources.Any(resource => resource.Url.Equals(post.Url, StringComparison.OrdinalIgnoreCase)))
+        {
+            Snackbar.Add("That link is already in your resource library.", Severity.Info);
+            return;
+        }
+
+        var nextSortOrder = resources
+            .Where(resource => resource.Section.Equals(post.Topic, StringComparison.OrdinalIgnoreCase))
+            .Select(resource => resource.SortOrder)
+            .DefaultIfEmpty(0)
+            .Max() + 10;
+
+        var resource = new UpskillTracker.Models.ResourceEntry
+        {
+            Title = post.Title,
+            Section = post.Topic,
+            Url = post.Url,
+            Kind = UpskillTracker.Models.ResourceKind.Other,
+            Summary = post.Summary,
+            Tags = string.Join(", ", new[] { "research", post.Topic, post.Source }.Where(value => !string.IsNullOrWhiteSpace(value))),
+            Notes = $"Saved from {post.Source}'s research feed on {DateTime.UtcNow:yyyy-MM-dd}.",
+            SortOrder = nextSortOrder
+        };
+
+        await TrackerService.SaveResourceAsync(resource);
+        resources = await TrackerService.GetResourcesAsync();
+        Snackbar.Add("Research post saved to resources.", Severity.Success);
     }
 
     private static Color GetStatusColor(UpskillTracker.Models.TrackerStatus status) => status switch

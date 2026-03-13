@@ -37,6 +37,11 @@ builder.Services.AddHttpClient<AnnouncementFeedService>(client =>
     client.Timeout = TimeSpan.FromSeconds(15);
     client.DefaultRequestHeaders.UserAgent.ParseAdd("UpskillTracker/1.0");
 });
+builder.Services.AddHttpClient<ThoughtLeaderFeedService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("UpskillTracker/1.0");
+});
 
 var authenticationBuilder = builder.Services.AddAuthentication(options =>
 {
