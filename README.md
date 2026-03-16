@@ -1,11 +1,11 @@
 ---
-title: Azure AI Upskilling Hub
-description: Personal training tracker for Azure AI, live Microsoft announcements, GitHub Copilot chat, notes, resources, timelines, and deployment automation
+title: Hammad's Learning Portal
+description: Personal learning tracker with dual announcement streams, GitHub Copilot chat, notes, resources, timelines, and Azure deployment automation
 author: Microsoft
-ms.date: 2026-03-12
+ms.date: 2026-03-16
 ms.topic: overview
 keywords:
-  - azure ai
+   - learning portal
   - training tracker
   - blazor
   - app service
@@ -17,8 +17,8 @@ estimated_reading_time: 6
 
 This repository contains a Blazor-based learning hub for Azure AI and App
 Innovation upskilling. It combines a structured training tracker, a live
-Microsoft announcement feed, and an in-app GitHub Copilot chat experience that
-is grounded in your saved plan, notes, and resources.
+dual-stream announcement experience, and an in-app GitHub Copilot chat
+experience that is grounded in your saved plan, notes, and resources.
 
 ## High-level architecture
 
@@ -28,10 +28,10 @@ Azure App Service.
 * The browser loads a Blazor web app with a lightweight PIN gate in the main layout.
 * Feature views for Dashboard, Plan, Timeline, Resources, Notes, and Copilot run
    through shared application services.
-* `AnnouncementFeedService` loads and caches official Microsoft updates for the
-   dashboard feed.
+* `AnnouncementFeedService` loads and caches both official Microsoft updates and
+  curated thought-leader or industry posts for the dashboard feed.
 * `CopilotAuthService` and `CopilotChatService` manage in-app GitHub OAuth and
-   grounded Copilot chat sessions.
+  grounded Copilot chat sessions.
 * EF Core writes training data, resources, and notes into a SQLite database.
 * GitHub Actions builds the app and deploys `main` to the Azure web app.
 
@@ -39,13 +39,13 @@ For the Mermaid version of the architecture, see [arch.md](arch.md).
 
 ## Portal screenshot
 
-![Azure AI Upskilling Hub portal](docs/images/portal-home.png)
+![Hammad's Learning Portal](docs/images/portal-home.png)
 
 It is designed to help you:
 
 * Track plan items, notes, evidence, and timelines
 * Add new work as customer projects shift priorities
-* Review a live dashboard feed of official Microsoft announcements that matter to your plan
+* Review a live dashboard feed that switches between Microsoft updates and curated industry posts that matter to your plan
 * Keep a reusable resource library for Microsoft Foundry, GitHub Copilot,
   App Service, Container Apps, and related topics
 * Ask grounded GitHub Copilot questions against your saved learning data
@@ -56,7 +56,7 @@ It is designed to help you:
 
 * Dashboard with completion and focus metrics
 * Dynamic home and dashboard summary cards that react to live tracker data instead of fixed promotional copy
-* Live Microsoft announcement feed with actions to open and save useful updates
+* Dual announcement streams with Microsoft updates and thought-leader or industry posts, plus actions to open and save useful updates
 * Planner tab for adding and editing training items, with direct task links suggested from the shared resource library
 * Timeline tab grouped by month
 * Resources tab with editable sections and links that power task-level suggestions across the app
@@ -69,9 +69,10 @@ It is designed to help you:
 
 The current shell avoids fixed labels where tracker data is already available.
 
-* The top app bar uses a minimal title and no hardcoded date badge
-* The home view opens with a tracker-driven workspace overview card
-* The dashboard summary card adapts to overdue, in-progress, and completed work
+* The top app bar uses the product name Hammad's Learning Portal and no hardcoded date badge
+* The home view opens with a tracker-driven overview card instead of a commentary-style hero title
+* The dashboard summary card adapts to overdue, in-progress, and completed work with short, direct headings
+* The announcement section uses a stream switcher so Microsoft updates and curated industry posts stay separate
 * Reminder copy stays short and action-oriented so it remains useful as the plan changes
 
 ## Local development

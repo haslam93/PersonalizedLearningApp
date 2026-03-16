@@ -2,6 +2,8 @@ namespace UpskillTracker.Models;
 
 public class AnnouncementItem
 {
+    public AnnouncementStream Stream { get; init; }
+
     public string Title { get; init; } = string.Empty;
 
     public string Url { get; init; } = string.Empty;

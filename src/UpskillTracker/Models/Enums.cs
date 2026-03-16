@@ -33,3 +33,9 @@ public enum ResourceKind
     Accelerator,
     Other
 }
+
+public enum AnnouncementStream
+{
+    MicrosoftOfficial,
+    IndustryInsights
+}

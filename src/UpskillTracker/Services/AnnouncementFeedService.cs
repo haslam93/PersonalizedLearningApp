@@ -13,11 +13,20 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
 
     private static readonly FeedSource[] FeedSources =
     [
-        new("Azure Updates", "https://www.microsoft.com/releasecommunications/api/v2/azure/rss", "Azure platform"),
-        new("Microsoft Foundry Blog", "https://devblogs.microsoft.com/foundry/feed/", "Azure AI Foundry"),
-        new("GitHub Copilot Blog", "https://github.blog/tag/github-copilot/feed/", "GitHub Copilot"),
-        new("Apps on Azure Blog", "https://techcommunity.microsoft.com/t5/s/gxcuf89792/rss/board?board.id=AppsonAzureBlog", "App Service"),
-        new("Azure Integration Services Blog", "https://techcommunity.microsoft.com/t5/s/gxcuf89792/rss/board?board.id=IntegrationsonAzureBlog", "Azure API Management")
+        new("Azure Updates", "https://www.microsoft.com/releasecommunications/api/v2/azure/rss", AnnouncementStream.MicrosoftOfficial, "Azure platform"),
+        new("Microsoft Foundry Blog", "https://devblogs.microsoft.com/foundry/feed/", AnnouncementStream.MicrosoftOfficial, "Azure AI Foundry"),
+        new("GitHub Copilot Blog", "https://github.blog/tag/github-copilot/feed/", AnnouncementStream.MicrosoftOfficial, "GitHub Copilot"),
+        new("Apps on Azure Blog", "https://techcommunity.microsoft.com/t5/s/gxcuf89792/rss/board?board.id=AppsonAzureBlog", AnnouncementStream.MicrosoftOfficial, "App Service"),
+        new("Azure Integration Services Blog", "https://techcommunity.microsoft.com/t5/s/gxcuf89792/rss/board?board.id=IntegrationsonAzureBlog", AnnouncementStream.MicrosoftOfficial, "Azure API Management"),
+        new("Simon Willison", "https://simonwillison.net/atom/everything/", AnnouncementStream.IndustryInsights, "Developer Tools"),
+        new("OpenAI News", "https://openai.com/news/rss.xml", AnnouncementStream.IndustryInsights, "Industry"),
+        new("Scott Hanselman", "https://www.hanselman.com/blog/rss", AnnouncementStream.IndustryInsights, "Developer Tools"),
+        new("Microsoft Research", "https://www.microsoft.com/en-us/research/feed/", AnnouncementStream.IndustryInsights, "Research"),
+        new("Google Research", "https://research.google/blog/rss/", AnnouncementStream.IndustryInsights, "Research"),
+        new("AWS Machine Learning Blog", "https://aws.amazon.com/blogs/machine-learning/feed/", AnnouncementStream.IndustryInsights, "Industry"),
+        new("One Useful Thing", "https://www.oneusefulthing.org/feed", AnnouncementStream.IndustryInsights, "Industry"),
+        new("Andrej Karpathy", "https://karpathy.bearblog.dev/feed/", AnnouncementStream.IndustryInsights, "LLMs"),
+        new("Anthropic Research", "https://www.anthropic.com/research", AnnouncementStream.IndustryInsights, "Research", FeedSourceKind.HtmlPage)
     ];
 
     public async Task<IReadOnlyList<AnnouncementItem>> GetAnnouncementsAsync(CancellationToken cancellationToken = default)
@@ -59,9 +68,13 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
             using var response = await httpClient.GetAsync(source.FeedUrl, cancellationToken);
             response.EnsureSuccessStatusCode();
 
-            var xml = await response.Content.ReadAsStringAsync(cancellationToken);
-            var document = XDocument.Parse(xml, LoadOptions.PreserveWhitespace);
-            return ParseFeed(document, source);
+            var payload = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            return source.Kind switch
+            {
+                FeedSourceKind.HtmlPage => ParseHtmlPage(payload, source),
+                _ => ParseFeed(XDocument.Parse(payload, LoadOptions.PreserveWhitespace), source)
+            };
         }
         catch (Exception ex)
         {
@@ -145,6 +158,7 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
 
         return new AnnouncementItem
         {
+            Stream = source.Stream,
             Title = WebUtility.HtmlDecode(title.Trim()),
             Url = url.Trim(),
             Summary = normalizedSummary,
@@ -190,6 +204,51 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
         return string.Empty;
     }
 
+    private static IReadOnlyList<AnnouncementItem> ParseHtmlPage(string html, FeedSource source)
+    {
+        if (string.IsNullOrWhiteSpace(html))
+        {
+            return [];
+        }
+
+        if (string.Equals(source.Name, "Anthropic Research", StringComparison.OrdinalIgnoreCase))
+        {
+            return ParseAnthropicResearchPage(html, source);
+        }
+
+        return [];
+    }
+
+    private static IReadOnlyList<AnnouncementItem> ParseAnthropicResearchPage(string html, FeedSource source)
+    {
+        var matches = AnthropicPublicationRegex().Matches(html);
+        var announcements = new List<AnnouncementItem>();
+
+        foreach (Match match in matches)
+        {
+            var date = match.Groups["date"].Value;
+            var href = match.Groups["href"].Value;
+            var title = WebUtility.HtmlDecode(match.Groups["title"].Value).Trim();
+
+            if (string.IsNullOrWhiteSpace(date) || string.IsNullOrWhiteSpace(href) || string.IsNullOrWhiteSpace(title))
+            {
+                continue;
+            }
+
+            var absoluteUrl = href.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                ? href
+                : $"https://www.anthropic.com{href}";
+
+            var item = CreateAnnouncement(source, title, absoluteUrl, string.Empty, date);
+            if (item is not null)
+            {
+                announcements.Add(item);
+            }
+        }
+
+        return announcements;
+    }
+
     private static bool ContainsAny(string value, params string[] candidates)
         => candidates.Any(candidate => value.Contains(candidate, StringComparison.OrdinalIgnoreCase));
 
@@ -208,11 +267,25 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
             : string.Concat(normalizedWhitespace[..217], "...");
     }
 
-    private sealed record FeedSource(string Name, string FeedUrl, string DefaultTopic);
+    private sealed record FeedSource(
+        string Name,
+        string FeedUrl,
+        AnnouncementStream Stream,
+        string DefaultTopic,
+        FeedSourceKind Kind = FeedSourceKind.XmlFeed);
+
+    private enum FeedSourceKind
+    {
+        XmlFeed,
+        HtmlPage
+    }
 
     [GeneratedRegex("<[^>]+>")]
     private static partial Regex HtmlRegex();
 
     [GeneratedRegex("\\s+")]
     private static partial Regex WhitespaceRegex();
+
+    [GeneratedRegex("(?is)(?<date>(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d{1,2},\\s+\\d{4}).{0,300}?href=\"(?<href>/research/[^\"]+)\"[^>]*>(?<title>.*?)</a>")]
+    private static partial Regex AnthropicPublicationRegex();
 }

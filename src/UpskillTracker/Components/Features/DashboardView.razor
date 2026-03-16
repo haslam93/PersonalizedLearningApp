@@ -161,23 +161,33 @@ else if (snapshot is not null)
             <MudPaper Class="surface-card mb-4" Elevation="0">
                 <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
                     <div>
-                        <MudText Typo="Typo.h6">Latest Microsoft announcements</MudText>
-                        <MudText Typo="Typo.body2" Class="mud-secondary-text">Official feed items for Foundry, GitHub Copilot, APIM, App Service, and related Azure updates.</MudText>
+                        <MudText Typo="Typo.h6">Announcements</MudText>
+                        <MudText Typo="Typo.body2" Class="mud-secondary-text">@GetAnnouncementSectionSummary()</MudText>
                     </div>
                     <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshAnnouncementsAsync">
                         Refresh
                     </MudButton>
                 </MudStack>
 
+                <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined" Class="mb-4">
+                    @foreach (var stream in announcementStreams)
+                    {
+                        var isSelected = selectedAnnouncementStream == stream;
+                        <MudButton Variant="@(isSelected ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SelectAnnouncementStream(stream))">
+                            @GetAnnouncementStreamLabel(stream)
+                        </MudButton>
+                    }
+                </MudButtonGroup>
+
                 <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" Class="mb-4">
                     <MudSelect T="string" Value="@selectedAnnouncementTopic" ValueChanged="OnAnnouncementTopicChanged" Label="Topic" Variant="Variant.Outlined" Dense="true" Style="min-width: 220px;">
-                        @foreach (var topic in announcementTopics)
+                        @foreach (var topic in ActiveAnnouncementTopics)
                         {
                             <MudSelectItem T="string" Value="@topic">@topic</MudSelectItem>
                         }
                     </MudSelect>
                     <MudSelect T="string" Value="@selectedAnnouncementSource" ValueChanged="OnAnnouncementSourceChanged" Label="Source" Variant="Variant.Outlined" Dense="true" Style="min-width: 220px;">
-                        @foreach (var source in announcementSources)
+                        @foreach (var source in ActiveAnnouncementSources)
                         {
                             <MudSelectItem T="string" Value="@source">@source</MudSelectItem>
                         }
@@ -194,7 +204,7 @@ else if (snapshot is not null)
                 }
                 else if (FilteredAnnouncements.Count == 0)
                 {
-                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">No announcement items match the current filters yet.</MudAlert>
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">No items match the current filters for @GetAnnouncementStreamLabel(selectedAnnouncementStream) yet.</MudAlert>
                 }
                 else
                 {
@@ -208,6 +218,7 @@ else if (snapshot is not null)
                                         <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-1">
                                             <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetAnnouncementTopicColor(announcement.Topic)">@announcement.Topic</MudChip>
                                             <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">@announcement.Source</MudChip>
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">@GetAnnouncementStreamLabel(announcement.Stream)</MudChip>
                                             <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default">@FormatAnnouncementDate(announcement.PublishedUtc)</MudChip>
                                         </MudStack>
                                     </div>
@@ -249,10 +260,16 @@ else if (snapshot is not null)
     private List<UpskillTracker.Models.ResourceEntry> resources = [];
     private List<UpskillTracker.Models.AnnouncementItem> announcements = [];
     private HashSet<string> seenAnnouncements = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<UpskillTracker.Models.AnnouncementStream> announcementStreams =
+    [
+        UpskillTracker.Models.AnnouncementStream.MicrosoftOfficial,
+        UpskillTracker.Models.AnnouncementStream.IndustryInsights
+    ];
     private List<string> announcementTopics = ["All topics"];
     private List<string> announcementSources = ["All sources"];
     private string selectedAnnouncementTopic = "All topics";
     private string selectedAnnouncementSource = "All sources";
+    private UpskillTracker.Models.AnnouncementStream selectedAnnouncementStream = UpskillTracker.Models.AnnouncementStream.MicrosoftOfficial;
     private string? announcementError;
     private double completionRate;
 
@@ -270,7 +287,15 @@ else if (snapshot is not null)
         isLoading = false;
     }
 
-    private IReadOnlyList<UpskillTracker.Models.AnnouncementItem> FilteredAnnouncements => announcements
+    private IReadOnlyList<UpskillTracker.Models.AnnouncementItem> ActiveAnnouncements => announcements
+        .Where(item => item.Stream == selectedAnnouncementStream)
+        .ToList();
+
+    private IReadOnlyList<string> ActiveAnnouncementTopics => announcementTopics;
+
+    private IReadOnlyList<string> ActiveAnnouncementSources => announcementSources;
+
+    private IReadOnlyList<UpskillTracker.Models.AnnouncementItem> FilteredAnnouncements => ActiveAnnouncements
         .Where(item => selectedAnnouncementTopic == "All topics" || item.Topic.Equals(selectedAnnouncementTopic, StringComparison.OrdinalIgnoreCase))
         .Where(item => selectedAnnouncementSource == "All sources" || item.Source.Equals(selectedAnnouncementSource, StringComparison.OrdinalIgnoreCase))
         .Take(6)
@@ -290,18 +315,7 @@ else if (snapshot is not null)
                 : await AnnouncementFeedService.GetAnnouncementsAsync();
 
             announcements = items.ToList();
-            announcementTopics = ["All topics", .. announcements.Select(item => item.Topic).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(topic => topic)];
-            announcementSources = ["All sources", .. announcements.Select(item => item.Source).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(source => source)];
-
-            if (!announcementTopics.Contains(selectedAnnouncementTopic, StringComparer.OrdinalIgnoreCase))
-            {
-                selectedAnnouncementTopic = "All topics";
-            }
-
-            if (!announcementSources.Contains(selectedAnnouncementSource, StringComparer.OrdinalIgnoreCase))
-            {
-                selectedAnnouncementSource = "All sources";
-            }
+            RebuildAnnouncementFilters();
         }
         catch (Exception)
         {
@@ -323,6 +337,17 @@ else if (snapshot is not null)
     {
         selectedAnnouncementSource = value;
         return Task.CompletedTask;
+    }
+
+    private void SelectAnnouncementStream(UpskillTracker.Models.AnnouncementStream stream)
+    {
+        if (selectedAnnouncementStream == stream)
+        {
+            return;
+        }
+
+        selectedAnnouncementStream = stream;
+        RebuildAnnouncementFilters();
     }
 
     private async Task RefreshAnnouncementsAsync()
@@ -358,7 +383,7 @@ else if (snapshot is not null)
             Kind = UpskillTracker.Models.ResourceKind.Documentation,
             Summary = announcement.Summary,
             Tags = string.Join(", ", new[] { "announcement", announcement.Topic, announcement.Source }.Where(value => !string.IsNullOrWhiteSpace(value))),
-            Notes = $"Saved from the official {announcement.Source} feed on {DateTime.UtcNow:yyyy-MM-dd}.",
+            Notes = $"Saved from the {GetAnnouncementStreamLabel(announcement.Stream).ToLowerInvariant()} source {announcement.Source} on {DateTime.UtcNow:yyyy-MM-dd}.",
             SortOrder = nextSortOrder
         };
 
@@ -389,6 +414,11 @@ else if (snapshot is not null)
     {
         "Azure AI Foundry" => Color.Primary,
         "GitHub Copilot" => Color.Secondary,
+        "Developer Tools" => Color.Info,
+        "LLMs" => Color.Secondary,
+        "Research" => Color.Success,
+        "Industry" => Color.Warning,
+        "Agents" => Color.Primary,
         "Azure API Management" => Color.Warning,
         "App Service" => Color.Info,
         _ => Color.Success
@@ -418,27 +448,56 @@ else if (snapshot is not null)
     {
         if (snapshot is null)
         {
-            return "Your workspace is ready";
+            return "Ready";
         }
 
         if (snapshot.OverdueItems > 0)
         {
-            return "A few items need attention";
+            return "Needs attention";
         }
 
         if (snapshot.InProgressItems > 0)
         {
-            return "Progress is moving";
+            return "In motion";
         }
 
-        return "Everything is current";
+        return "On Track";
     }
+
+    private void RebuildAnnouncementFilters()
+    {
+        announcementTopics = ["All topics", .. ActiveAnnouncements.Select(item => item.Topic).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(topic => topic)];
+        announcementSources = ["All sources", .. ActiveAnnouncements.Select(item => item.Source).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(source => source)];
+
+        if (!announcementTopics.Contains(selectedAnnouncementTopic, StringComparer.OrdinalIgnoreCase))
+        {
+            selectedAnnouncementTopic = "All topics";
+        }
+
+        if (!announcementSources.Contains(selectedAnnouncementSource, StringComparer.OrdinalIgnoreCase))
+        {
+            selectedAnnouncementSource = "All sources";
+        }
+    }
+
+    private string GetAnnouncementSectionSummary()
+        => selectedAnnouncementStream == UpskillTracker.Models.AnnouncementStream.MicrosoftOfficial
+            ? "Official Microsoft updates for Foundry, GitHub Copilot, APIM, App Service, and related Azure changes."
+            : "Curated posts from high-signal AI, research, and developer voices across the industry.";
+
+    private static string GetAnnouncementStreamLabel(UpskillTracker.Models.AnnouncementStream stream)
+        => stream switch
+        {
+            UpskillTracker.Models.AnnouncementStream.MicrosoftOfficial => "Microsoft updates",
+            UpskillTracker.Models.AnnouncementStream.IndustryInsights => "Thought leaders and industry",
+            _ => "Announcements"
+        };
 
     private string GetDashboardSummary()
     {
         if (snapshot is null)
         {
-            return "Use the dashboard to review plan status, saved resources, notes, and the latest Microsoft updates.";
+            return "Use the dashboard to review plan status, saved resources, notes, and the latest curated updates.";
         }
 
         if (snapshot.OverdueItems > 0)

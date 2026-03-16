@@ -1,8 +1,8 @@
 ---
 title: Changelog
-description: Chronological record of major product, infrastructure, deployment, authentication, and documentation changes for the Azure AI Upskilling Hub
+description: Chronological record of major product, infrastructure, deployment, authentication, and documentation changes for Hammad's Learning Portal
 author: Microsoft
-ms.date: 2026-03-12
+ms.date: 2026-03-16
 ms.topic: reference
 keywords:
   - changelog
@@ -12,6 +12,26 @@ keywords:
   - deployment
 estimated_reading_time: 6
 ---
+
+## 2026-03-16
+
+### Added the thought-leader and industry announcement stream
+
+* Extended the dashboard announcement experience so it can switch between Microsoft updates and curated industry posts
+* Added stream metadata to the announcement model and feed registry so both streams share one fetch, cache, dedupe, and save-to-resource pipeline
+* Added curated industry sources for thought leaders, research, and major AI platform voices, including an HTML-based Anthropic research source path
+
+### Updated shell titles and direct-status copy
+
+* Renamed the visible app shell to Hammad's Learning Portal
+* Replaced commentary-style hero and idle-state titles with shorter, more direct headings such as On Track
+* Updated the dashboard announcement section copy so it no longer reads as Microsoft-only when the industry stream is selected
+
+### Refreshed core documentation
+
+* Updated [README.md](README.md) to reflect the final app name and the dual-stream announcement model
+* Updated [arch.md](arch.md) so the runtime diagram and architecture notes show both Microsoft and industry announcement sources
+* Kept the changelog aligned with the implementation changes in the same update
 
 ## 2026-03-12
 

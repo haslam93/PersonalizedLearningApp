@@ -1,8 +1,8 @@
 ---
-title: Azure AI Upskilling Hub architecture
-description: High-level architecture for the Blazor learning hub, live announcement feed, GitHub Copilot SDK integration, and Azure hosting flow
+title: Hammad's Learning Portal architecture
+description: High-level architecture for the Blazor learning portal, dual announcement streams, GitHub Copilot SDK integration, and Azure hosting flow
 author: Microsoft
-ms.date: 2026-03-12
+ms.date: 2026-03-16
 ms.topic: overview
 keywords:
   - architecture
@@ -32,12 +32,14 @@ flowchart TB
     Data[EF Core DbContext]
     Sqlite[(SQLite database)]
     AppInsights[Application Insights]
-  MicrosoftNews[Official Microsoft announcement sources]
+  MicrosoftNews[Microsoft official sources]
+  IndustryNews[Thought leader and industry sources]
   AppService[Azure App Service\nLinux web app]
 
     User --> Pin --> UI
   UI --> Tracker --> Data --> Sqlite
   UI --> Feed --> MicrosoftNews
+  UI --> Feed --> IndustryNews
   UI --> Auth --> GitHubOAuth
   UI --> Chat --> CopilotSdk
   Chat --> Tracker
@@ -51,10 +53,10 @@ flowchart TB
 
 ## Runtime notes
 
-* The user opens the Blazor web app and passes through a simple client-side PIN gate.
+* The user opens Hammad's Learning Portal and passes through a simple client-side PIN gate.
 * Interactive Razor components render the dashboard, editable tracker tabs, and the Copilot chat workspace.
 * The home view and dashboard summary cards are driven by tracker data so the shell avoids stale fixed date ranges and static campaign copy.
-* `AnnouncementFeedService` loads and memory-caches official Microsoft announcement sources for the dashboard feed.
+* `AnnouncementFeedService` loads and memory-caches two announcement streams: official Microsoft sources and curated thought-leader or industry sources.
 * `TrackerService` handles reads and writes for training items, resources, and notes.
 * `CopilotAuthService` and `CopilotChatService` manage GitHub OAuth, runtime model discovery, and grounded Copilot interactions.
 * EF Core persists data to a local SQLite database.
