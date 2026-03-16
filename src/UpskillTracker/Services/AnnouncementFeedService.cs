@@ -10,6 +10,8 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
 {
     private const string CacheKey = "announcements:latest";
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(30);
+    private const int MaxItemsPerSource = 5;
+    private const int MaxItemsPerStream = 24;
 
     private static readonly FeedSource[] FeedSources =
     [
@@ -18,6 +20,7 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
         new("GitHub Copilot Blog", "https://github.blog/tag/github-copilot/feed/", AnnouncementStream.MicrosoftOfficial, "GitHub Copilot"),
         new("Apps on Azure Blog", "https://techcommunity.microsoft.com/t5/s/gxcuf89792/rss/board?board.id=AppsonAzureBlog", AnnouncementStream.MicrosoftOfficial, "App Service"),
         new("Azure Integration Services Blog", "https://techcommunity.microsoft.com/t5/s/gxcuf89792/rss/board?board.id=IntegrationsonAzureBlog", AnnouncementStream.MicrosoftOfficial, "Azure API Management"),
+        new("Yina Arenas", "https://azure.microsoft.com/en-us/blog/author/yina-arenas/feed/", AnnouncementStream.MicrosoftOfficial, "Azure AI Foundry"),
         new("Simon Willison", "https://simonwillison.net/atom/everything/", AnnouncementStream.IndustryInsights, "Developer Tools"),
         new("OpenAI News", "https://openai.com/news/rss.xml", AnnouncementStream.IndustryInsights, "Industry"),
         new("Scott Hanselman", "https://www.hanselman.com/blog/rss", AnnouncementStream.IndustryInsights, "Developer Tools"),
@@ -53,8 +56,11 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
             .SelectMany(result => result)
             .GroupBy(item => item.Url, StringComparer.OrdinalIgnoreCase)
             .Select(group => group.OrderByDescending(item => item.PublishedUtc).First())
+            .GroupBy(item => item.Source, StringComparer.OrdinalIgnoreCase)
+            .SelectMany(group => group.OrderByDescending(item => item.PublishedUtc).Take(MaxItemsPerSource))
+            .GroupBy(item => item.Stream)
+            .SelectMany(group => group.OrderByDescending(item => item.PublishedUtc).Take(MaxItemsPerStream))
             .OrderByDescending(item => item.PublishedUtc)
-            .Take(18)
             .ToList();
 
         cache.Set(CacheKey, announcements, CacheDuration);
@@ -226,11 +232,11 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
 
         foreach (Match match in matches)
         {
-            var date = match.Groups["date"].Value;
-            var href = match.Groups["href"].Value;
-            var title = WebUtility.HtmlDecode(match.Groups["title"].Value).Trim();
+            var publishedValue = match.Groups["published"].Value.Trim();
+            var href = match.Groups["href"].Value.Trim();
+            var title = CleanInlineText(match.Groups["title"].Value);
 
-            if (string.IsNullOrWhiteSpace(date) || string.IsNullOrWhiteSpace(href) || string.IsNullOrWhiteSpace(title))
+            if (string.IsNullOrWhiteSpace(publishedValue) || string.IsNullOrWhiteSpace(href) || string.IsNullOrWhiteSpace(title))
             {
                 continue;
             }
@@ -239,7 +245,7 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
                 ? href
                 : $"https://www.anthropic.com{href}";
 
-            var item = CreateAnnouncement(source, title, absoluteUrl, string.Empty, date);
+            var item = CreateAnnouncement(source, title, absoluteUrl, string.Empty, publishedValue);
             if (item is not null)
             {
                 announcements.Add(item);
@@ -247,6 +253,18 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
         }
 
         return announcements;
+    }
+
+    private static string CleanInlineText(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var withoutMarkup = HtmlRegex().Replace(value, " ");
+        var decoded = WebUtility.HtmlDecode(withoutMarkup);
+        return WhitespaceRegex().Replace(decoded, " ").Trim();
     }
 
     private static bool ContainsAny(string value, params string[] candidates)
@@ -286,6 +304,6 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
     [GeneratedRegex("\\s+")]
     private static partial Regex WhitespaceRegex();
 
-    [GeneratedRegex("(?is)(?<date>(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d{1,2},\\s+\\d{4}).{0,300}?href=\"(?<href>/research/[^\"]+)\"[^>]*>(?<title>.*?)</a>")]
+    [GeneratedRegex(@"(?is)<a\s+href=""(?<href>/research/[^""]+)""\s+class=""PublicationList-[^""]*__listItem""[^>]*>\s*<div\s+class=""PublicationList-[^""]*__meta""[^>]*>\s*<time[^>]*>(?<published>(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},\s+\d{4})</time>.*?</div>\s*<span\s+class=""PublicationList-[^""]*__title[^""]*"">(?<title>.*?)</span>")]
     private static partial Regex AnthropicPublicationRegex();
 }

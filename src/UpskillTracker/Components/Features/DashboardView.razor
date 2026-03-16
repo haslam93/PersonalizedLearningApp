@@ -259,6 +259,7 @@ else if (snapshot is not null)
     private UpskillTracker.Models.DashboardSnapshot? snapshot;
     private List<UpskillTracker.Models.ResourceEntry> resources = [];
     private List<UpskillTracker.Models.AnnouncementItem> announcements = [];
+    private const int VisibleAnnouncementsPerStream = 8;
     private HashSet<string> seenAnnouncements = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<UpskillTracker.Models.AnnouncementStream> announcementStreams =
     [
@@ -298,7 +299,7 @@ else if (snapshot is not null)
     private IReadOnlyList<UpskillTracker.Models.AnnouncementItem> FilteredAnnouncements => ActiveAnnouncements
         .Where(item => selectedAnnouncementTopic == "All topics" || item.Topic.Equals(selectedAnnouncementTopic, StringComparison.OrdinalIgnoreCase))
         .Where(item => selectedAnnouncementSource == "All sources" || item.Source.Equals(selectedAnnouncementSource, StringComparison.OrdinalIgnoreCase))
-        .Take(6)
+        .Take(VisibleAnnouncementsPerStream)
         .ToList();
 
     private IReadOnlyList<UpskillTracker.Models.ResourceEntry> GetSuggestedResources(UpskillTracker.Models.TrainingItem item)
