@@ -226,6 +226,10 @@ else if (snapshot is not null)
                                     {
                                         <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Size="Size.Small">Seen</MudChip>
                                     }
+                                    else if (IsAnnouncementSaved(announcement))
+                                    {
+                                        <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Size="Size.Small">Saved</MudChip>
+                                    }
                                 </MudStack>
 
                                 @if (!string.IsNullOrWhiteSpace(announcement.Summary))
@@ -240,8 +244,12 @@ else if (snapshot is not null)
                                     <MudButton Variant="Variant.Text" Color="Color.Default" StartIcon="@Icons.Material.Filled.Visibility" OnClick="@(() => MarkAnnouncementSeen(announcement))">
                                         @(seenAnnouncements.Contains(announcement.Url) ? "Seen" : "Mark as seen")
                                     </MudButton>
-                                    <MudButton Variant="Variant.Text" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.AddLink" OnClick="@(() => SaveAnnouncementAsResourceAsync(announcement))">
-                                        Save to resources
+                                    <MudButton Variant="Variant.Text"
+                                               Color="Color.Secondary"
+                                               StartIcon="@(IsAnnouncementSaved(announcement) ? Icons.Material.Filled.Check : Icons.Material.Filled.AddLink)"
+                                               Disabled="@IsAnnouncementSaved(announcement)"
+                                               OnClick="@(() => SaveAnnouncementAsResourceAsync(announcement))">
+                                        @(IsAnnouncementSaved(announcement) ? "Saved" : "Save to resources")
                                     </MudButton>
                                 </MudStack>
                             </MudStack>
@@ -364,33 +372,63 @@ else if (snapshot is not null)
 
     private async Task SaveAnnouncementAsResourceAsync(UpskillTracker.Models.AnnouncementItem announcement)
     {
-        if (resources.Any(resource => resource.Url.Equals(announcement.Url, StringComparison.OrdinalIgnoreCase)))
+        if (IsAnnouncementSaved(announcement))
         {
             Snackbar.Add("That link is already in your resource library.", Severity.Info);
             return;
         }
 
-        var nextSortOrder = resources
-            .Where(resource => resource.Section.Equals(announcement.Topic, StringComparison.OrdinalIgnoreCase))
-            .Select(resource => resource.SortOrder)
-            .DefaultIfEmpty(0)
-            .Max() + 10;
-
-        var resource = new UpskillTracker.Models.ResourceEntry
+        try
         {
-            Title = announcement.Title,
-            Section = announcement.Topic,
-            Url = announcement.Url,
-            Kind = UpskillTracker.Models.ResourceKind.Documentation,
-            Summary = announcement.Summary,
-            Tags = string.Join(", ", new[] { "announcement", announcement.Topic, announcement.Source }.Where(value => !string.IsNullOrWhiteSpace(value))),
-            Notes = $"Saved from the {GetAnnouncementStreamLabel(announcement.Stream).ToLowerInvariant()} source {announcement.Source} on {DateTime.UtcNow:yyyy-MM-dd}.",
-            SortOrder = nextSortOrder
-        };
+            var nextSortOrder = resources
+                .Where(resource => resource.Section.Equals(announcement.Topic, StringComparison.OrdinalIgnoreCase))
+                .Select(resource => resource.SortOrder)
+                .DefaultIfEmpty(0)
+                .Max() + 10;
 
-        await TrackerService.SaveResourceAsync(resource);
-        resources = await TrackerService.GetResourcesAsync();
-        Snackbar.Add("Announcement saved to resources.", Severity.Success);
+            var resource = BuildAnnouncementResource(announcement, nextSortOrder);
+
+            await TrackerService.SaveResourceAsync(resource);
+            resources = await TrackerService.GetResourcesAsync();
+            seenAnnouncements.Add(announcement.Url);
+            Snackbar.Add("Announcement saved to resources.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not save this announcement: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private bool IsAnnouncementSaved(UpskillTracker.Models.AnnouncementItem announcement)
+        => resources.Any(resource => resource.Url.Equals(announcement.Url, StringComparison.OrdinalIgnoreCase));
+
+    private UpskillTracker.Models.ResourceEntry BuildAnnouncementResource(UpskillTracker.Models.AnnouncementItem announcement, int sortOrder)
+    {
+        var tags = string.Join(", ", new[] { "announcement", announcement.Topic, announcement.Source }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        var notes = $"Saved from the {GetAnnouncementStreamLabel(announcement.Stream).ToLowerInvariant()} source {announcement.Source} on {DateTime.UtcNow:yyyy-MM-dd}.";
+
+        return new UpskillTracker.Models.ResourceEntry
+        {
+            Title = TruncateValue(announcement.Title, 140),
+            Section = TruncateValue(announcement.Topic, 80),
+            Url = TruncateValue(announcement.Url, 500),
+            Kind = UpskillTracker.Models.ResourceKind.Documentation,
+            Summary = TruncateValue(announcement.Summary, 1500),
+            Tags = TruncateValue(tags, 300),
+            Notes = TruncateValue(notes, 2000),
+            SortOrder = sortOrder
+        };
+    }
+
+    private static string TruncateValue(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var trimmed = value.Trim();
+        return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
     }
 
     private static Color GetStatusColor(UpskillTracker.Models.TrackerStatus status) => status switch
