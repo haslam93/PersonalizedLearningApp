@@ -2,7 +2,7 @@
 title: Changelog
 description: Chronological record of major product, infrastructure, deployment, authentication, and documentation changes for Hammad's Learning Portal
 author: Microsoft
-ms.date: 2026-03-16
+ms.date: 2026-03-17
 ms.topic: reference
 keywords:
   - changelog
@@ -12,6 +12,19 @@ keywords:
   - deployment
 estimated_reading_time: 6
 ---
+
+## 2026-03-17
+
+### Repaired and refreshed the dashboard UI
+
+* Fixed the dashboard card layout after a CSS regression caused stat and tracker content to misalign
+* Added a dedicated video watch tracker card with queue, seen count, and watch progress summary
+* Restored subtle semantic color to dashboard cards with readable tinted surfaces instead of flat white panels
+
+### Updated documentation for the dashboard refresh
+
+* Updated [README.md](README.md) to reflect the current dashboard tracker and card styling approach
+* Kept the changelog aligned with the dashboard UI update in the same release
 
 ## 2026-03-16
 

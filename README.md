@@ -55,6 +55,7 @@ It is designed to help you:
 ## Main app features
 
 * Dashboard with completion and focus metrics
+* Dashboard cards with readable semantic color accents for progress, videos, resources, notes, and announcements
 * Dynamic home and dashboard summary cards that react to live tracker data instead of fixed promotional copy
 * Dual announcement streams with Microsoft updates and thought-leader or industry posts, plus actions to open and save useful updates
 * Planner tab for adding and editing training items, with direct task links suggested from the shared resource library
@@ -72,6 +73,8 @@ The current shell avoids fixed labels where tracker data is already available.
 * The top app bar uses the product name Hammad's Learning Portal and no hardcoded date badge
 * The home view opens with a tracker-driven overview card instead of a commentary-style hero title
 * The dashboard summary card adapts to overdue, in-progress, and completed work with short, direct headings
+* Dashboard cards use soft semantic color surfaces so sections are easier to scan without sacrificing contrast
+* The dashboard includes a dedicated video watch tracker with queue, seen count, and completion progress
 * The announcement section uses a stream switcher so Microsoft updates and curated industry posts stay separate
 * Reminder copy stays short and action-oriented so it remains useful as the plan changes
 

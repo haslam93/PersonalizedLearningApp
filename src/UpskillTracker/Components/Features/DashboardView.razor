@@ -9,8 +9,8 @@
 }
 else if (snapshot is not null)
 {
-    <MudGrid>
-        <MudItem xs="12" md="8">
+    <MudGrid Class="dashboard-hero-grid">
+        <MudItem xs="12" md="8" Class="d-flex">
             <MudPaper Class="hero-card dashboard-summary-card mb-4" Elevation="0">
                 <MudStack Spacing="2">
                     <div>
@@ -27,9 +27,9 @@ else if (snapshot is not null)
                 </MudStack>
             </MudPaper>
         </MudItem>
-        <MudItem xs="12" md="4">
-            <MudStack Spacing="2">
-                <MudPaper Class="surface-card mb-0 stat-card dashboard-stat-card" Elevation="0">
+        <MudItem xs="12" md="4" Class="d-flex">
+            <MudStack Spacing="2" Class="dashboard-side-stack w-100">
+                <MudPaper Class="surface-card mb-0 stat-card dashboard-stat-card dashboard-accent-blue" Elevation="0">
                     <MudText Typo="Typo.subtitle2" Class="dashboard-card-label">Completion rate</MudText>
                     <MudText Typo="Typo.h3" Class="mb-3 dashboard-card-value">@snapshot.CompletionRate%</MudText>
                     <MudProgressLinear Value="@completionRate" Rounded="true" Color="Color.Primary" Size="Size.Large" />
@@ -38,7 +38,7 @@ else if (snapshot is not null)
                     </MudText>
                 </MudPaper>
 
-                <MudPaper Class="surface-card mb-4 dashboard-video-tracker-card" Elevation="0">
+                <MudPaper Class="surface-card mb-4 dashboard-video-tracker-card dashboard-accent-teal" Elevation="0">
                     <MudStack Spacing="2">
                         <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
                             <div>
@@ -60,30 +60,30 @@ else if (snapshot is not null)
         </MudItem>
     </MudGrid>
 
-    <MudGrid Class="mb-4">
+    <MudGrid Class="mb-4 dashboard-metrics-grid">
         <MudItem xs="6" md="3">
-            <MudPaper Class="surface-card metric-card dashboard-metric-card" Elevation="0">
+            <MudPaper Class="surface-card metric-card dashboard-metric-card dashboard-accent-green" Elevation="0">
                 <MudIcon Icon="@Icons.Material.Filled.TaskAlt" Color="Color.Success" Size="Size.Large" />
                 <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.CompletedItems</MudText>
                 <MudText Typo="Typo.body2" Class="dashboard-muted-text">Completed</MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="6" md="3">
-            <MudPaper Class="surface-card metric-card dashboard-metric-card" Elevation="0">
+            <MudPaper Class="surface-card metric-card dashboard-metric-card dashboard-accent-sky" Elevation="0">
                 <MudIcon Icon="@Icons.Material.Filled.PendingActions" Color="Color.Info" Size="Size.Large" />
                 <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.InProgressItems</MudText>
                 <MudText Typo="Typo.body2" Class="dashboard-muted-text">In progress</MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="6" md="3">
-            <MudPaper Class="surface-card metric-card dashboard-metric-card" Elevation="0">
+            <MudPaper Class="surface-card metric-card dashboard-metric-card dashboard-accent-amber" Elevation="0">
                 <MudIcon Icon="@Icons.Material.Filled.Schedule" Color="Color.Warning" Size="Size.Large" />
                 <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.DueThisMonth</MudText>
                 <MudText Typo="Typo.body2" Class="dashboard-muted-text">Due this month</MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="6" md="3">
-            <MudPaper Class="surface-card metric-card dashboard-metric-card" Elevation="0">
+            <MudPaper Class="surface-card metric-card dashboard-metric-card dashboard-accent-rose" Elevation="0">
                 <MudIcon Icon="@Icons.Material.Filled.Bolt" Color="Color.Error" Size="Size.Large" />
                 <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.RapidRampItems</MudText>
                 <MudText Typo="Typo.body2" Class="dashboard-muted-text">Rapid-ramp ready</MudText>
@@ -91,14 +91,14 @@ else if (snapshot is not null)
         </MudItem>
     </MudGrid>
 
-    <MudGrid>
+    <MudGrid Class="dashboard-content-grid">
         <MudItem xs="12" md="6">
-            <MudPaper Class="surface-card mb-4 dashboard-panel-card" Elevation="0">
+            <MudPaper Class="surface-card mb-4 dashboard-panel-card dashboard-accent-indigo" Elevation="0">
                 <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
                     <MudText Typo="Typo.h6">Current focus</MudText>
                     <MudChip T="string" Variant="Variant.Outlined" Color="Color.Primary">Top 5</MudChip>
                 </MudStack>
-                <MudList T="string">
+                <MudList T="string" Class="dashboard-focus-list">
                     @foreach (var item in snapshot.FocusItems)
                     {
                         <MudListItem T="string" Class="focus-item">
@@ -127,7 +127,7 @@ else if (snapshot is not null)
             </MudPaper>
         </MudItem>
         <MudItem xs="12" md="6">
-            <MudPaper Class="surface-card mb-4 dashboard-panel-card" Elevation="0">
+            <MudPaper Class="surface-card mb-4 dashboard-panel-card dashboard-accent-cyan" Elevation="0">
                 <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
                     <MudText Typo="Typo.h6">Upcoming timeline</MudText>
                     <MudText Typo="Typo.caption" Class="dashboard-muted-text">Next 6 items</MudText>
@@ -147,7 +147,7 @@ else if (snapshot is not null)
             </MudPaper>
         </MudItem>
         <MudItem xs="12" md="7">
-            <MudPaper Class="surface-card mb-4 dashboard-panel-card" Elevation="0">
+            <MudPaper Class="surface-card mb-4 dashboard-panel-card dashboard-accent-violet" Elevation="0">
                 <MudText Typo="Typo.h6" Class="mb-3">Pinned resources</MudText>
                 <MudGrid>
                     @foreach (var resource in snapshot.PinnedResources)
@@ -167,7 +167,7 @@ else if (snapshot is not null)
             </MudPaper>
         </MudItem>
         <MudItem xs="12" md="5">
-            <MudPaper Class="surface-card mb-4 dashboard-panel-card" Elevation="0">
+            <MudPaper Class="surface-card mb-4 dashboard-panel-card dashboard-accent-peach" Elevation="0">
                 <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
                     <MudText Typo="Typo.h6">Need to watch</MudText>
                     <MudChip T="string" Color="Color.Warning" Variant="Variant.Outlined">@snapshot.NeedToWatchCount queued</MudChip>
@@ -210,7 +210,7 @@ else if (snapshot is not null)
             </MudPaper>
         </MudItem>
         <MudItem xs="12">
-            <MudPaper Class="surface-card mb-4 dashboard-panel-card" Elevation="0">
+            <MudPaper Class="surface-card mb-4 dashboard-panel-card dashboard-accent-slate" Elevation="0">
                 <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
                     <div>
                         <MudText Typo="Typo.h6">Announcements</MudText>
