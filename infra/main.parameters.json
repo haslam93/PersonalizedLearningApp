@@ -20,6 +20,9 @@
     "gitHubOAuthClientSecret": {
       "value": "${GITHUB_OAUTH_CLIENT_SECRET}"
     },
+    "youTubeApiKey": {
+      "value": "${YOUTUBE_API_KEY}"
+    },
     "copilotCliPath": {
       "value": "${COPILOT_CLI_PATH}"
     },

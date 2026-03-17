@@ -11,6 +11,10 @@ public class TrackerDbContext(DbContextOptions<TrackerDbContext> options) : DbCo
 
     public DbSet<NoteEntry> Notes => Set<NoteEntry>();
 
+    public DbSet<VideoChannel> VideoChannels => Set<VideoChannel>();
+
+    public DbSet<VideoEntry> Videos => Set<VideoEntry>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<TrainingItem>()
@@ -25,5 +29,29 @@ public class TrackerDbContext(DbContextOptions<TrackerDbContext> options) : DbCo
 
         modelBuilder.Entity<NoteEntry>()
             .HasIndex(note => note.CreatedUtc);
+
+        modelBuilder.Entity<VideoChannel>()
+            .HasIndex(channel => channel.ChannelId)
+            .IsUnique();
+
+        modelBuilder.Entity<VideoChannel>()
+            .HasIndex(channel => channel.Handle)
+            .IsUnique();
+
+        modelBuilder.Entity<VideoEntry>()
+            .HasIndex(video => video.YouTubeVideoId)
+            .IsUnique();
+
+        modelBuilder.Entity<VideoEntry>()
+            .HasIndex(video => new { video.WatchState, video.PublishedUtc });
+
+        modelBuilder.Entity<VideoEntry>()
+            .HasIndex(video => new { video.ChannelId, video.PublishedUtc });
+
+        modelBuilder.Entity<VideoEntry>()
+            .HasOne(video => video.Channel)
+            .WithMany(channel => channel.Videos)
+            .HasForeignKey(video => video.ChannelId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

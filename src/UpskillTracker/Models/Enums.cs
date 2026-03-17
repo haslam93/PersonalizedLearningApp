@@ -39,3 +39,11 @@ public enum AnnouncementStream
     MicrosoftOfficial,
     IndustryInsights
 }
+
+public enum VideoWatchState
+{
+    Inbox,
+    NeedToWatch,
+    Seen,
+    Removed
+}

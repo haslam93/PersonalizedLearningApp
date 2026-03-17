@@ -2,7 +2,7 @@
 title: Hammad's Learning Portal
 description: Personal learning tracker with dual announcement streams, GitHub Copilot chat, notes, resources, timelines, and Azure deployment automation
 author: Microsoft
-ms.date: 2026-03-16
+ms.date: 2026-03-17
 ms.topic: overview
 keywords:
    - learning portal
@@ -197,13 +197,14 @@ in the azd environment:
 ```powershell
 azd env set GITHUB_OAUTH_CLIENT_ID <your-production-client-id>
 azd env set GITHUB_OAUTH_CLIENT_SECRET <your-production-client-secret>
+azd env set YOUTUBE_API_KEY <your-youtube-api-key>
 azd env set COPILOT_DEFAULT_MODEL gpt-5
 ```
 
 You can also pass these values directly to the wrapper script:
 
 ```powershell
-.\scripts\deploy-azd.ps1 -EnvironmentName personal-learning -Location eastus2 -ResourceGroupName rg-personal-learning -WebAppName <unique-web-app-name> -GitHubOAuthClientId <client-id> -GitHubOAuthClientSecret <client-secret>
+.\scripts\deploy-azd.ps1 -EnvironmentName personal-learning -Location eastus2 -ResourceGroupName rg-personal-learning -WebAppName <unique-web-app-name> -GitHubOAuthClientId <client-id> -GitHubOAuthClientSecret <client-secret> -YouTubeApiKey <youtube-api-key>
 ```
 
 If you already have the App Service created, you can place the same values in
@@ -212,7 +213,18 @@ Azure Portal under the web app's `Environment variables` page:
 * `GitHubOAuth__ClientId`
 * `GitHubOAuth__ClientSecret`
 * `GitHubOAuth__CallbackPath` = `/signin-github`
+* `YouTube__ApiKey`
 * `CopilotSdk__DefaultModel` = `gpt-5`
+
+### GitHub Actions production secret for YouTube
+
+The production deployment workflow reads the YouTube key from the repository or
+environment secret named `APP_YOUTUBE_API_KEY` and pushes it into the Azure web
+app as the `YouTube__ApiKey` application setting during deployment.
+
+If you are deploying from the `production` GitHub environment, add the secret
+there so environment protection rules continue to apply. A repository-level
+secret also works if you do not need environment-scoped separation.
 
 The `azd` path uses these files:
 

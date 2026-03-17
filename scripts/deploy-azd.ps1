@@ -6,6 +6,7 @@ param(
     [string]$SubscriptionId = '',
     [string]$GitHubOAuthClientId = '',
     [string]$GitHubOAuthClientSecret = '',
+    [string]$YouTubeApiKey = '',
     [string]$CopilotCliPath = '',
     [string]$CopilotDefaultModel = 'gpt-5',
     [switch]$ProvisionOnly,
@@ -55,6 +56,7 @@ function Invoke-AppServiceFallbackDeployment {
         -SubscriptionId $resolvedSubscriptionId `
         -GitHubOAuthClientId $GitHubOAuthClientId `
         -GitHubOAuthClientSecret $GitHubOAuthClientSecret `
+        -YouTubeApiKey $YouTubeApiKey `
         -CopilotCliPath $CopilotCliPath `
         -CopilotDefaultModel $CopilotDefaultModel `
         -SkipProvisioning
@@ -146,6 +148,7 @@ Invoke-NativeCommand -Command { azd env set AZURE_WEB_APP_NAME $resolvedWebAppNa
 Invoke-NativeCommand -Command { azd env set AZURE_SUBSCRIPTION_ID $resolvedSubscriptionId } -FailureMessage 'Failed to set AZURE_SUBSCRIPTION_ID in the azd environment.'
 Set-AzdEnvironmentValueIfProvided -Name 'GITHUB_OAUTH_CLIENT_ID' -Value $GitHubOAuthClientId -FailureMessage 'Failed to set GITHUB_OAUTH_CLIENT_ID in the azd environment.'
 Set-AzdEnvironmentValueIfProvided -Name 'GITHUB_OAUTH_CLIENT_SECRET' -Value $GitHubOAuthClientSecret -FailureMessage 'Failed to set GITHUB_OAUTH_CLIENT_SECRET in the azd environment.'
+Set-AzdEnvironmentValueIfProvided -Name 'YOUTUBE_API_KEY' -Value $YouTubeApiKey -FailureMessage 'Failed to set YOUTUBE_API_KEY in the azd environment.'
 Set-AzdEnvironmentValueIfProvided -Name 'COPILOT_CLI_PATH' -Value $CopilotCliPath -FailureMessage 'Failed to set COPILOT_CLI_PATH in the azd environment.'
 Set-AzdEnvironmentValueIfProvided -Name 'COPILOT_DEFAULT_MODEL' -Value $CopilotDefaultModel -FailureMessage 'Failed to set COPILOT_DEFAULT_MODEL in the azd environment.'
 

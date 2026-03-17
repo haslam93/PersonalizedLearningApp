@@ -16,6 +16,7 @@ param(
     [string]$SubscriptionId = '',
     [string]$GitHubOAuthClientId = '',
     [string]$GitHubOAuthClientSecret = '',
+    [string]$YouTubeApiKey = '',
     [string]$CopilotCliPath = '',
     [string]$CopilotDefaultModel = 'gpt-5',
     [switch]$SkipProvisioning
@@ -196,6 +197,10 @@ if (-not [string]::IsNullOrWhiteSpace($GitHubOAuthClientId)) {
 
 if (-not [string]::IsNullOrWhiteSpace($GitHubOAuthClientSecret)) {
     $appSettings += "GitHubOAuth__ClientSecret=$GitHubOAuthClientSecret"
+}
+
+if (-not [string]::IsNullOrWhiteSpace($YouTubeApiKey)) {
+    $appSettings += "YouTube__ApiKey=$YouTubeApiKey"
 }
 
 if (-not [string]::IsNullOrWhiteSpace($CopilotCliPath)) {

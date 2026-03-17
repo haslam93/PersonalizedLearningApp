@@ -17,6 +17,10 @@ param gitHubOAuthClientId string = ''
 @secure()
 param gitHubOAuthClientSecret string = ''
 
+@description('YouTube Data API key used to sync channel and video metadata.')
+@secure()
+param youTubeApiKey string = ''
+
 @description('Optional path to the GitHub Copilot CLI binary when it is bundled with the app.')
 param copilotCliPath string = ''
 
@@ -133,6 +137,10 @@ resource webApp 'Microsoft.Web/sites@2024-11-01' = {
         {
           name: 'GitHubOAuth__ClientSecret'
           value: gitHubOAuthClientSecret
+        }
+        {
+          name: 'YouTube__ApiKey'
+          value: youTubeApiKey
         }
         {
           name: 'GitHubOAuth__CallbackPath'

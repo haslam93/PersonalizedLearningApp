@@ -146,6 +146,33 @@ else if (snapshot is not null)
         </MudItem>
         <MudItem xs="12" md="5">
             <MudPaper Class="surface-card mb-4" Elevation="0">
+                <MudText Typo="Typo.h6" Class="mb-3">Need to watch</MudText>
+                @if (snapshot.NeedToWatchVideos.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">Mark videos as need to watch from the Videos tab and they will show up here.</MudAlert>
+                }
+                else
+                {
+                    @foreach (var video in snapshot.NeedToWatchVideos)
+                    {
+                        <MudPaper Class="timeline-entry mb-3" Elevation="0">
+                            <MudStack Spacing="1">
+                                <MudText Typo="Typo.subtitle2">@video.Title</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-secondary-text">@video.ChannelTitle • @FormatAnnouncementDate(video.PublishedUtc)</MudText>
+                                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="@video.Url" Target="_blank" EndIcon="@Icons.Material.Filled.OpenInNew">
+                                        Open
+                                    </MudButton>
+                                    <MudButton Variant="Variant.Text" Color="Color.Success" OnClick="@(() => MarkVideoSeenAsync(video.Id))">
+                                        Mark as seen
+                                    </MudButton>
+                                </MudStack>
+                            </MudStack>
+                        </MudPaper>
+                    }
+                }
+
+                <MudDivider Class="my-4" />
                 <MudText Typo="Typo.h6" Class="mb-3">Recent notes</MudText>
                 @foreach (var note in snapshot.RecentNotes)
                 {
@@ -363,6 +390,13 @@ else if (snapshot is not null)
     {
         await LoadAnnouncementsAsync(forceRefresh: true);
         Snackbar.Add("Announcement feed refreshed.", Severity.Success);
+    }
+
+    private async Task MarkVideoSeenAsync(int id)
+    {
+        await TrackerService.UpdateVideoWatchStateAsync(id, UpskillTracker.Models.VideoWatchState.Seen);
+        snapshot = await TrackerService.GetDashboardSnapshotAsync();
+        Snackbar.Add("Video marked as seen.", Severity.Success);
     }
 
     private void MarkAnnouncementSeen(UpskillTracker.Models.AnnouncementItem announcement)

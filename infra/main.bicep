@@ -26,6 +26,10 @@ param gitHubOAuthClientId string = ''
 @secure()
 param gitHubOAuthClientSecret string = ''
 
+@description('YouTube Data API key used to sync channel and video metadata.')
+@secure()
+param youTubeApiKey string = ''
+
 @description('Optional path to the GitHub Copilot CLI binary when it is bundled with the app.')
 param copilotCliPath string = ''
 
@@ -73,6 +77,7 @@ module resources './resources.bicep' = {
     customHostname: customHostname
     gitHubOAuthClientId: gitHubOAuthClientId
     gitHubOAuthClientSecret: gitHubOAuthClientSecret
+    youTubeApiKey: youTubeApiKey
     location: location
     logAnalyticsWorkspaceName: effectiveWorkspaceName
     tags: tags

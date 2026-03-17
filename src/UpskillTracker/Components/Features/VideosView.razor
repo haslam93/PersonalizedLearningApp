@@ -1,0 +1,287 @@
+@inject UpskillTracker.Services.TrackerService TrackerService
+@inject UpskillTracker.Services.YouTubeVideoService YouTubeVideoService
+@inject ISnackbar Snackbar
+
+<MudGrid>
+    <MudItem xs="12" lg="4">
+        <MudPaper Class="surface-card mb-4" Elevation="0">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                <MudText Typo="Typo.h6">YouTube channels</MudText>
+                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshVideosAsync" Disabled="@isRefreshing">Refresh</MudButton>
+            </MudStack>
+
+            @if (!string.IsNullOrWhiteSpace(setupMessage))
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">@setupMessage</MudAlert>
+            }
+
+            <MudStack Row="true" Spacing="2" Class="mb-4">
+                <MudTextField @bind-Value="channelInput" Label="Channel URL or handle" Variant="Variant.Outlined" Placeholder="@ChannelPlaceholder" Class="flex-1" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddChannelAsync" Disabled="@(!YouTubeVideoService.IsConfigured)">Add</MudButton>
+            </MudStack>
+
+            @if (channels.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">No channels saved yet.</MudAlert>
+            }
+            else
+            {
+                @foreach (var channel in channels)
+                {
+                    <MudPaper Class="timeline-entry mb-3" Elevation="0">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                            <div>
+                                <MudText Typo="Typo.subtitle2">@channel.DisplayName</MudText>
+                                <MudText Typo="Typo.body2" Class="mud-secondary-text">@channel.Handle</MudText>
+                                @if (channel.LastSyncedUtc.HasValue)
+                                {
+                                    <MudText Typo="Typo.caption" Class="mud-secondary-text">Synced @FormatRelative(channel.LastSyncedUtc.Value)</MudText>
+                                }
+                            </div>
+                            <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="@(() => RemoveChannelAsync(channel.Id))">Remove</MudButton>
+                        </MudStack>
+                    </MudPaper>
+                }
+            }
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" lg="8">
+        <MudPaper Class="surface-card mb-4" Elevation="0">
+            <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" Class="mb-4">
+                <MudTextField @bind-Value="searchText" Placeholder="Search videos" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="flex-1" />
+                <MudSelect T="string" @bind-Value="selectedChannel" Label="Channel" Variant="Variant.Outlined" Clearable="true">
+                    @foreach (var channelName in channelNames)
+                    {
+                        <MudSelectItem T="string" Value="@channelName">@channelName</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="UpskillTracker.Models.VideoWatchState?" @bind-Value="selectedWatchState" Label="Status" Variant="Variant.Outlined" Clearable="true">
+                    @foreach (var watchState in Enum.GetValues<UpskillTracker.Models.VideoWatchState>())
+                    {
+                        <MudSelectItem T="UpskillTracker.Models.VideoWatchState?" Value="@watchState">@GetWatchStateLabel(watchState)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudStack>
+
+            @if (isLoading)
+            {
+                <MudSkeleton Height="260px" />
+            }
+            else if (FilteredVideos.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">No videos match the current filters yet.</MudAlert>
+            }
+            else
+            {
+                <MudGrid>
+                    @foreach (var video in FilteredVideos)
+                    {
+                        <MudItem xs="12" md="6">
+                            <MudPaper Class="resource-card mb-3" Elevation="0">
+                                @if (!string.IsNullOrWhiteSpace(video.ThumbnailUrl))
+                                {
+                                    <img src="@video.ThumbnailUrl" alt="@video.Title" style="width:100%; border-radius:14px; margin-bottom:12px; aspect-ratio:16/9; object-fit:cover;" />
+                                }
+
+                                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                                    <div>
+                                        <MudText Typo="Typo.subtitle2">@video.Title</MudText>
+                                        <MudText Typo="Typo.caption" Class="mud-secondary-text">@video.ChannelTitle • @FormatRelative(video.PublishedUtc)</MudText>
+                                    </div>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetWatchStateColor(video.WatchState)">@GetWatchStateLabel(video.WatchState)</MudChip>
+                                </MudStack>
+
+                                @if (!string.IsNullOrWhiteSpace(video.Summary))
+                                {
+                                    <MudText Typo="Typo.body2" Class="my-3">@Truncate(video.Summary, 180)</MudText>
+                                }
+
+                                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="@video.Url" Target="_blank" EndIcon="@Icons.Material.Filled.OpenInNew">
+                                        Open on YouTube
+                                    </MudButton>
+                                    @if (video.WatchState != UpskillTracker.Models.VideoWatchState.NeedToWatch)
+                                    {
+                                        <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="@(() => MarkNeedToWatchAsync(video.Id))">Need to watch</MudButton>
+                                    }
+                                    @if (video.WatchState != UpskillTracker.Models.VideoWatchState.Seen)
+                                    {
+                                        <MudButton Variant="Variant.Text" Color="Color.Success" OnClick="@(() => MarkSeenAsync(video.Id))">Mark as seen</MudButton>
+                                    }
+                                    @if (video.WatchState != UpskillTracker.Models.VideoWatchState.Removed)
+                                    {
+                                        <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="@(() => RemoveAsync(video.Id))">Remove</MudButton>
+                                    }
+                                    else
+                                    {
+                                        <MudButton Variant="Variant.Text" Color="Color.Info" OnClick="@(() => AddBackAsync(video.Id))">Add back</MudButton>
+                                    }
+                                </MudStack>
+                            </MudPaper>
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private const string ChannelPlaceholder = "https://www.youtube.com/@MicrosoftDeveloper";
+    private readonly List<UpskillTracker.Models.VideoChannel> channels = [];
+    private readonly List<UpskillTracker.Models.VideoEntry> videos = [];
+    private List<string> channelNames = [];
+    private bool isLoading = true;
+    private bool isRefreshing;
+    private string channelInput = string.Empty;
+    private string searchText = string.Empty;
+    private string? selectedChannel;
+    private UpskillTracker.Models.VideoWatchState? selectedWatchState;
+    private string setupMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        setupMessage = YouTubeVideoService.GetSetupMessage();
+        await LoadAsync();
+    }
+
+    private IReadOnlyList<UpskillTracker.Models.VideoEntry> FilteredVideos => videos
+        .Where(video => string.IsNullOrWhiteSpace(searchText)
+            || video.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase)
+            || video.ChannelTitle.Contains(searchText, StringComparison.OrdinalIgnoreCase)
+            || video.Summary.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+        .Where(video => string.IsNullOrWhiteSpace(selectedChannel)
+            || video.ChannelTitle.Equals(selectedChannel, StringComparison.OrdinalIgnoreCase))
+        .Where(video => selectedWatchState is null || video.WatchState == selectedWatchState.Value)
+        .ToList();
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+
+        channels.Clear();
+        channels.AddRange(await TrackerService.GetVideoChannelsAsync());
+
+        videos.Clear();
+        videos.AddRange(await TrackerService.GetVideosAsync());
+
+        channelNames = videos
+            .Select(video => video.ChannelTitle)
+            .Where(title => !string.IsNullOrWhiteSpace(title))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(title => title)
+            .ToList();
+
+        isLoading = false;
+    }
+
+    private async Task AddChannelAsync()
+    {
+        var resolution = await YouTubeVideoService.ResolveChannelAsync(channelInput);
+        if (!resolution.IsSuccess || resolution.Channel is null)
+        {
+            Snackbar.Add(resolution.Message, Severity.Warning);
+            return;
+        }
+
+        await TrackerService.SaveVideoChannelAsync(new UpskillTracker.Models.VideoChannel
+        {
+            DisplayName = resolution.Channel.DisplayName,
+            Handle = resolution.Channel.Handle,
+            ChannelId = resolution.Channel.ChannelId,
+            ChannelUrl = resolution.Channel.ChannelUrl,
+            Description = resolution.Channel.Description,
+            ThumbnailUrl = resolution.Channel.ThumbnailUrl
+        });
+
+        channelInput = string.Empty;
+        Snackbar.Add("Channel saved.", Severity.Success);
+        await LoadAsync();
+    }
+
+    private async Task RemoveChannelAsync(int id)
+    {
+        await TrackerService.DeleteVideoChannelAsync(id);
+        Snackbar.Add("Channel removed.", Severity.Info);
+        await LoadAsync();
+    }
+
+    private async Task RefreshVideosAsync()
+    {
+        isRefreshing = true;
+
+        try
+        {
+            var result = await YouTubeVideoService.RefreshAsync();
+            Snackbar.Add(result.Message, result.IsSuccess ? Severity.Success : Severity.Warning);
+            await LoadAsync();
+        }
+        finally
+        {
+            isRefreshing = false;
+        }
+    }
+
+    private async Task ChangeVideoStateAsync(int id, UpskillTracker.Models.VideoWatchState watchState, string message)
+    {
+        await TrackerService.UpdateVideoWatchStateAsync(id, watchState);
+        Snackbar.Add(message, Severity.Success);
+        await LoadAsync();
+    }
+
+    private Task MarkNeedToWatchAsync(int id)
+        => ChangeVideoStateAsync(id, UpskillTracker.Models.VideoWatchState.NeedToWatch, "Marked as need to watch.");
+
+    private Task MarkSeenAsync(int id)
+        => ChangeVideoStateAsync(id, UpskillTracker.Models.VideoWatchState.Seen, "Marked as seen.");
+
+    private Task RemoveAsync(int id)
+        => ChangeVideoStateAsync(id, UpskillTracker.Models.VideoWatchState.Removed, "Removed from watchlist.");
+
+    private Task AddBackAsync(int id)
+        => ChangeVideoStateAsync(id, UpskillTracker.Models.VideoWatchState.Inbox, "Added back to watchlist.");
+
+    private static string GetWatchStateLabel(UpskillTracker.Models.VideoWatchState watchState) => watchState switch
+    {
+        UpskillTracker.Models.VideoWatchState.NeedToWatch => "Need to watch",
+        UpskillTracker.Models.VideoWatchState.Seen => "Seen",
+        UpskillTracker.Models.VideoWatchState.Removed => "Removed",
+        _ => "Inbox"
+    };
+
+    private static Color GetWatchStateColor(UpskillTracker.Models.VideoWatchState watchState) => watchState switch
+    {
+        UpskillTracker.Models.VideoWatchState.NeedToWatch => Color.Warning,
+        UpskillTracker.Models.VideoWatchState.Seen => Color.Success,
+        UpskillTracker.Models.VideoWatchState.Removed => Color.Error,
+        _ => Color.Info
+    };
+
+    private static string FormatRelative(DateTime utcDate)
+    {
+        var age = DateTime.UtcNow - utcDate;
+
+        if (age.TotalDays < 1)
+        {
+            return age.TotalHours < 1 ? "recently" : $"{Math.Max(1, (int)age.TotalHours)}h ago";
+        }
+
+        if (age.TotalDays < 7)
+        {
+            return $"{Math.Max(1, (int)age.TotalDays)}d ago";
+        }
+
+        return utcDate.ToLocalTime().ToString("MMM d");
+    }
+
+    private static string Truncate(string value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length <= maxLength)
+        {
+            return value;
+        }
+
+        return string.Concat(value[..maxLength], "...");
+    }
+}

@@ -12,6 +12,7 @@ public static class DatabaseInitializer
         await using var db = await dbFactory.CreateDbContextAsync();
 
         await db.Database.EnsureCreatedAsync();
+        await EnsureVideoSchemaAsync(db);
 
         if (!await db.TrainingItems.AnyAsync())
         {
@@ -19,6 +20,7 @@ public static class DatabaseInitializer
         }
 
         await EnsureSeedResourcesAsync(db);
+        await EnsureSeedVideoChannelsAsync(db);
 
         if (!await db.Notes.AnyAsync())
         {
@@ -47,6 +49,76 @@ public static class DatabaseInitializer
             }
 
             db.Resources.Add(resource);
+        }
+    }
+
+    private static async Task EnsureVideoSchemaAsync(TrackerDbContext db)
+    {
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            CREATE TABLE IF NOT EXISTS VideoChannels (
+                Id INTEGER NOT NULL CONSTRAINT PK_VideoChannels PRIMARY KEY AUTOINCREMENT,
+                DisplayName TEXT NOT NULL,
+                Handle TEXT NOT NULL,
+                ChannelId TEXT NOT NULL,
+                ChannelUrl TEXT NOT NULL,
+                Description TEXT NOT NULL,
+                ThumbnailUrl TEXT NOT NULL,
+                IsSeeded INTEGER NOT NULL,
+                CreatedUtc TEXT NOT NULL,
+                UpdatedUtc TEXT NOT NULL,
+                LastSyncedUtc TEXT NULL
+            );
+            """);
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            CREATE TABLE IF NOT EXISTS Videos (
+                Id INTEGER NOT NULL CONSTRAINT PK_Videos PRIMARY KEY AUTOINCREMENT,
+                ChannelId INTEGER NOT NULL,
+                YouTubeVideoId TEXT NOT NULL,
+                Title TEXT NOT NULL,
+                Url TEXT NOT NULL,
+                ThumbnailUrl TEXT NOT NULL,
+                Summary TEXT NOT NULL,
+                ChannelTitle TEXT NOT NULL,
+                PublishedUtc TEXT NOT NULL,
+                WatchState INTEGER NOT NULL,
+                CreatedUtc TEXT NOT NULL,
+                UpdatedUtc TEXT NOT NULL,
+                LastViewedUtc TEXT NULL,
+                LastSyncedUtc TEXT NULL,
+                CONSTRAINT FK_Videos_VideoChannels_ChannelId FOREIGN KEY (ChannelId) REFERENCES VideoChannels (Id) ON DELETE CASCADE
+            );
+            """);
+
+        await db.Database.ExecuteSqlRawAsync("CREATE UNIQUE INDEX IF NOT EXISTS IX_VideoChannels_ChannelId ON VideoChannels (ChannelId);");
+        await db.Database.ExecuteSqlRawAsync("CREATE UNIQUE INDEX IF NOT EXISTS IX_VideoChannels_Handle ON VideoChannels (Handle);");
+        await db.Database.ExecuteSqlRawAsync("CREATE UNIQUE INDEX IF NOT EXISTS IX_Videos_YouTubeVideoId ON Videos (YouTubeVideoId);");
+        await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_Videos_WatchState_PublishedUtc ON Videos (WatchState, PublishedUtc);");
+        await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_Videos_ChannelId_PublishedUtc ON Videos (ChannelId, PublishedUtc);");
+    }
+
+    private static async Task EnsureSeedVideoChannelsAsync(TrackerDbContext db)
+    {
+        var existingChannelKeys = await db.VideoChannels
+            .AsNoTracking()
+            .Select(channel => channel.Handle)
+            .ToListAsync();
+
+        var existingHandles = existingChannelKeys
+            .Where(handle => !string.IsNullOrWhiteSpace(handle))
+            .Select(handle => handle.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var channel in GetSeedVideoChannels())
+        {
+            if (existingHandles.Contains(channel.Handle.Trim()))
+            {
+                continue;
+            }
+
+            db.VideoChannels.Add(channel);
         }
     }
 
@@ -212,6 +284,40 @@ public static class DatabaseInitializer
                 EstimatedHours = 8,
                 Priority = 4,
                 Notes = "Use this when customer demand shifts toward system integration and operational reliability."
+            }
+        ];
+    }
+
+    private static IEnumerable<VideoChannel> GetSeedVideoChannels()
+    {
+        return
+        [
+            new VideoChannel
+            {
+                DisplayName = "NTFAQGuy",
+                Handle = "@NTFAQGuy",
+                ChannelId = "seed:@NTFAQGuy",
+                ChannelUrl = "https://www.youtube.com/@NTFAQGuy",
+                Description = "Starter seed channel. Channel metadata is refreshed once the YouTube sync runs.",
+                IsSeeded = true
+            },
+            new VideoChannel
+            {
+                DisplayName = "Microsoft Developer",
+                Handle = "@MicrosoftDeveloper",
+                ChannelId = "seed:@MicrosoftDeveloper",
+                ChannelUrl = "https://www.youtube.com/@MicrosoftDeveloper",
+                Description = "Starter seed channel. Channel metadata is refreshed once the YouTube sync runs.",
+                IsSeeded = true
+            },
+            new VideoChannel
+            {
+                DisplayName = "Microsoft Mechanics",
+                Handle = "@MSFTMechanics",
+                ChannelId = "seed:@MSFTMechanics",
+                ChannelUrl = "https://www.youtube.com/@MSFTMechanics",
+                Description = "Starter seed channel. Channel metadata is refreshed once the YouTube sync runs.",
+                IsSeeded = true
             }
         ];
     }

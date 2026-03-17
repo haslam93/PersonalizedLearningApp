@@ -32,6 +32,13 @@ public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
             .Take(4)
             .ToListAsync();
 
+        var needToWatchVideos = await db.Videos
+            .AsNoTracking()
+            .Where(video => video.WatchState == VideoWatchState.NeedToWatch)
+            .OrderByDescending(video => video.PublishedUtc)
+            .Take(5)
+            .ToListAsync();
+
         var completedItems = trainingItems.Count(item => item.Status == TrackerStatus.Completed);
         var upcomingItems = trainingItems.Where(item => item.TargetDate >= today).Take(6).ToList();
         var focusItems = trainingItems
@@ -54,7 +61,8 @@ public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
             UpcomingItems = upcomingItems,
             FocusItems = focusItems,
             PinnedResources = pinnedResources,
-            RecentNotes = recentNotes
+            RecentNotes = recentNotes,
+            NeedToWatchVideos = needToWatchVideos
         };
     }
 
@@ -87,6 +95,37 @@ public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
             .AsNoTracking()
             .OrderByDescending(note => note.IsPinned)
             .ThenByDescending(note => note.UpdatedUtc)
+            .ToListAsync();
+    }
+
+    public async Task<List<VideoChannel>> GetVideoChannelsAsync()
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        return await db.VideoChannels
+            .AsNoTracking()
+            .OrderBy(channel => channel.DisplayName)
+            .ToListAsync();
+    }
+
+    public async Task<List<VideoEntry>> GetVideosAsync()
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        return await db.Videos
+            .AsNoTracking()
+            .OrderBy(video => video.WatchState)
+            .ThenByDescending(video => video.PublishedUtc)
+            .ThenBy(video => video.Title)
+            .ToListAsync();
+    }
+
+    public async Task<List<VideoEntry>> GetNeedToWatchVideosAsync(int take = 6)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        return await db.Videos
+            .AsNoTracking()
+            .Where(video => video.WatchState == VideoWatchState.NeedToWatch)
+            .OrderByDescending(video => video.PublishedUtc)
+            .Take(take)
             .ToListAsync();
     }
 
@@ -192,6 +231,117 @@ public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
         await db.SaveChangesAsync();
     }
 
+    public async Task SaveVideoChannelAsync(VideoChannel channel)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var now = DateTime.UtcNow;
+        var normalizedHandle = NormalizeHandle(channel.Handle);
+        var normalizedChannelUrl = string.IsNullOrWhiteSpace(channel.ChannelUrl)
+            ? string.Empty
+            : channel.ChannelUrl.Trim();
+
+        if (channel.Id == 0)
+        {
+            var duplicate = await db.VideoChannels.FirstOrDefaultAsync(existing =>
+                existing.Handle == normalizedHandle ||
+                existing.ChannelId == channel.ChannelId);
+
+            if (duplicate is not null)
+            {
+                duplicate.DisplayName = channel.DisplayName;
+                duplicate.ChannelId = channel.ChannelId;
+                duplicate.ChannelUrl = normalizedChannelUrl;
+                duplicate.Description = channel.Description;
+                duplicate.ThumbnailUrl = channel.ThumbnailUrl;
+                duplicate.IsSeeded = duplicate.IsSeeded || channel.IsSeeded;
+                duplicate.UpdatedUtc = now;
+                duplicate.LastSyncedUtc = channel.LastSyncedUtc ?? duplicate.LastSyncedUtc;
+            }
+            else
+            {
+                channel.Handle = normalizedHandle;
+                channel.ChannelUrl = normalizedChannelUrl;
+                channel.CreatedUtc = now;
+                channel.UpdatedUtc = now;
+                db.VideoChannels.Add(channel);
+            }
+        }
+        else
+        {
+            var existing = await db.VideoChannels.FirstAsync(current => current.Id == channel.Id);
+            existing.DisplayName = channel.DisplayName;
+            existing.Handle = normalizedHandle;
+            existing.ChannelId = channel.ChannelId;
+            existing.ChannelUrl = normalizedChannelUrl;
+            existing.Description = channel.Description;
+            existing.ThumbnailUrl = channel.ThumbnailUrl;
+            existing.IsSeeded = channel.IsSeeded;
+            existing.UpdatedUtc = now;
+            existing.LastSyncedUtc = channel.LastSyncedUtc;
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    public async Task DeleteVideoChannelAsync(int id)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var channel = await db.VideoChannels.FirstOrDefaultAsync(existing => existing.Id == id);
+        if (channel is null)
+        {
+            return;
+        }
+
+        db.VideoChannels.Remove(channel);
+        await db.SaveChangesAsync();
+    }
+
+    public async Task UpdateVideoWatchStateAsync(int id, VideoWatchState watchState)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var video = await db.Videos.FirstOrDefaultAsync(existing => existing.Id == id);
+        if (video is null)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        video.WatchState = watchState;
+        video.UpdatedUtc = now;
+        video.LastViewedUtc = watchState == VideoWatchState.Seen ? now : video.LastViewedUtc;
+        await db.SaveChangesAsync();
+    }
+
+    public async Task UpsertVideosAsync(IEnumerable<VideoEntry> videos)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var now = DateTime.UtcNow;
+
+        foreach (var video in videos)
+        {
+            var existing = await db.Videos.FirstOrDefaultAsync(current => current.YouTubeVideoId == video.YouTubeVideoId);
+            if (existing is null)
+            {
+                video.CreatedUtc = now;
+                video.UpdatedUtc = now;
+                db.Videos.Add(video);
+                continue;
+            }
+
+            existing.ChannelId = video.ChannelId;
+            existing.Title = video.Title;
+            existing.Url = video.Url;
+            existing.ThumbnailUrl = video.ThumbnailUrl;
+            existing.Summary = video.Summary;
+            existing.ChannelTitle = video.ChannelTitle;
+            existing.PublishedUtc = video.PublishedUtc;
+            existing.LastSyncedUtc = video.LastSyncedUtc;
+            existing.UpdatedUtc = now;
+        }
+
+        await db.SaveChangesAsync();
+    }
+
     public async Task SaveNoteAsync(NoteEntry note)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
@@ -229,5 +379,16 @@ public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
 
         db.Notes.Remove(note);
         await db.SaveChangesAsync();
+    }
+
+    private static string NormalizeHandle(string handle)
+    {
+        if (string.IsNullOrWhiteSpace(handle))
+        {
+            return string.Empty;
+        }
+
+        var trimmed = handle.Trim();
+        return trimmed.StartsWith('@') ? trimmed : $"@{trimmed}";
     }
 }

@@ -23,4 +23,6 @@ public class DashboardSnapshot
     public IReadOnlyList<ResourceEntry> PinnedResources { get; init; } = [];
 
     public IReadOnlyList<NoteEntry> RecentNotes { get; init; } = [];
+
+    public IReadOnlyList<VideoEntry> NeedToWatchVideos { get; init; } = [];
 }

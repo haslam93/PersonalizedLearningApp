@@ -27,6 +27,7 @@ builder.Services.AddApplicationInsightsTelemetry();
 builder.Services.AddHttpContextAccessor();
 builder.Services.Configure<GitHubOAuthOptions>(builder.Configuration.GetSection(GitHubOAuthOptions.SectionName));
 builder.Services.Configure<CopilotSdkOptions>(builder.Configuration.GetSection(CopilotSdkOptions.SectionName));
+builder.Services.Configure<YouTubeOptions>(builder.Configuration.GetSection(YouTubeOptions.SectionName));
 builder.Services.AddDbContextFactory<TrackerDbContext>(options => options.UseSqlite(connectionString));
 builder.Services.AddScoped<TrackerService>();
 builder.Services.AddScoped<CopilotAuthService>();
@@ -35,6 +36,11 @@ builder.Services.AddSingleton<CopilotChatService>();
 builder.Services.AddHttpClient<AnnouncementFeedService>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(15);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("UpskillTracker/1.0");
+});
+builder.Services.AddHttpClient<YouTubeVideoService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(20);
     client.DefaultRequestHeaders.UserAgent.ParseAdd("UpskillTracker/1.0");
 });
 

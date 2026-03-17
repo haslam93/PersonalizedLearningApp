@@ -82,6 +82,7 @@ jobs:
             --parameters accessPin=${{ secrets.APP_ACCESS_PIN }} \
                          gitHubOAuthClientId=${{ secrets.APP_GH_OAUTH_CLIENT_ID }} \
                          gitHubOAuthClientSecret=${{ secrets.APP_GH_OAUTH_CLIENT_SECRET }} \
+                         youTubeApiKey=${{ secrets.APP_YOUTUBE_API_KEY }} \
                          copilotDefaultModel=${{ env.COPILOT_DEFAULT_MODEL }} \
             --parameters location=${{ env.AZURE_LOCATION }} \
                          appInsightsName=${{ env.AZURE_APPINSIGHTS_NAME }} \
