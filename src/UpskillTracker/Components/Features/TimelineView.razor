@@ -1,18 +1,29 @@
 @inject UpskillTracker.Services.TrackerService TrackerService
 
+<div class="section-shell">
+    <MudPaper Class="surface-card section-intro-card timeline-intro-card mb-4" Elevation="0">
+        <MudStack Spacing="1">
+            <MudText Typo="Typo.overline" Class="text-uppercase section-kicker">Timeline</MudText>
+            <MudText Typo="Typo.h5">See upcoming learning commitments by month</MudText>
+            <MudText Typo="Typo.body2" Class="section-summary">
+                Track sequencing, watch progress move over time, and spot overloaded months before they become overdue.
+            </MudText>
+        </MudStack>
+    </MudPaper>
+
 @if (items.Count == 0)
 {
-    <MudPaper Class="surface-card" Elevation="0">
+    <MudPaper Class="surface-card content-card" Elevation="0">
         <MudText Typo="Typo.body1">No timeline items yet. Add your first learning item in the planner tab.</MudText>
     </MudPaper>
 }
 else
 {
-    <MudGrid>
+    <MudGrid Class="section-grid">
         @foreach (var monthGroup in items.GroupBy(item => new DateTime(item.TargetDate.Year, item.TargetDate.Month, 1)))
         {
             <MudItem xs="12" md="6">
-                <MudPaper Class="surface-card mb-4" Elevation="0">
+                <MudPaper Class="surface-card content-card timeline-month-card mb-4" Elevation="0">
                     <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
                         <MudText Typo="Typo.h6">@monthGroup.Key.ToString("MMMM yyyy")</MudText>
                         <MudChip T="string" Variant="Variant.Outlined" Color="Color.Primary">@monthGroup.Count() item(s)</MudChip>
@@ -40,6 +51,7 @@ else
         }
     </MudGrid>
 }
+</div>
 
 @code {
     private List<UpskillTracker.Models.TrainingItem> items = [];

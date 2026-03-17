@@ -1,9 +1,20 @@
 @inject UpskillTracker.Services.TrackerService TrackerService
 @inject ISnackbar Snackbar
 
-<MudGrid>
+<div class="section-shell">
+    <MudPaper Class="surface-card section-intro-card resources-intro-card mb-4" Elevation="0">
+        <MudStack Spacing="1">
+            <MudText Typo="Typo.overline" Class="text-uppercase section-kicker">Resource library</MudText>
+            <MudText Typo="Typo.h5">Keep the best links close to the work they support</MudText>
+            <MudText Typo="Typo.body2" Class="section-summary">
+                Organize references by platform area, pin the ones you revisit often, and keep summaries concise enough to scan quickly.
+            </MudText>
+        </MudStack>
+    </MudPaper>
+
+<MudGrid Class="section-grid">
     <MudItem xs="12" lg="7">
-        <MudPaper Class="surface-card mb-4" Elevation="0">
+        <MudPaper Class="surface-card content-card resources-library-card mb-4" Elevation="0">
             <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" Class="mb-4">
                 <MudTextField @bind-Value="searchText" Placeholder="Search resources" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="flex-1" />
                 <MudSelect T="string" @bind-Value="selectedSection" Label="Section" Variant="Variant.Outlined" Clearable="true">
@@ -53,7 +64,7 @@
     </MudItem>
 
     <MudItem xs="12" lg="5">
-        <MudPaper Class="surface-card mb-4" Elevation="0">
+        <MudPaper Class="surface-card content-card editor-card mb-4" Elevation="0">
             <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
                 <MudText Typo="Typo.h6">@(editingResource.Id == 0 ? "Add resource" : "Edit resource")</MudText>
                 <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.AddLink" OnClick="CreateNew">New</MudButton>
@@ -93,6 +104,7 @@
         </MudPaper>
     </MudItem>
 </MudGrid>
+</div>
 
 @code {
     private List<UpskillTracker.Models.ResourceEntry> resources = [];

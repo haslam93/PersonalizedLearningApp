@@ -6,6 +6,17 @@
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 
+<div class="section-shell">
+    <MudPaper Class="surface-card section-intro-card copilot-intro-card mb-4" Elevation="0">
+        <MudStack Spacing="1">
+            <MudText Typo="Typo.overline" Class="text-uppercase section-kicker">Copilot workspace</MudText>
+            <MudText Typo="Typo.h5">Ask grounded questions without leaving the portal</MudText>
+            <MudText Typo="Typo.body2" Class="section-summary">
+                Use your saved tasks, notes, and resources as context, then turn the answers into the next move inside the same workflow.
+            </MudText>
+        </MudStack>
+    </MudPaper>
+
 <div class="chat-shell">
     <MudPaper Class="surface-card chat-panel" Elevation="0">
         <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
@@ -195,6 +206,7 @@
             </MudStack>
         </MudPaper>
     </div>
+</div>
 </div>
 
 @code {

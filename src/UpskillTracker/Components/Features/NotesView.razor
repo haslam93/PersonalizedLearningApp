@@ -1,9 +1,20 @@
 @inject UpskillTracker.Services.TrackerService TrackerService
 @inject ISnackbar Snackbar
 
-<MudGrid>
+<div class="section-shell">
+    <MudPaper Class="surface-card section-intro-card notes-intro-card mb-4" Elevation="0">
+        <MudStack Spacing="1">
+            <MudText Typo="Typo.overline" Class="text-uppercase section-kicker">Notes</MudText>
+            <MudText Typo="Typo.h5">Capture decisions, lessons, and proof points fast</MudText>
+            <MudText Typo="Typo.body2" Class="section-summary">
+                Keep short structured notes near your plan so the dashboard and Copilot tab always have better context to work with.
+            </MudText>
+        </MudStack>
+    </MudPaper>
+
+<MudGrid Class="section-grid">
     <MudItem xs="12" lg="7">
-        <MudPaper Class="surface-card mb-4" Elevation="0">
+        <MudPaper Class="surface-card content-card notes-library-card mb-4" Elevation="0">
             <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" Class="mb-4">
                 <MudTextField @bind-Value="searchText" Placeholder="Search notes" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="flex-1" />
                 <MudCheckBox @bind-Value="pinnedOnly" Label="Pinned only" Color="Color.Primary" />
@@ -32,7 +43,7 @@
     </MudItem>
 
     <MudItem xs="12" lg="5">
-        <MudPaper Class="surface-card mb-4" Elevation="0">
+        <MudPaper Class="surface-card content-card editor-card mb-4" Elevation="0">
             <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
                 <MudText Typo="Typo.h6">@(editingNote.Id == 0 ? "Add note" : "Edit note")</MudText>
                 <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.NoteAdd" OnClick="CreateNew">New</MudButton>
@@ -58,6 +69,7 @@
         </MudPaper>
     </MudItem>
 </MudGrid>
+</div>
 
 @code {
     private List<UpskillTracker.Models.NoteEntry> notes = [];

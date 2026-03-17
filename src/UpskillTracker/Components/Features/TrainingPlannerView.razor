@@ -1,9 +1,20 @@
 @inject UpskillTracker.Services.TrackerService TrackerService
 @inject ISnackbar Snackbar
 
-<MudGrid>
+<div class="section-shell">
+    <MudPaper Class="surface-card section-intro-card planner-intro-card mb-4" Elevation="0">
+        <MudStack Spacing="1">
+            <MudText Typo="Typo.overline" Class="text-uppercase section-kicker">Learning planner</MudText>
+            <MudText Typo="Typo.h5">Shape the work behind your upskilling plan</MudText>
+            <MudText Typo="Typo.body2" Class="section-summary">
+                Filter active commitments, jump to supporting resources, and keep each item current without leaving the tab.
+            </MudText>
+        </MudStack>
+    </MudPaper>
+
+<MudGrid Class="section-grid">
     <MudItem xs="12" lg="7">
-        <MudPaper Class="surface-card mb-4" Elevation="0">
+        <MudPaper Class="surface-card content-card planner-table-card mb-4" Elevation="0">
             <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-4 reminder-alert">
                 Each task now suggests the best matching links from your resource library so the work can be opened directly from the plan. To personalize it, edit tasks here and add links in the Resources tab.
             </MudAlert>
@@ -77,7 +88,7 @@
     </MudItem>
 
     <MudItem xs="12" lg="5">
-        <MudPaper Class="surface-card mb-4" Elevation="0">
+        <MudPaper Class="surface-card content-card editor-card mb-4" Elevation="0">
             <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
                 <MudText Typo="Typo.h6">@(editingItem.Id == 0 ? "Add training item" : "Edit training item")</MudText>
                 <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateNew">New</MudButton>
@@ -149,6 +160,7 @@
         </MudPaper>
     </MudItem>
 </MudGrid>
+</div>
 
 @code {
     private List<UpskillTracker.Models.TrainingItem> items = [];
