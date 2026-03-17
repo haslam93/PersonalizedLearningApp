@@ -6,7 +6,7 @@
 }
 else if (overdueItems.Count > 0)
 {
-    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Dense="true" Class="mb-6 reminder-alert">
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Dense="true" Class="mb-6 reminder-alert reminder-alert-warning">
         <MudText Typo="Typo.subtitle1">@($"{overdueItems.Count} item{(overdueItems.Count == 1 ? string.Empty : "s")} need attention")</MudText>
         <MudText Typo="Typo.body2" Class="mb-3">
             Review the next due item, update its status, or move the target date when priorities changed.
@@ -23,7 +23,7 @@ else if (overdueItems.Count > 0)
 }
 else
 {
-    <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Dense="true" Class="mb-6 reminder-alert">
+    <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Dense="true" Class="mb-6 reminder-alert reminder-alert-success">
         <MudText Typo="Typo.subtitle1">On Track</MudText>
         <MudText Typo="Typo.body2">No overdue items right now. Use the dashboard, plan, or Copilot tab to pick the next move.</MudText>
     </MudAlert>

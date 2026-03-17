@@ -20,58 +20,80 @@ else if (snapshot is not null)
                     </div>
                     <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
                         <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Flag">@snapshot.FocusItems.Count active focus items</MudChip>
+                        <MudChip T="string" Color="Color.Info" Variant="Variant.Filled" Icon="@Icons.Material.Filled.OndemandVideo">@snapshot.NeedToWatchCount queued videos</MudChip>
                         <MudChip T="string" Color="Color.Secondary" Variant="Variant.Filled" Icon="@Icons.Material.Filled.LibraryBooks">@snapshot.PinnedResources.Count pinned resources</MudChip>
-                        <MudChip T="string" Color="Color.Info" Variant="Variant.Filled" Icon="@Icons.Material.Filled.StickyNote2">@snapshot.RecentNotes.Count recent notes</MudChip>
+                        <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Icon="@Icons.Material.Filled.StickyNote2">@snapshot.RecentNotes.Count recent notes</MudChip>
                     </MudStack>
                 </MudStack>
             </MudPaper>
         </MudItem>
         <MudItem xs="12" md="4">
-            <MudPaper Class="surface-card mb-4 stat-card" Elevation="0">
-                <MudText Typo="Typo.subtitle2" Class="mud-secondary-text">Completion rate</MudText>
-                <MudText Typo="Typo.h3" Class="mb-3">@snapshot.CompletionRate%</MudText>
-                <MudProgressLinear Value="@completionRate" Rounded="true" Color="Color.Primary" Size="Size.Large" />
-                <MudText Typo="Typo.body2" Class="mt-3 mud-secondary-text">
-                    @snapshot.CompletedItems of @snapshot.TotalItems planned items are done.
-                </MudText>
-            </MudPaper>
+            <MudStack Spacing="2">
+                <MudPaper Class="surface-card mb-0 stat-card dashboard-stat-card" Elevation="0">
+                    <MudText Typo="Typo.subtitle2" Class="dashboard-card-label">Completion rate</MudText>
+                    <MudText Typo="Typo.h3" Class="mb-3 dashboard-card-value">@snapshot.CompletionRate%</MudText>
+                    <MudProgressLinear Value="@completionRate" Rounded="true" Color="Color.Primary" Size="Size.Large" />
+                    <MudText Typo="Typo.body2" Class="mt-3 dashboard-muted-text">
+                        @snapshot.CompletedItems of @snapshot.TotalItems planned items are done.
+                    </MudText>
+                </MudPaper>
+
+                <MudPaper Class="surface-card mb-4 dashboard-video-tracker-card" Elevation="0">
+                    <MudStack Spacing="2">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                            <div>
+                                <MudText Typo="Typo.subtitle2" Class="dashboard-card-label">Video watch tracker</MudText>
+                                <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.NeedToWatchCount queued to watch</MudText>
+                                <MudText Typo="Typo.body2" Class="dashboard-muted-text">@snapshot.SeenVideos watched across @snapshot.TotalTrackedVideos tracked videos.</MudText>
+                            </div>
+                            <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined">@snapshot.VideoWatchCompletionRate%</MudChip>
+                        </MudStack>
+                        <MudProgressLinear Value="@videoWatchCompletionRate" Rounded="true" Color="Color.Success" Size="Size.Large" />
+                        <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
+                            <MudChip T="string" Color="Color.Default" Variant="Variant.Outlined">@snapshot.InboxVideos inbox</MudChip>
+                            <MudChip T="string" Color="Color.Warning" Variant="Variant.Outlined">@snapshot.NeedToWatchCount need to watch</MudChip>
+                            <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined">@snapshot.SeenVideos seen</MudChip>
+                        </MudStack>
+                    </MudStack>
+                </MudPaper>
+            </MudStack>
         </MudItem>
     </MudGrid>
 
     <MudGrid Class="mb-4">
         <MudItem xs="6" md="3">
-            <MudPaper Class="surface-card metric-card" Elevation="0">
+            <MudPaper Class="surface-card metric-card dashboard-metric-card" Elevation="0">
                 <MudIcon Icon="@Icons.Material.Filled.TaskAlt" Color="Color.Success" Size="Size.Large" />
-                <MudText Typo="Typo.h5">@snapshot.CompletedItems</MudText>
-                <MudText Typo="Typo.body2" Class="mud-secondary-text">Completed</MudText>
+                <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.CompletedItems</MudText>
+                <MudText Typo="Typo.body2" Class="dashboard-muted-text">Completed</MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="6" md="3">
-            <MudPaper Class="surface-card metric-card" Elevation="0">
+            <MudPaper Class="surface-card metric-card dashboard-metric-card" Elevation="0">
                 <MudIcon Icon="@Icons.Material.Filled.PendingActions" Color="Color.Info" Size="Size.Large" />
-                <MudText Typo="Typo.h5">@snapshot.InProgressItems</MudText>
-                <MudText Typo="Typo.body2" Class="mud-secondary-text">In progress</MudText>
+                <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.InProgressItems</MudText>
+                <MudText Typo="Typo.body2" Class="dashboard-muted-text">In progress</MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="6" md="3">
-            <MudPaper Class="surface-card metric-card" Elevation="0">
+            <MudPaper Class="surface-card metric-card dashboard-metric-card" Elevation="0">
                 <MudIcon Icon="@Icons.Material.Filled.Schedule" Color="Color.Warning" Size="Size.Large" />
-                <MudText Typo="Typo.h5">@snapshot.DueThisMonth</MudText>
-                <MudText Typo="Typo.body2" Class="mud-secondary-text">Due this month</MudText>
+                <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.DueThisMonth</MudText>
+                <MudText Typo="Typo.body2" Class="dashboard-muted-text">Due this month</MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="6" md="3">
-            <MudPaper Class="surface-card metric-card" Elevation="0">
+            <MudPaper Class="surface-card metric-card dashboard-metric-card" Elevation="0">
                 <MudIcon Icon="@Icons.Material.Filled.Bolt" Color="Color.Error" Size="Size.Large" />
-                <MudText Typo="Typo.h5">@snapshot.RapidRampItems</MudText>
-                <MudText Typo="Typo.body2" Class="mud-secondary-text">Rapid-ramp ready</MudText>
+                <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.RapidRampItems</MudText>
+                <MudText Typo="Typo.body2" Class="dashboard-muted-text">Rapid-ramp ready</MudText>
             </MudPaper>
         </MudItem>
     </MudGrid>
 
     <MudGrid>
         <MudItem xs="12" md="6">
-            <MudPaper Class="surface-card mb-4" Elevation="0">
+            <MudPaper Class="surface-card mb-4 dashboard-panel-card" Elevation="0">
                 <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
                     <MudText Typo="Typo.h6">Current focus</MudText>
                     <MudChip T="string" Variant="Variant.Outlined" Color="Color.Primary">Top 5</MudChip>
@@ -105,10 +127,10 @@ else if (snapshot is not null)
             </MudPaper>
         </MudItem>
         <MudItem xs="12" md="6">
-            <MudPaper Class="surface-card mb-4" Elevation="0">
+            <MudPaper Class="surface-card mb-4 dashboard-panel-card" Elevation="0">
                 <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
                     <MudText Typo="Typo.h6">Upcoming timeline</MudText>
-                    <MudText Typo="Typo.caption" Class="mud-secondary-text">Next 6 items</MudText>
+                    <MudText Typo="Typo.caption" Class="dashboard-muted-text">Next 6 items</MudText>
                 </MudStack>
                 @foreach (var item in snapshot.UpcomingItems)
                 {
@@ -125,7 +147,7 @@ else if (snapshot is not null)
             </MudPaper>
         </MudItem>
         <MudItem xs="12" md="7">
-            <MudPaper Class="surface-card mb-4" Elevation="0">
+            <MudPaper Class="surface-card mb-4 dashboard-panel-card" Elevation="0">
                 <MudText Typo="Typo.h6" Class="mb-3">Pinned resources</MudText>
                 <MudGrid>
                     @foreach (var resource in snapshot.PinnedResources)
@@ -145,8 +167,11 @@ else if (snapshot is not null)
             </MudPaper>
         </MudItem>
         <MudItem xs="12" md="5">
-            <MudPaper Class="surface-card mb-4" Elevation="0">
-                <MudText Typo="Typo.h6" Class="mb-3">Need to watch</MudText>
+            <MudPaper Class="surface-card mb-4 dashboard-panel-card" Elevation="0">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                    <MudText Typo="Typo.h6">Need to watch</MudText>
+                    <MudChip T="string" Color="Color.Warning" Variant="Variant.Outlined">@snapshot.NeedToWatchCount queued</MudChip>
+                </MudStack>
                 @if (snapshot.NeedToWatchVideos.Count == 0)
                 {
                     <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">Mark videos as need to watch from the Videos tab and they will show up here.</MudAlert>
@@ -185,11 +210,11 @@ else if (snapshot is not null)
             </MudPaper>
         </MudItem>
         <MudItem xs="12">
-            <MudPaper Class="surface-card mb-4" Elevation="0">
+            <MudPaper Class="surface-card mb-4 dashboard-panel-card" Elevation="0">
                 <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
                     <div>
                         <MudText Typo="Typo.h6">Announcements</MudText>
-                        <MudText Typo="Typo.body2" Class="mud-secondary-text">@GetAnnouncementSectionSummary()</MudText>
+                        <MudText Typo="Typo.body2" Class="dashboard-muted-text">@GetAnnouncementSectionSummary()</MudText>
                     </div>
                     <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshAnnouncementsAsync">
                         Refresh
@@ -308,6 +333,7 @@ else if (snapshot is not null)
     private UpskillTracker.Models.AnnouncementStream selectedAnnouncementStream = UpskillTracker.Models.AnnouncementStream.MicrosoftOfficial;
     private string? announcementError;
     private double completionRate;
+    private double videoWatchCompletionRate;
 
     protected override async Task OnInitializedAsync()
     {
@@ -320,6 +346,7 @@ else if (snapshot is not null)
         await announcementsTask;
 
         completionRate = snapshot is null ? 0 : (double)snapshot.CompletionRate;
+        videoWatchCompletionRate = snapshot is null ? 0 : (double)snapshot.VideoWatchCompletionRate;
         isLoading = false;
     }
 
@@ -396,6 +423,7 @@ else if (snapshot is not null)
     {
         await TrackerService.UpdateVideoWatchStateAsync(id, UpskillTracker.Models.VideoWatchState.Seen);
         snapshot = await TrackerService.GetDashboardSnapshotAsync();
+        videoWatchCompletionRate = snapshot is null ? 0 : (double)snapshot.VideoWatchCompletionRate;
         Snackbar.Add("Video marked as seen.", Severity.Success);
     }
 

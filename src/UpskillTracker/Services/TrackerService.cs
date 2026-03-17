@@ -39,7 +39,16 @@ public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
             .Take(5)
             .ToListAsync();
 
+        var trackedVideos = await db.Videos
+            .AsNoTracking()
+            .Where(video => video.WatchState != VideoWatchState.Removed)
+            .ToListAsync();
+
         var completedItems = trainingItems.Count(item => item.Status == TrackerStatus.Completed);
+        var inboxVideos = trackedVideos.Count(video => video.WatchState == VideoWatchState.Inbox);
+        var queuedVideos = trackedVideos.Count(video => video.WatchState == VideoWatchState.NeedToWatch);
+        var seenVideos = trackedVideos.Count(video => video.WatchState == VideoWatchState.Seen);
+        var totalTrackedVideos = trackedVideos.Count;
         var upcomingItems = trainingItems.Where(item => item.TargetDate >= today).Take(6).ToList();
         var focusItems = trainingItems
             .Where(item => item.Status != TrackerStatus.Completed)
@@ -58,6 +67,11 @@ public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
             DueThisMonth = trainingItems.Count(item => item.TargetDate >= today && item.TargetDate <= endOfMonth && item.Status != TrackerStatus.Completed),
             RapidRampItems = trainingItems.Count(item => item.Lane == LearningLane.RapidRamp && item.Status != TrackerStatus.Completed),
             CompletionRate = trainingItems.Count == 0 ? 0 : Math.Round((decimal)completedItems / trainingItems.Count * 100, 1),
+            TotalTrackedVideos = totalTrackedVideos,
+            InboxVideos = inboxVideos,
+            NeedToWatchCount = queuedVideos,
+            SeenVideos = seenVideos,
+            VideoWatchCompletionRate = totalTrackedVideos == 0 ? 0 : Math.Round((decimal)seenVideos / totalTrackedVideos * 100, 1),
             UpcomingItems = upcomingItems,
             FocusItems = focusItems,
             PinnedResources = pinnedResources,

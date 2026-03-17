@@ -16,6 +16,16 @@ public class DashboardSnapshot
 
     public decimal CompletionRate { get; init; }
 
+    public int TotalTrackedVideos { get; init; }
+
+    public int InboxVideos { get; init; }
+
+    public int NeedToWatchCount { get; init; }
+
+    public int SeenVideos { get; init; }
+
+    public decimal VideoWatchCompletionRate { get; init; }
+
     public IReadOnlyList<TrainingItem> UpcomingItems { get; init; } = [];
 
     public IReadOnlyList<TrainingItem> FocusItems { get; init; } = [];
