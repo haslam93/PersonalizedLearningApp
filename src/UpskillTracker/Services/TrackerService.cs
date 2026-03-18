@@ -9,8 +9,8 @@ public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
     public async Task<DashboardSnapshot> GetDashboardSnapshotAsync()
     {
         await using var db = await dbFactory.CreateDbContextAsync();
-        var today = DateTime.Today;
-        var endOfMonth = new DateTime(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month));
+        var today = GetUtcToday();
+        var endOfMonth = new DateTime(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month), 0, 0, 0, DateTimeKind.Utc);
 
         var trainingItems = await db.TrainingItems
             .AsNoTracking()
@@ -146,7 +146,7 @@ public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
     public async Task<List<TrainingItem>> GetOverdueItemsAsync()
     {
         await using var db = await dbFactory.CreateDbContextAsync();
-        var today = DateTime.Today;
+        var today = GetUtcToday();
 
         return await db.TrainingItems
             .AsNoTracking()
@@ -246,9 +246,11 @@ public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
         var now = DateTime.UtcNow;
+        var normalizedTargetDate = NormalizeUtcDate(item.TargetDate);
 
         if (item.Id == 0)
         {
+            item.TargetDate = normalizedTargetDate;
             item.CreatedUtc = now;
             item.UpdatedUtc = now;
             item.LastStatusChangedUtc = now;
@@ -263,7 +265,7 @@ public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
             existing.Domain = item.Domain;
             existing.Category = item.Category;
             existing.Description = item.Description;
-            existing.TargetDate = item.TargetDate;
+            existing.TargetDate = normalizedTargetDate;
             existing.Status = item.Status;
             existing.Lane = item.Lane;
             existing.Type = item.Type;
@@ -559,6 +561,21 @@ public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
             CreatedUtc = now,
             UpdatedUtc = now
         };
+    }
+
+    private static DateTime GetUtcToday()
+        => DateTime.UtcNow.Date;
+
+    private static DateTime NormalizeUtcDate(DateTime value)
+    {
+        var calendarDate = value.Kind switch
+        {
+            DateTimeKind.Utc => value.Date,
+            DateTimeKind.Local => value.ToUniversalTime().Date,
+            _ => value.Date
+        };
+
+        return DateTime.SpecifyKind(calendarDate, DateTimeKind.Utc);
     }
 
     private static string TruncateValue(string? value, int maxLength)

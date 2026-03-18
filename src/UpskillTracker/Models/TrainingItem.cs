@@ -20,7 +20,7 @@ public class TrainingItem
     [MaxLength(1500)]
     public string Description { get; set; } = string.Empty;
 
-    public DateTime TargetDate { get; set; } = DateTime.Today.AddDays(7);
+    public DateTime TargetDate { get; set; } = DateTime.UtcNow.Date.AddDays(7);
 
     public TrackerStatus Status { get; set; } = TrackerStatus.NotStarted;
 

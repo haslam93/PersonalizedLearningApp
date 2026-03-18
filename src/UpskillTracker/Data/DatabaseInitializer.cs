@@ -226,7 +226,7 @@ public static class DatabaseInitializer
             entity.Domain = ReadString(reader, "Domain");
             entity.Category = ReadString(reader, "Category");
             entity.Description = ReadString(reader, "Description");
-            entity.TargetDate = ReadDateTime(reader, "TargetDate", DateTime.Today);
+            entity.TargetDate = ReadDateTime(reader, "TargetDate", DateTime.UtcNow.Date);
             entity.Status = ReadEnum(reader, "Status", TrackerStatus.NotStarted);
             entity.Lane = ReadEnum(reader, "Lane", LearningLane.Core);
             entity.Type = ReadEnum(reader, "Type", TrainingItemType.Learning);
@@ -521,7 +521,7 @@ public static class DatabaseInitializer
 
     private static IEnumerable<TrainingItem> GetSeedTrainingItems()
     {
-        var today = DateTime.Today;
+        var today = DateTime.UtcNow.Date;
         var march = new DateTime(2026, 3, 17);
         var april = new DateTime(2026, 4, 18);
         var may = new DateTime(2026, 5, 16);

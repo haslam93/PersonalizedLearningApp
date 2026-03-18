@@ -221,7 +221,7 @@
     private void OnTargetDateChanged(DateTime? value)
     {
         targetDate = value;
-        editingItem.TargetDate = value ?? DateTime.Today;
+        editingItem.TargetDate = value ?? DateTime.UtcNow.Date;
     }
 
     private async Task SaveAsync()
@@ -277,7 +277,7 @@
     {
         return new UpskillTracker.Models.TrainingItem
         {
-            TargetDate = DateTime.Today.AddDays(7),
+            TargetDate = DateTime.UtcNow.Date.AddDays(7),
             Priority = 3,
             EstimatedHours = 2,
             Lane = UpskillTracker.Models.LearningLane.Core,
