@@ -7,7 +7,7 @@ param environmentName string
 param location string
 
 @description('Azure location for PostgreSQL resources when the app region is quota restricted.')
-param postgresLocation string = 'eastus'
+param postgresLocation string = 'centralus'
 
 @description('Resource group name for the environment.')
 param resourceGroupName string = 'rg-${environmentName}-${take(uniqueString(subscription().id, environmentName, location), 6)}'

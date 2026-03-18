@@ -4,7 +4,7 @@ targetScope = 'resourceGroup'
 param location string = resourceGroup().location
 
 @description('Azure location for PostgreSQL resources when the app region is quota restricted.')
-param postgresLocation string = 'eastus'
+param postgresLocation string = 'centralus'
 
 @description('Tags to apply to all resources.')
 param tags object = {}
