@@ -15,6 +15,12 @@ public class TrackerDbContext(DbContextOptions<TrackerDbContext> options) : DbCo
 
     public DbSet<VideoEntry> Videos => Set<VideoEntry>();
 
+    public DbSet<AnnouncementState> AnnouncementStates => Set<AnnouncementState>();
+
+    public DbSet<GitHubAuthSession> GitHubAuthSessions => Set<GitHubAuthSession>();
+
+    public DbSet<AppMetadataEntry> AppMetadataEntries => Set<AppMetadataEntry>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<TrainingItem>()
@@ -27,8 +33,14 @@ public class TrackerDbContext(DbContextOptions<TrackerDbContext> options) : DbCo
         modelBuilder.Entity<ResourceEntry>()
             .HasIndex(resource => new { resource.Section, resource.SortOrder });
 
+        modelBuilder.Entity<ResourceEntry>()
+            .HasIndex(resource => resource.LastOpenedUtc);
+
         modelBuilder.Entity<NoteEntry>()
             .HasIndex(note => note.CreatedUtc);
+
+        modelBuilder.Entity<TrainingItem>()
+            .HasIndex(item => item.LastStatusChangedUtc);
 
         modelBuilder.Entity<VideoChannel>()
             .HasIndex(channel => channel.ChannelId)
@@ -47,6 +59,15 @@ public class TrackerDbContext(DbContextOptions<TrackerDbContext> options) : DbCo
 
         modelBuilder.Entity<VideoEntry>()
             .HasIndex(video => new { video.ChannelId, video.PublishedUtc });
+
+        modelBuilder.Entity<AnnouncementState>()
+            .HasIndex(state => new { state.Stream, state.IsSeen, state.PublishedUtc });
+
+        modelBuilder.Entity<AnnouncementState>()
+            .HasIndex(state => new { state.Topic, state.Source });
+
+        modelBuilder.Entity<GitHubAuthSession>()
+            .HasIndex(session => session.ExpiresUtc);
 
         modelBuilder.Entity<VideoEntry>()
             .HasOne(video => video.Channel)

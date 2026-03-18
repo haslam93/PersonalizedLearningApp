@@ -30,6 +30,13 @@ param gitHubOAuthClientSecret string = ''
 @secure()
 param youTubeApiKey string = ''
 
+@description('Bootstrap PostgreSQL admin login used only for server creation and emergency access.')
+param postgresAdminLogin string = 'pgbootstrap'
+
+@description('Bootstrap PostgreSQL admin password used only for server creation and emergency access.')
+@secure()
+param postgresAdminPassword string = ''
+
 @description('Optional path to the GitHub Copilot CLI binary when it is bundled with the app.')
 param copilotCliPath string = ''
 
@@ -38,12 +45,10 @@ param copilotDefaultModel string = 'gpt-5'
 
 @description('Optional override for the app service plan SKU.')
 @allowed([
-  'B1'
-  'B2'
   'P0v3'
   'P1v3'
 ])
-param appServicePlanSku string = 'B2'
+param appServicePlanSku string = 'P0v3'
 
 var resourceSuffix = toLower(take(uniqueString(subscription().id, resourceGroupName, environmentName), 6))
 var tags = {
@@ -78,6 +83,8 @@ module resources './resources.bicep' = {
     gitHubOAuthClientId: gitHubOAuthClientId
     gitHubOAuthClientSecret: gitHubOAuthClientSecret
     youTubeApiKey: youTubeApiKey
+    postgresAdminLogin: postgresAdminLogin
+    postgresAdminPassword: postgresAdminPassword
     location: location
     logAnalyticsWorkspaceName: effectiveWorkspaceName
     tags: tags

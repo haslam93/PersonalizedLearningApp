@@ -44,6 +44,8 @@ public class VideoEntry
 
     public DateTime? LastSyncedUtc { get; set; }
 
+    public DateTime? RemovedUtc { get; set; }
+
     public VideoEntry Clone()
     {
         return (VideoEntry)MemberwiseClone();

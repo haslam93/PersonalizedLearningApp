@@ -1,18 +1,33 @@
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Npgsql;
 using UpskillTracker.Models;
+using UpskillTracker.Services;
 
 namespace UpskillTracker.Data;
 
 public static class DatabaseInitializer
 {
+    private const string LegacySqliteImportMetadataKey = "legacy-sqlite-import-v1";
+
     public static async Task InitializeAsync(IServiceProvider services)
     {
         await using var scope = services.CreateAsyncScope();
         var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<TrackerDbContext>>();
+        var environment = scope.ServiceProvider.GetRequiredService<IWebHostEnvironment>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseInitializer");
+        var storageOptions = scope.ServiceProvider.GetRequiredService<IOptions<StorageOptions>>().Value;
         await using var db = await dbFactory.CreateDbContextAsync();
 
         await db.Database.EnsureCreatedAsync();
         await EnsureVideoSchemaAsync(db);
+
+        if (IsPostgresProvider(db) && storageOptions.EnableLegacySqliteImport)
+        {
+            var legacySqliteConnectionString = ResolveLegacySqliteConnectionString(storageOptions, environment);
+            await ImportLegacySqliteIfNeededAsync(db, legacySqliteConnectionString, logger);
+        }
 
         if (!await db.TrainingItems.AnyAsync())
         {
@@ -28,6 +43,11 @@ public static class DatabaseInitializer
         }
 
         await db.SaveChangesAsync();
+
+        if (IsPostgresProvider(db))
+        {
+            await ResetIdentitySequencesAsync(db);
+        }
     }
 
     private static async Task EnsureSeedResourcesAsync(TrackerDbContext db)
@@ -54,6 +74,11 @@ public static class DatabaseInitializer
 
     private static async Task EnsureVideoSchemaAsync(TrackerDbContext db)
     {
+        if (!db.Database.IsSqlite())
+        {
+            return;
+        }
+
         await db.Database.ExecuteSqlRawAsync(
             """
             CREATE TABLE IF NOT EXISTS VideoChannels (
@@ -120,6 +145,375 @@ public static class DatabaseInitializer
 
             db.VideoChannels.Add(channel);
         }
+    }
+
+    private static bool IsPostgresProvider(TrackerDbContext db)
+        => db.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true;
+
+    private static string ResolveLegacySqliteConnectionString(StorageOptions storageOptions, IWebHostEnvironment environment)
+    {
+        if (string.IsNullOrWhiteSpace(storageOptions.LegacySqliteConnectionString))
+        {
+            return string.Empty;
+        }
+
+        return storageOptions.LegacySqliteConnectionString.Replace("%CONTENTROOT%", environment.ContentRootPath, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static async Task ImportLegacySqliteIfNeededAsync(TrackerDbContext db, string legacySqliteConnectionString, ILogger logger)
+    {
+        if (string.IsNullOrWhiteSpace(legacySqliteConnectionString))
+        {
+            return;
+        }
+
+        var alreadyImported = await db.AppMetadataEntries
+            .AsNoTracking()
+            .AnyAsync(entry => entry.Key == LegacySqliteImportMetadataKey);
+
+        if (alreadyImported)
+        {
+            return;
+        }
+
+        var dataSource = TryGetSqliteDataSourcePath(legacySqliteConnectionString);
+        if (string.IsNullOrWhiteSpace(dataSource) || !File.Exists(dataSource))
+        {
+            logger.LogInformation("Skipping legacy SQLite import because the source database was not found at {Path}.", dataSource);
+            return;
+        }
+
+        await using var sqliteConnection = new SqliteConnection(legacySqliteConnectionString);
+        await sqliteConnection.OpenAsync();
+
+        logger.LogInformation("Importing legacy SQLite data from {Path}.", dataSource);
+
+        await ImportTrainingItemsAsync(db, sqliteConnection);
+        await ImportResourcesAsync(db, sqliteConnection);
+        await ImportNotesAsync(db, sqliteConnection);
+        await ImportVideoChannelsAsync(db, sqliteConnection);
+        await ImportVideosAsync(db, sqliteConnection);
+
+        db.AppMetadataEntries.Add(new AppMetadataEntry
+        {
+            Key = LegacySqliteImportMetadataKey,
+            Value = $"Imported:{DateTime.UtcNow:O}",
+            UpdatedUtc = DateTime.UtcNow
+        });
+
+        await db.SaveChangesAsync();
+        logger.LogInformation("Legacy SQLite import completed.");
+    }
+
+    private static async Task ImportTrainingItemsAsync(TrackerDbContext db, SqliteConnection connection)
+    {
+        if (!await TableExistsAsync(connection, "TrainingItems"))
+        {
+            return;
+        }
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM TrainingItems";
+
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var id = reader.GetInt32(reader.GetOrdinal("Id"));
+            var existing = await db.TrainingItems.FirstOrDefaultAsync(item => item.Id == id);
+            var entity = existing ?? new TrainingItem { Id = id };
+
+            entity.Title = ReadString(reader, "Title");
+            entity.Domain = ReadString(reader, "Domain");
+            entity.Category = ReadString(reader, "Category");
+            entity.Description = ReadString(reader, "Description");
+            entity.TargetDate = ReadDateTime(reader, "TargetDate", DateTime.Today);
+            entity.Status = ReadEnum(reader, "Status", TrackerStatus.NotStarted);
+            entity.Lane = ReadEnum(reader, "Lane", LearningLane.Core);
+            entity.Type = ReadEnum(reader, "Type", TrainingItemType.Learning);
+            entity.ProgressPercent = ReadInt(reader, "ProgressPercent");
+            entity.EstimatedHours = ReadInt(reader, "EstimatedHours");
+            entity.Priority = ReadInt(reader, "Priority");
+            entity.ProjectDriven = ReadBool(reader, "ProjectDriven");
+            entity.Notes = ReadString(reader, "Notes");
+            entity.Evidence = ReadString(reader, "Evidence");
+            entity.CreatedUtc = ReadDateTime(reader, "CreatedUtc", DateTime.UtcNow);
+            entity.UpdatedUtc = ReadDateTime(reader, "UpdatedUtc", entity.CreatedUtc);
+            entity.LastStatusChangedUtc = ReadNullableDateTime(reader, "LastStatusChangedUtc") ?? entity.UpdatedUtc;
+            entity.CompletedUtc = ReadNullableDateTime(reader, "CompletedUtc");
+
+            if (existing is null)
+            {
+                db.TrainingItems.Add(entity);
+            }
+        }
+    }
+
+    private static async Task ImportResourcesAsync(TrackerDbContext db, SqliteConnection connection)
+    {
+        if (!await TableExistsAsync(connection, "Resources"))
+        {
+            return;
+        }
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM Resources";
+
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var id = reader.GetInt32(reader.GetOrdinal("Id"));
+            var existing = await db.Resources.FirstOrDefaultAsync(resource => resource.Id == id);
+            var entity = existing ?? new ResourceEntry { Id = id };
+
+            entity.Title = ReadString(reader, "Title");
+            entity.Section = ReadString(reader, "Section");
+            entity.Url = ReadString(reader, "Url");
+            entity.Kind = ReadEnum(reader, "Kind", ResourceKind.Documentation);
+            entity.IsPinned = ReadBool(reader, "IsPinned");
+            entity.Summary = ReadString(reader, "Summary");
+            entity.Tags = ReadString(reader, "Tags");
+            entity.Notes = ReadString(reader, "Notes");
+            entity.SortOrder = ReadInt(reader, "SortOrder");
+            entity.CreatedUtc = ReadDateTime(reader, "CreatedUtc", DateTime.UtcNow);
+            entity.UpdatedUtc = ReadDateTime(reader, "UpdatedUtc", entity.CreatedUtc);
+            entity.LastOpenedUtc = ReadNullableDateTime(reader, "LastOpenedUtc");
+
+            if (existing is null)
+            {
+                db.Resources.Add(entity);
+            }
+        }
+    }
+
+    private static async Task ImportNotesAsync(TrackerDbContext db, SqliteConnection connection)
+    {
+        if (!await TableExistsAsync(connection, "Notes"))
+        {
+            return;
+        }
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM Notes";
+
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var id = reader.GetInt32(reader.GetOrdinal("Id"));
+            var existing = await db.Notes.FirstOrDefaultAsync(note => note.Id == id);
+            var entity = existing ?? new NoteEntry { Id = id };
+
+            entity.Title = ReadString(reader, "Title");
+            entity.Category = ReadString(reader, "Category");
+            entity.RelatedArea = ReadString(reader, "RelatedArea");
+            entity.Tags = ReadString(reader, "Tags");
+            entity.Content = ReadString(reader, "Content");
+            entity.IsPinned = ReadBool(reader, "IsPinned");
+            entity.CreatedUtc = ReadDateTime(reader, "CreatedUtc", DateTime.UtcNow);
+            entity.UpdatedUtc = ReadDateTime(reader, "UpdatedUtc", entity.CreatedUtc);
+
+            if (existing is null)
+            {
+                db.Notes.Add(entity);
+            }
+        }
+    }
+
+    private static async Task ImportVideoChannelsAsync(TrackerDbContext db, SqliteConnection connection)
+    {
+        if (!await TableExistsAsync(connection, "VideoChannels"))
+        {
+            return;
+        }
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM VideoChannels";
+
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var id = reader.GetInt32(reader.GetOrdinal("Id"));
+            var existing = await db.VideoChannels.FirstOrDefaultAsync(channel => channel.Id == id);
+            var entity = existing ?? new VideoChannel { Id = id };
+
+            entity.DisplayName = ReadString(reader, "DisplayName");
+            entity.Handle = ReadString(reader, "Handle");
+            entity.ChannelId = ReadString(reader, "ChannelId");
+            entity.ChannelUrl = ReadString(reader, "ChannelUrl");
+            entity.Description = ReadString(reader, "Description");
+            entity.ThumbnailUrl = ReadString(reader, "ThumbnailUrl");
+            entity.IsSeeded = ReadBool(reader, "IsSeeded");
+            entity.CreatedUtc = ReadDateTime(reader, "CreatedUtc", DateTime.UtcNow);
+            entity.UpdatedUtc = ReadDateTime(reader, "UpdatedUtc", entity.CreatedUtc);
+            entity.LastSyncedUtc = ReadNullableDateTime(reader, "LastSyncedUtc");
+
+            if (existing is null)
+            {
+                db.VideoChannels.Add(entity);
+            }
+        }
+    }
+
+    private static async Task ImportVideosAsync(TrackerDbContext db, SqliteConnection connection)
+    {
+        if (!await TableExistsAsync(connection, "Videos"))
+        {
+            return;
+        }
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM Videos";
+
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var id = reader.GetInt32(reader.GetOrdinal("Id"));
+            var existing = await db.Videos.FirstOrDefaultAsync(video => video.Id == id);
+            var entity = existing ?? new VideoEntry { Id = id };
+
+            entity.ChannelId = ReadInt(reader, "ChannelId");
+            entity.YouTubeVideoId = ReadString(reader, "YouTubeVideoId");
+            entity.Title = ReadString(reader, "Title");
+            entity.Url = ReadString(reader, "Url");
+            entity.ThumbnailUrl = ReadString(reader, "ThumbnailUrl");
+            entity.Summary = ReadString(reader, "Summary");
+            entity.ChannelTitle = ReadString(reader, "ChannelTitle");
+            entity.PublishedUtc = ReadDateTime(reader, "PublishedUtc", DateTime.UtcNow);
+            entity.WatchState = ReadEnum(reader, "WatchState", VideoWatchState.Inbox);
+            entity.CreatedUtc = ReadDateTime(reader, "CreatedUtc", DateTime.UtcNow);
+            entity.UpdatedUtc = ReadDateTime(reader, "UpdatedUtc", entity.CreatedUtc);
+            entity.LastViewedUtc = ReadNullableDateTime(reader, "LastViewedUtc");
+            entity.LastSyncedUtc = ReadNullableDateTime(reader, "LastSyncedUtc");
+            entity.RemovedUtc = ReadNullableDateTime(reader, "RemovedUtc");
+
+            if (existing is null)
+            {
+                db.Videos.Add(entity);
+            }
+        }
+    }
+
+    private static async Task<bool> TableExistsAsync(SqliteConnection connection, string tableName)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = $name LIMIT 1";
+        command.Parameters.AddWithValue("$name", tableName);
+        var result = await command.ExecuteScalarAsync();
+        return result is not null;
+    }
+
+    private static string? TryGetSqliteDataSourcePath(string connectionString)
+    {
+        var builder = new SqliteConnectionStringBuilder(connectionString);
+        return builder.DataSource;
+    }
+
+    private static async Task ResetIdentitySequencesAsync(TrackerDbContext db)
+    {
+        var statements = new[]
+        {
+            "SELECT setval(pg_get_serial_sequence('\"TrainingItems\"', 'Id'), COALESCE(MAX(\"Id\"), 1), MAX(\"Id\") IS NOT NULL) FROM \"TrainingItems\";",
+            "SELECT setval(pg_get_serial_sequence('\"Resources\"', 'Id'), COALESCE(MAX(\"Id\"), 1), MAX(\"Id\") IS NOT NULL) FROM \"Resources\";",
+            "SELECT setval(pg_get_serial_sequence('\"Notes\"', 'Id'), COALESCE(MAX(\"Id\"), 1), MAX(\"Id\") IS NOT NULL) FROM \"Notes\";",
+            "SELECT setval(pg_get_serial_sequence('\"VideoChannels\"', 'Id'), COALESCE(MAX(\"Id\"), 1), MAX(\"Id\") IS NOT NULL) FROM \"VideoChannels\";",
+            "SELECT setval(pg_get_serial_sequence('\"Videos\"', 'Id'), COALESCE(MAX(\"Id\"), 1), MAX(\"Id\") IS NOT NULL) FROM \"Videos\";"
+        };
+
+        foreach (var statement in statements)
+        {
+            await db.Database.ExecuteSqlRawAsync(statement);
+        }
+    }
+
+    private static bool HasColumn(SqliteDataReader reader, string name)
+    {
+        for (var index = 0; index < reader.FieldCount; index++)
+        {
+            if (string.Equals(reader.GetName(index), name, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string ReadString(SqliteDataReader reader, string name)
+    {
+        if (!HasColumn(reader, name))
+        {
+            return string.Empty;
+        }
+
+        var ordinal = reader.GetOrdinal(name);
+        return reader.IsDBNull(ordinal) ? string.Empty : reader.GetString(ordinal);
+    }
+
+    private static int ReadInt(SqliteDataReader reader, string name)
+    {
+        if (!HasColumn(reader, name))
+        {
+            return 0;
+        }
+
+        var ordinal = reader.GetOrdinal(name);
+        return reader.IsDBNull(ordinal) ? 0 : reader.GetInt32(ordinal);
+    }
+
+    private static bool ReadBool(SqliteDataReader reader, string name)
+    {
+        if (!HasColumn(reader, name))
+        {
+            return false;
+        }
+
+        var ordinal = reader.GetOrdinal(name);
+        return !reader.IsDBNull(ordinal) && reader.GetBoolean(ordinal);
+    }
+
+    private static TEnum ReadEnum<TEnum>(SqliteDataReader reader, string name, TEnum fallback) where TEnum : struct, Enum
+    {
+        if (!HasColumn(reader, name))
+        {
+            return fallback;
+        }
+
+        var ordinal = reader.GetOrdinal(name);
+        if (reader.IsDBNull(ordinal))
+        {
+            return fallback;
+        }
+
+        return Enum.IsDefined(typeof(TEnum), reader.GetInt32(ordinal))
+            ? (TEnum)Enum.ToObject(typeof(TEnum), reader.GetInt32(ordinal))
+            : fallback;
+    }
+
+    private static DateTime ReadDateTime(SqliteDataReader reader, string name, DateTime fallback)
+    {
+        return ReadNullableDateTime(reader, name) ?? fallback;
+    }
+
+    private static DateTime? ReadNullableDateTime(SqliteDataReader reader, string name)
+    {
+        if (!HasColumn(reader, name))
+        {
+            return null;
+        }
+
+        var ordinal = reader.GetOrdinal(name);
+        if (reader.IsDBNull(ordinal))
+        {
+            return null;
+        }
+
+        var value = reader.GetValue(ordinal);
+        return value switch
+        {
+            DateTime dateTime => DateTime.SpecifyKind(dateTime, DateTimeKind.Utc),
+            string text when DateTime.TryParse(text, out var parsed) => DateTime.SpecifyKind(parsed, DateTimeKind.Utc),
+            long ticks => new DateTime(ticks, DateTimeKind.Utc),
+            _ => null
+        };
     }
 
     private static string BuildResourceKey(string title, string section)

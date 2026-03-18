@@ -1,6 +1,7 @@
 @inject UpskillTracker.Services.TrackerService TrackerService
 @inject UpskillTracker.Services.AnnouncementFeedService AnnouncementFeedService
 @inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
 
 @if (isLoading)
 {
@@ -157,7 +158,7 @@ else if (snapshot is not null)
                                 <MudText Typo="Typo.subtitle2">@resource.Title</MudText>
                                 <MudText Typo="Typo.body2" Class="mud-secondary-text mb-2">@resource.Section • @resource.Kind</MudText>
                                 <MudText Typo="Typo.body2" Class="mb-3">@resource.Summary</MudText>
-                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="@resource.Url" Target="_blank" EndIcon="@Icons.Material.Filled.OpenInNew">
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => OpenResourceAsync(resource))" EndIcon="@Icons.Material.Filled.OpenInNew">
                                     Open resource
                                 </MudButton>
                             </MudPaper>
@@ -185,7 +186,7 @@ else if (snapshot is not null)
                                 <MudText Typo="Typo.subtitle2">@video.Title</MudText>
                                 <MudText Typo="Typo.caption" Class="mud-secondary-text">@video.ChannelTitle • @FormatAnnouncementDate(video.PublishedUtc)</MudText>
                                 <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
-                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="@video.Url" Target="_blank" EndIcon="@Icons.Material.Filled.OpenInNew">
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => OpenVideoAsync(video.Id, video.Url))" EndIcon="@Icons.Material.Filled.OpenInNew">
                                         Open
                                     </MudButton>
                                     <MudButton Variant="Variant.Text" Color="Color.Success" OnClick="@(() => MarkVideoSeenAsync(video.Id))">
@@ -260,53 +261,116 @@ else if (snapshot is not null)
                 }
                 else
                 {
-                    @foreach (var announcement in FilteredAnnouncements)
-                    {
-                        <MudPaper Class="timeline-entry mb-3" Elevation="0">
-                            <MudStack Spacing="2">
-                                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
-                                    <div>
-                                        <MudText Typo="Typo.subtitle1">@announcement.Title</MudText>
-                                        <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-1">
-                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetAnnouncementTopicColor(announcement.Topic)">@announcement.Topic</MudChip>
-                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">@announcement.Source</MudChip>
-                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">@GetAnnouncementStreamLabel(announcement.Stream)</MudChip>
-                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default">@FormatAnnouncementDate(announcement.PublishedUtc)</MudChip>
-                                        </MudStack>
-                                    </div>
-                                    @if (seenAnnouncements.Contains(announcement.Url))
-                                    {
-                                        <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Size="Size.Small">Seen</MudChip>
-                                    }
-                                    else if (IsAnnouncementSaved(announcement))
-                                    {
-                                        <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Size="Size.Small">Saved</MudChip>
-                                    }
-                                </MudStack>
+                    <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mb-4">
+                        <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled">@FilteredAnnouncements.Count total</MudChip>
+                        <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined">@SeenAnnouncements.Count seen</MudChip>
+                        <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined">@UnseenAnnouncements.Count unread shown</MudChip>
+                    </MudStack>
 
-                                @if (!string.IsNullOrWhiteSpace(announcement.Summary))
+                    <MudGrid>
+                        <MudItem xs="12" md="8">
+                            <MudText Typo="Typo.subtitle1" Class="mb-3">Unread and active</MudText>
+                            @if (UnseenAnnouncements.Count == 0)
+                            {
+                                <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Class="mb-3">Everything in this filtered view is already marked seen. Use the seen column to reopen or reset items.</MudAlert>
+                            }
+                            else
+                            {
+                                @foreach (var announcement in UnseenAnnouncements)
                                 {
-                                    <MudText Typo="Typo.body2" Class="mud-secondary-text">@announcement.Summary</MudText>
+                                    var announcementState = GetAnnouncementState(announcement);
+                                    <MudPaper Class="timeline-entry mb-3" Elevation="0">
+                                        <MudStack Spacing="2">
+                                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                                                <div>
+                                                    <MudText Typo="Typo.subtitle1">@announcement.Title</MudText>
+                                                    <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-1">
+                                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetAnnouncementTopicColor(announcement.Topic)">@announcement.Topic</MudChip>
+                                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">@announcement.Source</MudChip>
+                                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">@GetAnnouncementStreamLabel(announcement.Stream)</MudChip>
+                                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default">@FormatAnnouncementDate(announcement.PublishedUtc)</MudChip>
+                                                    </MudStack>
+                                                </div>
+                                                @if (IsAnnouncementSaved(announcement))
+                                                {
+                                                    <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Size="Size.Small">Saved</MudChip>
+                                                }
+                                            </MudStack>
+
+                                            @if (!string.IsNullOrWhiteSpace(announcement.Summary))
+                                            {
+                                                <MudText Typo="Typo.body2" Class="mud-secondary-text">@announcement.Summary</MudText>
+                                            }
+
+                                            @if (announcementState?.SavedToResourcesUtc is not null)
+                                            {
+                                                <MudText Typo="Typo.caption" Class="mud-secondary-text">Saved to resources @FormatStateTimestamp(announcementState.SavedToResourcesUtc.Value)</MudText>
+                                            }
+
+                                            <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
+                                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => OpenAnnouncementAsync(announcement))" EndIcon="@Icons.Material.Filled.OpenInNew">
+                                                    Open
+                                                </MudButton>
+                                                <MudButton Variant="Variant.Text" Color="Color.Default" StartIcon="@Icons.Material.Filled.Visibility" OnClick="@(() => SetAnnouncementSeenAsync(announcement, true))">
+                                                    Mark as seen
+                                                </MudButton>
+                                                <MudButton Variant="Variant.Text"
+                                                           Color="Color.Secondary"
+                                                           StartIcon="@(IsAnnouncementSaved(announcement) ? Icons.Material.Filled.Check : Icons.Material.Filled.AddLink)"
+                                                           Disabled="@IsAnnouncementSaved(announcement)"
+                                                           OnClick="@(() => SaveAnnouncementAsResourceAsync(announcement))">
+                                                    @(IsAnnouncementSaved(announcement) ? "Saved" : "Save to resources")
+                                                </MudButton>
+                                            </MudStack>
+                                        </MudStack>
+                                    </MudPaper>
                                 }
 
-                                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
-                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="@announcement.Url" Target="_blank" EndIcon="@Icons.Material.Filled.OpenInNew">
-                                        Open
+                                @if (RemainingUnseenAnnouncementCount > 0)
+                                {
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="LoadMoreAnnouncements">
+                                        Show @Math.Min(AnnouncementPageSize, RemainingUnseenAnnouncementCount) more
                                     </MudButton>
-                                    <MudButton Variant="Variant.Text" Color="Color.Default" StartIcon="@Icons.Material.Filled.Visibility" OnClick="@(() => MarkAnnouncementSeen(announcement))">
-                                        @(seenAnnouncements.Contains(announcement.Url) ? "Seen" : "Mark as seen")
-                                    </MudButton>
-                                    <MudButton Variant="Variant.Text"
-                                               Color="Color.Secondary"
-                                               StartIcon="@(IsAnnouncementSaved(announcement) ? Icons.Material.Filled.Check : Icons.Material.Filled.AddLink)"
-                                               Disabled="@IsAnnouncementSaved(announcement)"
-                                               OnClick="@(() => SaveAnnouncementAsResourceAsync(announcement))">
-                                        @(IsAnnouncementSaved(announcement) ? "Saved" : "Save to resources")
-                                    </MudButton>
+                                }
+                            }
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudPaper Class="resource-card" Elevation="0">
+                                <MudStack Spacing="2">
+                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                        <MudText Typo="Typo.subtitle1">Seen</MudText>
+                                        <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined">@SeenAnnouncements.Count</MudChip>
+                                    </MudStack>
+                                    @if (SeenAnnouncements.Count == 0)
+                                    {
+                                        <MudText Typo="Typo.body2" Class="mud-secondary-text">Seen announcements will move here so the main list stays focused on unread items.</MudText>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var announcement in SeenAnnouncements.Take(8))
+                                        {
+                                            var announcementState = GetAnnouncementState(announcement);
+                                            <MudPaper Class="timeline-entry" Elevation="0">
+                                                <MudStack Spacing="1">
+                                                    <MudText Typo="Typo.subtitle2">@announcement.Title</MudText>
+                                                    <MudText Typo="Typo.caption" Class="mud-secondary-text">@announcement.Source • @FormatAnnouncementDate(announcement.PublishedUtc)</MudText>
+                                                    <MudText Typo="Typo.caption" Class="mud-secondary-text">Seen @FormatStateTimestamp(announcementState?.LastSeenUtc ?? announcement.PublishedUtc)</MudText>
+                                                    @if (announcementState?.LastOpenedUtc is not null)
+                                                    {
+                                                        <MudText Typo="Typo.caption" Class="mud-secondary-text">Opened @FormatStateTimestamp(announcementState.LastOpenedUtc.Value)</MudText>
+                                                    }
+                                                    <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
+                                                        <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenAnnouncementAsync(announcement))">Open again</MudButton>
+                                                        <MudButton Variant="Variant.Text" Color="Color.Default" Size="Size.Small" OnClick="@(() => SetAnnouncementSeenAsync(announcement, false))">Mark unread</MudButton>
+                                                    </MudStack>
+                                                </MudStack>
+                                            </MudPaper>
+                                        }
+                                    }
                                 </MudStack>
-                            </MudStack>
-                        </MudPaper>
-                    }
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
                 }
             </MudPaper>
         </MudItem>
@@ -319,8 +383,9 @@ else if (snapshot is not null)
     private UpskillTracker.Models.DashboardSnapshot? snapshot;
     private List<UpskillTracker.Models.ResourceEntry> resources = [];
     private List<UpskillTracker.Models.AnnouncementItem> announcements = [];
-    private const int VisibleAnnouncementsPerStream = 8;
-    private HashSet<string> seenAnnouncements = new(StringComparer.OrdinalIgnoreCase);
+    private const int AnnouncementPageSize = 8;
+    private int visibleAnnouncementCount = AnnouncementPageSize;
+    private Dictionary<string, UpskillTracker.Models.AnnouncementState> announcementStates = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<UpskillTracker.Models.AnnouncementStream> announcementStreams =
     [
         UpskillTracker.Models.AnnouncementStream.MicrosoftOfficial,
@@ -361,8 +426,18 @@ else if (snapshot is not null)
     private IReadOnlyList<UpskillTracker.Models.AnnouncementItem> FilteredAnnouncements => ActiveAnnouncements
         .Where(item => selectedAnnouncementTopic == "All topics" || item.Topic.Equals(selectedAnnouncementTopic, StringComparison.OrdinalIgnoreCase))
         .Where(item => selectedAnnouncementSource == "All sources" || item.Source.Equals(selectedAnnouncementSource, StringComparison.OrdinalIgnoreCase))
-        .Take(VisibleAnnouncementsPerStream)
         .ToList();
+
+    private IReadOnlyList<UpskillTracker.Models.AnnouncementItem> UnseenAnnouncements => FilteredAnnouncements
+        .Where(item => !IsAnnouncementSeen(item))
+        .Take(visibleAnnouncementCount)
+        .ToList();
+
+    private IReadOnlyList<UpskillTracker.Models.AnnouncementItem> SeenAnnouncements => FilteredAnnouncements
+        .Where(IsAnnouncementSeen)
+        .ToList();
+
+    private int RemainingUnseenAnnouncementCount => FilteredAnnouncements.Count(item => !IsAnnouncementSeen(item)) - UnseenAnnouncements.Count;
 
     private IReadOnlyList<UpskillTracker.Models.ResourceEntry> GetSuggestedResources(UpskillTracker.Models.TrainingItem item)
         => TaskResourceMatcher.GetMatches(item, resources, 2);
@@ -378,6 +453,8 @@ else if (snapshot is not null)
                 : await AnnouncementFeedService.GetAnnouncementsAsync();
 
             announcements = items.ToList();
+            announcementStates = await TrackerService.GetAnnouncementStateLookupAsync(announcements);
+            visibleAnnouncementCount = AnnouncementPageSize;
             RebuildAnnouncementFilters();
         }
         catch (Exception)
@@ -393,12 +470,14 @@ else if (snapshot is not null)
     private Task OnAnnouncementTopicChanged(string value)
     {
         selectedAnnouncementTopic = value;
+        visibleAnnouncementCount = AnnouncementPageSize;
         return Task.CompletedTask;
     }
 
     private Task OnAnnouncementSourceChanged(string value)
     {
         selectedAnnouncementSource = value;
+        visibleAnnouncementCount = AnnouncementPageSize;
         return Task.CompletedTask;
     }
 
@@ -410,6 +489,7 @@ else if (snapshot is not null)
         }
 
         selectedAnnouncementStream = stream;
+        visibleAnnouncementCount = AnnouncementPageSize;
         RebuildAnnouncementFilters();
     }
 
@@ -427,9 +507,9 @@ else if (snapshot is not null)
         Snackbar.Add("Video marked as seen.", Severity.Success);
     }
 
-    private void MarkAnnouncementSeen(UpskillTracker.Models.AnnouncementItem announcement)
+    private void LoadMoreAnnouncements()
     {
-        seenAnnouncements.Add(announcement.Url);
+        visibleAnnouncementCount += AnnouncementPageSize;
     }
 
     private async Task SaveAnnouncementAsResourceAsync(UpskillTracker.Models.AnnouncementItem announcement)
@@ -442,17 +522,9 @@ else if (snapshot is not null)
 
         try
         {
-            var nextSortOrder = resources
-                .Where(resource => resource.Section.Equals(announcement.Topic, StringComparison.OrdinalIgnoreCase))
-                .Select(resource => resource.SortOrder)
-                .DefaultIfEmpty(0)
-                .Max() + 10;
-
-            var resource = BuildAnnouncementResource(announcement, nextSortOrder);
-
-            await TrackerService.SaveResourceAsync(resource);
+            await TrackerService.SaveAnnouncementAsResourceAsync(announcement);
             resources = await TrackerService.GetResourcesAsync();
-            seenAnnouncements.Add(announcement.Url);
+            announcementStates = await TrackerService.GetAnnouncementStateLookupAsync(announcements);
             Snackbar.Add("Announcement saved to resources.", Severity.Success);
         }
         catch (Exception ex)
@@ -464,33 +536,46 @@ else if (snapshot is not null)
     private bool IsAnnouncementSaved(UpskillTracker.Models.AnnouncementItem announcement)
         => resources.Any(resource => resource.Url.Equals(announcement.Url, StringComparison.OrdinalIgnoreCase));
 
-    private UpskillTracker.Models.ResourceEntry BuildAnnouncementResource(UpskillTracker.Models.AnnouncementItem announcement, int sortOrder)
+    private UpskillTracker.Models.AnnouncementState? GetAnnouncementState(UpskillTracker.Models.AnnouncementItem announcement)
     {
-        var tags = string.Join(", ", new[] { "announcement", announcement.Topic, announcement.Source }.Where(value => !string.IsNullOrWhiteSpace(value)));
-        var notes = $"Saved from the {GetAnnouncementStreamLabel(announcement.Stream).ToLowerInvariant()} source {announcement.Source} on {DateTime.UtcNow:yyyy-MM-dd}.";
-
-        return new UpskillTracker.Models.ResourceEntry
-        {
-            Title = TruncateValue(announcement.Title, 140),
-            Section = TruncateValue(announcement.Topic, 80),
-            Url = TruncateValue(announcement.Url, 500),
-            Kind = UpskillTracker.Models.ResourceKind.Documentation,
-            Summary = TruncateValue(announcement.Summary, 1500),
-            Tags = TruncateValue(tags, 300),
-            Notes = TruncateValue(notes, 2000),
-            SortOrder = sortOrder
-        };
+        announcementStates.TryGetValue(announcement.Url, out var state);
+        return state;
     }
 
-    private static string TruncateValue(string? value, int maxLength)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return string.Empty;
-        }
+    private bool IsAnnouncementSeen(UpskillTracker.Models.AnnouncementItem announcement)
+        => GetAnnouncementState(announcement)?.IsSeen == true;
 
-        var trimmed = value.Trim();
-        return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
+    private async Task SetAnnouncementSeenAsync(UpskillTracker.Models.AnnouncementItem announcement, bool isSeen)
+    {
+        var state = await TrackerService.SetAnnouncementSeenAsync(announcement, isSeen);
+        announcementStates[announcement.Url] = state;
+        Snackbar.Add(isSeen ? "Announcement marked as seen." : "Announcement moved back to unread.", Severity.Success);
+    }
+
+    private async Task OpenAnnouncementAsync(UpskillTracker.Models.AnnouncementItem announcement)
+    {
+        var state = await TrackerService.MarkAnnouncementOpenedAsync(announcement);
+        announcementStates[announcement.Url] = state;
+        await JSRuntime.InvokeVoidAsync("open", announcement.Url, "_blank", "noopener,noreferrer");
+    }
+
+    private async Task OpenResourceAsync(UpskillTracker.Models.ResourceEntry resource)
+    {
+        await TrackerService.TouchResourceOpenedAsync(resource.Id);
+        await JSRuntime.InvokeVoidAsync("open", resource.Url, "_blank", "noopener,noreferrer");
+    }
+
+    private async Task OpenVideoAsync(int id, string url)
+    {
+        await TrackerService.MarkVideoOpenedAsync(id);
+        snapshot = await TrackerService.GetDashboardSnapshotAsync();
+        videoWatchCompletionRate = snapshot is null ? 0 : (double)snapshot.VideoWatchCompletionRate;
+        await JSRuntime.InvokeVoidAsync("open", url, "_blank", "noopener,noreferrer");
+    }
+
+    private static string FormatStateTimestamp(DateTime timestamp)
+    {
+        return timestamp.ToLocalTime().ToString("MMM d, yyyy h:mm tt");
     }
 
     private static Color GetStatusColor(UpskillTracker.Models.TrackerStatus status) => status switch

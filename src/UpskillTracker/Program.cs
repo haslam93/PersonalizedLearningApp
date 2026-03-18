@@ -1,22 +1,26 @@
-using System.ComponentModel;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.Json;
+using Azure.Core;
+using Azure.Identity;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using GitHub.Copilot.SDK;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OAuth;
+using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
+using Npgsql;
 using UpskillTracker.Components;
 using UpskillTracker.Data;
 using UpskillTracker.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-var connectionString = ResolveSqliteConnectionString(builder.Configuration, builder.Environment);
+var storageOptions = builder.Configuration.GetSection(StorageOptions.SectionName).Get<StorageOptions>() ?? new();
 var gitHubOAuthOptions = builder.Configuration.GetSection(GitHubOAuthOptions.SectionName).Get<GitHubOAuthOptions>() ?? new();
+var tokenCredential = CreateTokenCredential(storageOptions);
 
-// Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddAuthorization();
@@ -25,10 +29,13 @@ builder.Services.AddMemoryCache();
 builder.Services.AddMudServices();
 builder.Services.AddApplicationInsightsTelemetry();
 builder.Services.AddHttpContextAccessor();
+builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(StorageOptions.SectionName));
 builder.Services.Configure<GitHubOAuthOptions>(builder.Configuration.GetSection(GitHubOAuthOptions.SectionName));
 builder.Services.Configure<CopilotSdkOptions>(builder.Configuration.GetSection(CopilotSdkOptions.SectionName));
 builder.Services.Configure<YouTubeOptions>(builder.Configuration.GetSection(YouTubeOptions.SectionName));
-builder.Services.AddDbContextFactory<TrackerDbContext>(options => options.UseSqlite(connectionString));
+builder.Services.AddSingleton<TokenCredential>(tokenCredential);
+ConfigureDataProtection(builder.Services, storageOptions, tokenCredential);
+ConfigureDbContext(builder.Services, storageOptions, tokenCredential, builder.Environment);
 builder.Services.AddScoped<TrackerService>();
 builder.Services.AddScoped<CopilotAuthService>();
 builder.Services.AddSingleton<GitHubTokenStore>();
@@ -108,7 +115,7 @@ if (gitHubOAuthOptions.IsConfigured)
 
                 var authSessionId = Guid.NewGuid().ToString("N");
                 var tokenStore = context.HttpContext.RequestServices.GetRequiredService<GitHubTokenStore>();
-                tokenStore.Store(new GitHubTokenSession(
+                await tokenStore.StoreAsync(new GitHubTokenSession(
                     authSessionId,
                     context.AccessToken ?? throw new InvalidOperationException("GitHub OAuth did not return an access token."),
                     login,
@@ -145,11 +152,9 @@ var app = builder.Build();
 
 await DatabaseInitializer.InitializeAsync(app.Services);
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
@@ -184,7 +189,7 @@ app.MapGet("/auth/github/logout", async (HttpContext httpContext, GitHubTokenSto
     var authSessionId = httpContext.User.FindFirstValue(CopilotAuthClaims.SessionId);
     if (!string.IsNullOrWhiteSpace(authSessionId))
     {
-        tokenStore.Remove(authSessionId);
+        await tokenStore.RemoveAsync(authSessionId);
         await copilotChatService.ReleaseUserSessionAsync(authSessionId);
     }
 
@@ -197,12 +202,110 @@ app.MapRazorComponents<App>()
 
 app.Run();
 
-static string ResolveSqliteConnectionString(IConfiguration configuration, IWebHostEnvironment environment)
+static void ConfigureDbContext(IServiceCollection services, StorageOptions storageOptions, TokenCredential credential, IWebHostEnvironment environment)
 {
-    var configured = configuration["Storage:ConnectionString"];
-    var connectionString = string.IsNullOrWhiteSpace(configured)
+    if (IsPostgresStorage(storageOptions))
+    {
+        var dataSource = CreatePostgresDataSource(storageOptions, credential);
+        services.AddSingleton(dataSource);
+        services.AddDbContextFactory<TrackerDbContext>(options => options.UseNpgsql(dataSource));
+        return;
+    }
+
+    var sqliteConnectionString = ResolveSqliteConnectionString(storageOptions.ConnectionString, environment);
+    services.AddDbContextFactory<TrackerDbContext>(options => options.UseSqlite(sqliteConnectionString));
+}
+
+static void ConfigureDataProtection(IServiceCollection services, StorageOptions storageOptions, TokenCredential credential)
+{
+    var dataProtectionBuilder = services.AddDataProtection()
+        .SetApplicationName(string.IsNullOrWhiteSpace(storageOptions.DataProtectionApplicationName)
+            ? "UpskillTracker"
+            : storageOptions.DataProtectionApplicationName);
+
+    if (string.IsNullOrWhiteSpace(storageOptions.KeyBlobUri))
+    {
+        return;
+    }
+
+    var blobClient = CreateAndEnsureKeyBlobClientAsync(storageOptions.KeyBlobUri, credential).GetAwaiter().GetResult();
+    dataProtectionBuilder.PersistKeysToAzureBlobStorage(blobClient);
+}
+
+static TokenCredential CreateTokenCredential(StorageOptions storageOptions)
+{
+    var options = new DefaultAzureCredentialOptions();
+    if (!string.IsNullOrWhiteSpace(storageOptions.ManagedIdentityClientId))
+    {
+        options.ManagedIdentityClientId = storageOptions.ManagedIdentityClientId;
+    }
+
+    return new DefaultAzureCredential(options);
+}
+
+static NpgsqlDataSource CreatePostgresDataSource(StorageOptions storageOptions, TokenCredential credential)
+{
+    var connectionStringBuilder = new NpgsqlConnectionStringBuilder(storageOptions.ConnectionString);
+    if (!string.IsNullOrWhiteSpace(storageOptions.DatabaseUser) && string.IsNullOrWhiteSpace(connectionStringBuilder.Username))
+    {
+        connectionStringBuilder.Username = storageOptions.DatabaseUser;
+    }
+
+    connectionStringBuilder.SslMode = SslMode.Require;
+    connectionStringBuilder.TrustServerCertificate = false;
+
+    if (string.IsNullOrWhiteSpace(connectionStringBuilder.Username))
+    {
+        throw new InvalidOperationException("Storage:DatabaseUser or Username in the PostgreSQL connection string is required.");
+    }
+
+    if (!storageOptions.UseManagedIdentity)
+    {
+        return NpgsqlDataSource.Create(connectionStringBuilder.ConnectionString);
+    }
+
+    var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionStringBuilder.ConnectionString);
+    dataSourceBuilder.UsePeriodicPasswordProvider(
+        async (_, cancellationToken) =>
+        {
+            var accessToken = await credential.GetTokenAsync(
+                new TokenRequestContext(["https://ossrdbms-aad.database.windows.net/.default"]),
+                cancellationToken);
+            return accessToken.Token;
+        },
+        TimeSpan.FromMinutes(55),
+        TimeSpan.FromSeconds(30));
+
+    return dataSourceBuilder.Build();
+}
+
+static async Task<BlobClient> CreateAndEnsureKeyBlobClientAsync(string keyBlobUri, TokenCredential credential)
+{
+    var uri = new Uri(keyBlobUri);
+    var blobUri = new Azure.Storage.Blobs.BlobUriBuilder(uri);
+    var serviceClient = new BlobServiceClient(new Uri($"{uri.Scheme}://{uri.Host}"), credential);
+    var containerClient = serviceClient.GetBlobContainerClient(blobUri.BlobContainerName);
+    await containerClient.CreateIfNotExistsAsync(PublicAccessType.None);
+
+    var blobClient = containerClient.GetBlobClient(blobUri.BlobName);
+    if (!await blobClient.ExistsAsync())
+    {
+        await blobClient.UploadAsync(BinaryData.FromString("<?xml version=\"1.0\" encoding=\"utf-8\"?><repository />"));
+    }
+
+    return blobClient;
+}
+
+static bool IsPostgresStorage(StorageOptions storageOptions)
+    => storageOptions.Provider.Equals("Postgres", StringComparison.OrdinalIgnoreCase)
+        || storageOptions.Provider.Equals("PostgreSql", StringComparison.OrdinalIgnoreCase)
+        || storageOptions.ConnectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase);
+
+static string ResolveSqliteConnectionString(string configuredConnectionString, IWebHostEnvironment environment)
+{
+    var connectionString = string.IsNullOrWhiteSpace(configuredConnectionString)
         ? $"Data Source={Path.Combine(environment.ContentRootPath, "Data", "upskilltracker.db")}"
-        : configured.Replace("%CONTENTROOT%", environment.ContentRootPath, StringComparison.OrdinalIgnoreCase);
+        : configuredConnectionString.Replace("%CONTENTROOT%", environment.ContentRootPath, StringComparison.OrdinalIgnoreCase);
 
     var dataSourceSegment = connectionString
         .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)

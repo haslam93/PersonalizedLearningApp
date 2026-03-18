@@ -1,6 +1,7 @@
 @inject UpskillTracker.Services.TrackerService TrackerService
 @inject UpskillTracker.Services.YouTubeVideoService YouTubeVideoService
 @inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
 
 <MudGrid Class="video-shell">
     <MudItem xs="12" lg="4">
@@ -126,8 +127,22 @@
                                     <MudText Typo="Typo.body2" Class="my-3">@Truncate(video.Summary, 180)</MudText>
                                 }
 
+                                @if (video.LastViewedUtc.HasValue || video.RemovedUtc.HasValue)
+                                {
+                                    <MudStack Spacing="0" Class="mb-2">
+                                        @if (video.LastViewedUtc.HasValue)
+                                        {
+                                            <MudText Typo="Typo.caption" Class="mud-secondary-text">Last opened @FormatAbsolute(video.LastViewedUtc.Value)</MudText>
+                                        }
+                                        @if (video.RemovedUtc.HasValue)
+                                        {
+                                            <MudText Typo="Typo.caption" Class="mud-secondary-text">Removed @FormatAbsolute(video.RemovedUtc.Value)</MudText>
+                                        }
+                                    </MudStack>
+                                }
+
                                 <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="video-card-actions">
-                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="@video.Url" Target="_blank" EndIcon="@Icons.Material.Filled.OpenInNew">
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => OpenVideoAsync(video.Id, video.Url))" EndIcon="@Icons.Material.Filled.OpenInNew">
                                         Open on YouTube
                                     </MudButton>
                                     @if (video.WatchState != UpskillTracker.Models.VideoWatchState.NeedToWatch)
@@ -137,6 +152,10 @@
                                     @if (video.WatchState != UpskillTracker.Models.VideoWatchState.Seen)
                                     {
                                         <MudButton Variant="Variant.Text" Color="Color.Success" OnClick="@(() => MarkSeenAsync(video.Id))">Mark as seen</MudButton>
+                                    }
+                                    else
+                                    {
+                                        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="@(() => ChangeVideoStateAsync(video.Id, UpskillTracker.Models.VideoWatchState.Inbox, "Moved back to inbox."))">Mark unread</MudButton>
                                     }
                                     @if (video.WatchState != UpskillTracker.Models.VideoWatchState.Removed)
                                     {
@@ -297,6 +316,13 @@
     private Task MarkSeenAsync(int id)
         => ChangeVideoStateAsync(id, UpskillTracker.Models.VideoWatchState.Seen, "Marked as seen.");
 
+    private async Task OpenVideoAsync(int id, string url)
+    {
+        await TrackerService.MarkVideoOpenedAsync(id);
+        await LoadAsync();
+        await JSRuntime.InvokeVoidAsync("open", url, "_blank", "noopener,noreferrer");
+    }
+
     private Task RemoveAsync(int id)
         => ChangeVideoStateAsync(id, UpskillTracker.Models.VideoWatchState.Removed, "Removed from watchlist.");
 
@@ -318,6 +344,9 @@
         UpskillTracker.Models.VideoWatchState.Removed => Color.Error,
         _ => Color.Info
     };
+
+    private static string FormatAbsolute(DateTime timestamp)
+        => timestamp.ToLocalTime().ToString("MMM d, yyyy h:mm tt");
 
     private static string FormatRelative(DateTime utcDate)
     {

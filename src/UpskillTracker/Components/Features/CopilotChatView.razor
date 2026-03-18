@@ -233,7 +233,7 @@
     private async Task RefreshAsync()
     {
         var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        AuthState = CopilotAuthService.GetState(authenticationState.User);
+        AuthState = await CopilotAuthService.GetStateAsync(authenticationState.User);
 
         Messages ??= [];
         Models = [];

@@ -38,6 +38,8 @@ public class ResourceEntry
 
     public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
 
+    public DateTime? LastOpenedUtc { get; set; }
+
     public ResourceEntry Clone()
     {
         return (ResourceEntry)MemberwiseClone();

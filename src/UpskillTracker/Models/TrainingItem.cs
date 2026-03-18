@@ -49,6 +49,10 @@ public class TrainingItem
 
     public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
 
+    public DateTime? LastStatusChangedUtc { get; set; }
+
+    public DateTime? CompletedUtc { get; set; }
+
     public TrainingItem Clone()
     {
         return (TrainingItem)MemberwiseClone();

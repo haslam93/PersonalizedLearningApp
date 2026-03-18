@@ -156,6 +156,92 @@ public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
             .ToListAsync();
     }
 
+    public async Task<Dictionary<string, AnnouncementState>> GetAnnouncementStateLookupAsync(IEnumerable<AnnouncementItem> announcements)
+    {
+        var urls = announcements
+            .Select(announcement => announcement.Url)
+            .Where(url => !string.IsNullOrWhiteSpace(url))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (urls.Count == 0)
+        {
+            return new Dictionary<string, AnnouncementState>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var states = await db.AnnouncementStates
+            .AsNoTracking()
+            .Where(state => urls.Contains(state.Url))
+            .ToListAsync();
+
+        return states.ToDictionary(state => state.Url, StringComparer.OrdinalIgnoreCase);
+    }
+
+    public async Task<AnnouncementState> MarkAnnouncementOpenedAsync(AnnouncementItem announcement)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var state = await UpsertAnnouncementStateAsync(db, announcement);
+        var now = DateTime.UtcNow;
+
+        state.IsSeen = true;
+        state.FirstSeenUtc ??= now;
+        state.LastSeenUtc = now;
+        state.LastOpenedUtc = now;
+        state.UpdatedUtc = now;
+
+        await db.SaveChangesAsync();
+        return state;
+    }
+
+    public async Task<AnnouncementState> SetAnnouncementSeenAsync(AnnouncementItem announcement, bool isSeen)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var state = await UpsertAnnouncementStateAsync(db, announcement);
+        var now = DateTime.UtcNow;
+
+        state.IsSeen = isSeen;
+        if (isSeen)
+        {
+            state.FirstSeenUtc ??= now;
+            state.LastSeenUtc = now;
+        }
+
+        state.UpdatedUtc = now;
+        await db.SaveChangesAsync();
+        return state;
+    }
+
+    public async Task<ResourceEntry> SaveAnnouncementAsResourceAsync(AnnouncementItem announcement)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var now = DateTime.UtcNow;
+        var existingResource = await db.Resources.FirstOrDefaultAsync(resource => resource.Url == announcement.Url);
+
+        if (existingResource is null)
+        {
+            var nextSortOrder = await db.Resources
+                .Where(resource => resource.Section == announcement.Topic)
+                .Select(resource => resource.SortOrder)
+                .DefaultIfEmpty(0)
+                .MaxAsync() + 10;
+
+            existingResource = BuildAnnouncementResource(announcement, nextSortOrder, now);
+            db.Resources.Add(existingResource);
+        }
+
+        var state = await UpsertAnnouncementStateAsync(db, announcement);
+        state.IsSeen = true;
+        state.IsSavedToResources = true;
+        state.FirstSeenUtc ??= now;
+        state.LastSeenUtc = now;
+        state.SavedToResourcesUtc = now;
+        state.UpdatedUtc = now;
+
+        await db.SaveChangesAsync();
+        return existingResource;
+    }
+
     public async Task SaveTrainingItemAsync(TrainingItem item)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
@@ -165,11 +251,14 @@ public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
         {
             item.CreatedUtc = now;
             item.UpdatedUtc = now;
+            item.LastStatusChangedUtc = now;
+            item.CompletedUtc = item.Status == TrackerStatus.Completed ? now : null;
             db.TrainingItems.Add(item);
         }
         else
         {
             var existing = await db.TrainingItems.FirstAsync(existingItem => existingItem.Id == item.Id);
+            var statusChanged = existing.Status != item.Status;
             existing.Title = item.Title;
             existing.Domain = item.Domain;
             existing.Category = item.Category;
@@ -185,6 +274,20 @@ public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
             existing.Notes = item.Notes;
             existing.Evidence = item.Evidence;
             existing.UpdatedUtc = now;
+
+            if (statusChanged)
+            {
+                existing.LastStatusChangedUtc = now;
+            }
+
+            if (item.Status == TrackerStatus.Completed)
+            {
+                existing.CompletedUtc ??= now;
+            }
+            else if (statusChanged)
+            {
+                existing.CompletedUtc = null;
+            }
         }
 
         await db.SaveChangesAsync();
@@ -226,9 +329,23 @@ public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
             existing.Tags = resource.Tags;
             existing.Notes = resource.Notes;
             existing.SortOrder = resource.SortOrder;
+            existing.LastOpenedUtc = resource.LastOpenedUtc;
             existing.UpdatedUtc = now;
         }
 
+        await db.SaveChangesAsync();
+    }
+
+    public async Task TouchResourceOpenedAsync(int id)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var resource = await db.Resources.FirstOrDefaultAsync(existing => existing.Id == id);
+        if (resource is null)
+        {
+            return;
+        }
+
+        resource.LastOpenedUtc = DateTime.UtcNow;
         await db.SaveChangesAsync();
     }
 
@@ -323,6 +440,24 @@ public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
         video.WatchState = watchState;
         video.UpdatedUtc = now;
         video.LastViewedUtc = watchState == VideoWatchState.Seen ? now : video.LastViewedUtc;
+        video.RemovedUtc = watchState == VideoWatchState.Removed ? now : null;
+        await db.SaveChangesAsync();
+    }
+
+    public async Task MarkVideoOpenedAsync(int id)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var video = await db.Videos.FirstOrDefaultAsync(existing => existing.Id == id);
+        if (video is null)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        video.WatchState = VideoWatchState.Seen;
+        video.LastViewedUtc = now;
+        video.RemovedUtc = null;
+        video.UpdatedUtc = now;
         await db.SaveChangesAsync();
     }
 
@@ -404,5 +539,71 @@ public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
 
         var trimmed = handle.Trim();
         return trimmed.StartsWith('@') ? trimmed : $"@{trimmed}";
+    }
+
+    private static ResourceEntry BuildAnnouncementResource(AnnouncementItem announcement, int sortOrder, DateTime now)
+    {
+        var tags = string.Join(", ", new[] { "announcement", announcement.Topic, announcement.Source }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        var notes = $"Saved from the {GetAnnouncementStreamLabel(announcement.Stream).ToLowerInvariant()} source {announcement.Source} on {now:yyyy-MM-dd}.";
+
+        return new ResourceEntry
+        {
+            Title = TruncateValue(announcement.Title, 140),
+            Section = TruncateValue(announcement.Topic, 80),
+            Url = TruncateValue(announcement.Url, 500),
+            Kind = ResourceKind.Documentation,
+            Summary = TruncateValue(announcement.Summary, 1500),
+            Tags = TruncateValue(tags, 300),
+            Notes = TruncateValue(notes, 2000),
+            SortOrder = sortOrder,
+            CreatedUtc = now,
+            UpdatedUtc = now
+        };
+    }
+
+    private static string TruncateValue(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var trimmed = value.Trim();
+        return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
+    }
+
+    private static string GetAnnouncementStreamLabel(AnnouncementStream stream) => stream switch
+    {
+        AnnouncementStream.MicrosoftOfficial => "Microsoft updates",
+        AnnouncementStream.IndustryInsights => "Thought leaders and industry",
+        _ => "Announcements"
+    };
+
+    private static void SyncAnnouncementState(AnnouncementState state, AnnouncementItem announcement)
+    {
+        state.Stream = announcement.Stream;
+        state.Title = TruncateValue(announcement.Title, 200);
+        state.Source = TruncateValue(announcement.Source, 120);
+        state.Topic = TruncateValue(announcement.Topic, 120);
+        state.Summary = TruncateValue(announcement.Summary, 2000);
+        state.PublishedUtc = announcement.PublishedUtc;
+    }
+
+    private static async Task<AnnouncementState> UpsertAnnouncementStateAsync(TrackerDbContext db, AnnouncementItem announcement)
+    {
+        var state = await db.AnnouncementStates.FirstOrDefaultAsync(existing => existing.Url == announcement.Url);
+        if (state is null)
+        {
+            state = new AnnouncementState
+            {
+                Url = announcement.Url
+            };
+            SyncAnnouncementState(state, announcement);
+            db.AnnouncementStates.Add(state);
+            return state;
+        }
+
+        SyncAnnouncementState(state, announcement);
+        return state;
     }
 }

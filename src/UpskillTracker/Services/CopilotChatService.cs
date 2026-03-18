@@ -18,7 +18,7 @@ public sealed class CopilotChatService(
 
     public async Task<IReadOnlyList<ModelInfo>> GetAvailableModelsAsync(string authSessionId, CancellationToken cancellationToken = default)
     {
-        var runtime = GetOrCreateRuntime(authSessionId);
+        var runtime = await GetOrCreateRuntimeAsync(authSessionId);
 
         await runtime.SyncLock.WaitAsync(cancellationToken);
         try
@@ -89,7 +89,7 @@ public sealed class CopilotChatService(
             throw new ArgumentException("A prompt is required.", nameof(prompt));
         }
 
-        var runtime = GetOrCreateRuntime(authSessionId);
+        var runtime = await GetOrCreateRuntimeAsync(authSessionId);
         await runtime.SyncLock.WaitAsync(cancellationToken);
 
         try
@@ -163,9 +163,10 @@ public sealed class CopilotChatService(
         }
     }
 
-    private RuntimeSession GetOrCreateRuntime(string authSessionId)
+    private async Task<RuntimeSession> GetOrCreateRuntimeAsync(string authSessionId)
     {
-        if (!tokenStore.TryGet(authSessionId, out var tokenSession) || tokenSession is null)
+        var tokenSession = await tokenStore.GetAsync(authSessionId);
+        if (tokenSession is null)
         {
             throw new InvalidOperationException("Your GitHub Copilot sign-in session is no longer available. Sign in again to continue.");
         }

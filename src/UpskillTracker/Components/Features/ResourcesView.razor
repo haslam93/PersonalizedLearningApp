@@ -1,5 +1,6 @@
 @inject UpskillTracker.Services.TrackerService TrackerService
 @inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
 
 <div class="section-shell">
     <MudPaper Class="surface-card section-intro-card resources-intro-card mb-4" Elevation="0">
@@ -45,8 +46,12 @@
                                             }
                                         </MudStack>
                                         <MudText Typo="Typo.body2" Class="my-3">@resource.Summary</MudText>
+                                        @if (resource.LastOpenedUtc.HasValue)
+                                        {
+                                            <MudText Typo="Typo.caption" Class="mud-secondary-text d-block mb-2">Last opened @FormatAbsolute(resource.LastOpenedUtc.Value)</MudText>
+                                        }
                                         <MudStack Row="true" Spacing="1">
-                                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="@resource.Url" Target="_blank" EndIcon="@Icons.Material.Filled.OpenInNew">
+                                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => OpenResourceAsync(resource))" EndIcon="@Icons.Material.Filled.OpenInNew">
                                                 Open
                                             </MudButton>
                                             <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="@(() => BeginEdit(resource))">
@@ -174,6 +179,13 @@
         CreateNew();
     }
 
+    private async Task OpenResourceAsync(UpskillTracker.Models.ResourceEntry resource)
+    {
+        await TrackerService.TouchResourceOpenedAsync(resource.Id);
+        await LoadAsync();
+        await JSRuntime.InvokeVoidAsync("open", resource.Url, "_blank", "noopener,noreferrer");
+    }
+
     private static UpskillTracker.Models.ResourceEntry CreateEmptyResource()
     {
         return new UpskillTracker.Models.ResourceEntry
@@ -185,6 +197,9 @@
 
     private static string GetSectionLabel(IGrouping<string, UpskillTracker.Models.ResourceEntry> sectionGroup)
         => $"{sectionGroup.Key} ({sectionGroup.Count()})";
+
+    private static string FormatAbsolute(DateTime timestamp)
+        => timestamp.ToLocalTime().ToString("MMM d, yyyy h:mm tt");
 
     private bool IsSectionExpanded(string section)
         => section.Equals(selectedSection ?? "Microsoft Foundry", StringComparison.OrdinalIgnoreCase);

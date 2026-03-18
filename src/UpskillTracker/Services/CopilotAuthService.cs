@@ -5,11 +5,11 @@ namespace UpskillTracker.Services;
 
 public sealed class CopilotAuthService(IOptions<GitHubOAuthOptions> gitHubOptions, GitHubTokenStore tokenStore)
 {
-    public CopilotAuthState GetState(ClaimsPrincipal user)
+    public async Task<CopilotAuthState> GetStateAsync(ClaimsPrincipal user)
     {
         var isSignedIn = user.Identity?.IsAuthenticated ?? false;
         var sessionId = user.FindFirstValue(CopilotAuthClaims.SessionId);
-        var hasToken = !string.IsNullOrWhiteSpace(sessionId) && tokenStore.TryGet(sessionId, out _);
+        var hasToken = !string.IsNullOrWhiteSpace(sessionId) && await tokenStore.GetAsync(sessionId) is not null;
 
         return new CopilotAuthState(
             gitHubOptions.Value.IsConfigured,
