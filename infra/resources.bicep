@@ -3,6 +3,9 @@ targetScope = 'resourceGroup'
 @description('Azure location for all resources.')
 param location string = resourceGroup().location
 
+@description('Azure location for PostgreSQL resources when the app region is quota restricted.')
+param postgresLocation string = 'eastus'
+
 @description('Tags to apply to all resources.')
 param tags object = {}
 
@@ -62,9 +65,11 @@ var hostingTags = union(tags, {
 })
 var linuxRuntime = 'DOTNETCORE|8.0'
 var nameSuffix = toLower(take(uniqueString(resourceGroup().id, webAppName, location), 6))
+var postgresNameSuffix = toLower(take(uniqueString(resourceGroup().id, webAppName, postgresLocation, 'postgres'), 6))
 var appVnetName = take('vnet-${webAppName}-${nameSuffix}', 64)
+var postgresVnetName = take('vnet-${webAppName}-pg-${take(uniqueString(resourceGroup().id, webAppName, postgresLocation), 6)}', 64)
 var storageAccountName = 'st${take(uniqueString(resourceGroup().id, webAppName, 'storage'), 22)}'
-var postgresServerName = take('pg-${toLower(webAppName)}-${nameSuffix}', 63)
+var postgresServerName = take('pg-${toLower(webAppName)}-${postgresNameSuffix}', 63)
 var postgresDatabaseName = 'upskilltracker'
 var blobContainerName = 'dataprotection'
 var blobName = 'keyring.xml'
@@ -152,13 +157,42 @@ resource appVnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
   }
 }
 
+resource postgresVnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
+  name: postgresVnetName
+  location: postgresLocation
+  tags: tags
+  properties: {
+    addressSpace: {
+      addressPrefixes: [
+        '10.43.0.0/16'
+      ]
+    }
+    subnets: [
+      {
+        name: 'postgres'
+        properties: {
+          addressPrefix: '10.43.0.0/24'
+          delegations: [
+            {
+              name: 'postgres-delegation'
+              properties: {
+                serviceName: 'Microsoft.DBforPostgreSQL/flexibleServers'
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
+
 resource appSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-05-01' existing = {
   parent: appVnet
   name: 'appsvc'
 }
 
 resource postgresSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-05-01' existing = {
-  parent: appVnet
+  parent: postgresVnet
   name: 'postgres'
 }
 
@@ -186,6 +220,42 @@ resource postgresPrivateDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNe
   properties: {
     registrationEnabled: false
     virtualNetwork: {
+      id: appVnet.id
+    }
+  }
+}
+
+resource postgresPrivateDnsZonePostgresLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = {
+  parent: postgresPrivateDnsZone
+  name: '${postgresVnet.name}-link'
+  location: 'global'
+  properties: {
+    registrationEnabled: false
+    virtualNetwork: {
+      id: postgresVnet.id
+    }
+  }
+}
+
+resource appToPostgresPeering 'Microsoft.Network/virtualNetworks/virtualNetworkPeerings@2024-05-01' = {
+  parent: appVnet
+  name: '${appVnet.name}-to-${postgresVnet.name}'
+  properties: {
+    allowForwardedTraffic: true
+    allowVirtualNetworkAccess: true
+    remoteVirtualNetwork: {
+      id: postgresVnet.id
+    }
+  }
+}
+
+resource postgresToAppPeering 'Microsoft.Network/virtualNetworks/virtualNetworkPeerings@2024-05-01' = {
+  parent: postgresVnet
+  name: '${postgresVnet.name}-to-${appVnet.name}'
+  properties: {
+    allowForwardedTraffic: true
+    allowVirtualNetworkAccess: true
+    remoteVirtualNetwork: {
       id: appVnet.id
     }
   }
@@ -322,7 +392,7 @@ resource webApp 'Microsoft.Web/sites@2024-11-01' = {
         }
         {
           name: 'Storage__ConnectionString'
-          value: 'Host=${postgresServer.properties.fullyQualifiedDomainName};Database=${postgresDatabase.name};Username=${webAppName};Ssl Mode=Require;Trust Server Certificate=true'
+          value: 'Host=${postgresServer.properties.fullyQualifiedDomainName};Database=${postgresDatabase.name};Username=${webAppName};Ssl Mode=Require'
         }
         {
           name: 'Storage__DatabaseUser'
@@ -412,7 +482,7 @@ resource storagePrivateEndpointDnsGroup 'Microsoft.Network/privateEndpoints/priv
 
 resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
   name: postgresServerName
-  location: location
+  location: postgresLocation
   tags: tags
   identity: {
     type: 'SystemAssigned'

@@ -6,6 +6,9 @@ param environmentName string
 @description('Azure location for all resources.')
 param location string
 
+@description('Azure location for PostgreSQL resources when the app region is quota restricted.')
+param postgresLocation string = 'eastus'
+
 @description('Resource group name for the environment.')
 param resourceGroupName string = 'rg-${environmentName}-${take(uniqueString(subscription().id, environmentName, location), 6)}'
 
@@ -85,6 +88,7 @@ module resources './resources.bicep' = {
     youTubeApiKey: youTubeApiKey
     postgresAdminLogin: postgresAdminLogin
     postgresAdminPassword: postgresAdminPassword
+    postgresLocation: postgresLocation
     location: location
     logAnalyticsWorkspaceName: effectiveWorkspaceName
     tags: tags

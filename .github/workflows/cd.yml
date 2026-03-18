@@ -20,6 +20,7 @@ env:
   AZURE_CUSTOM_HOSTNAME: skilling.hammadaslam.com
   AZURE_APPINSIGHTS_NAME: appi-personal-learning-tn33sb
   AZURE_LOCATION: eastus2
+  AZURE_POSTGRES_LOCATION: eastus
   AZURE_LOG_ANALYTICS_NAME: log-personal-learning-tn33sb
   AZURE_RESOURCE_GROUP: hammadlearningapp
   AZURE_APP_SERVICE_PLAN_NAME: plan-personal-learning-tn33sb
@@ -89,6 +90,7 @@ jobs:
                          postgresAdminPassword=${{ secrets.APP_POSTGRES_ADMIN_PASSWORD }} \
                          copilotDefaultModel=${{ env.COPILOT_DEFAULT_MODEL }} \
             --parameters location=${{ env.AZURE_LOCATION }} \
+                         postgresLocation=${{ env.AZURE_POSTGRES_LOCATION }} \
                          appInsightsName=${{ env.AZURE_APPINSIGHTS_NAME }} \
                          appServicePlanName=${{ env.AZURE_APP_SERVICE_PLAN_NAME }} \
                          appServicePlanSku=${{ env.AZURE_APP_SERVICE_PLAN_SKU }} \
