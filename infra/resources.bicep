@@ -66,6 +66,8 @@ var hostingTags = union(tags, {
 var linuxRuntime = 'DOTNETCORE|8.0'
 var nameSuffix = toLower(take(uniqueString(resourceGroup().id, webAppName, location), 6))
 var postgresNameSuffix = toLower(take(uniqueString(resourceGroup().id, webAppName, postgresLocation, 'postgres'), 6))
+var postgresVnetAddressPrefix = postgresLocation == 'centralus' ? '10.44.0.0/16' : postgresLocation == 'eastus' ? '10.43.0.0/16' : '10.45.0.0/16'
+var postgresSubnetAddressPrefix = postgresLocation == 'centralus' ? '10.44.0.0/24' : postgresLocation == 'eastus' ? '10.43.0.0/24' : '10.45.0.0/24'
 var appVnetName = take('vnet-${webAppName}-${nameSuffix}', 64)
 var postgresVnetName = take('vnet-${webAppName}-pg-${take(uniqueString(resourceGroup().id, webAppName, postgresLocation), 6)}', 64)
 var storageAccountName = 'st${take(uniqueString(resourceGroup().id, webAppName, 'storage'), 22)}'
@@ -164,14 +166,14 @@ resource postgresVnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
   properties: {
     addressSpace: {
       addressPrefixes: [
-        '10.43.0.0/16'
+        postgresVnetAddressPrefix
       ]
     }
     subnets: [
       {
         name: 'postgres'
         properties: {
-          addressPrefix: '10.43.0.0/24'
+          addressPrefix: postgresSubnetAddressPrefix
           delegations: [
             {
               name: 'postgres-delegation'
