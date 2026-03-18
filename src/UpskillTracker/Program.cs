@@ -9,6 +9,7 @@ using GitHub.Copilot.SDK;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OAuth;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 using Npgsql;
@@ -252,7 +253,6 @@ static NpgsqlDataSource CreatePostgresDataSource(StorageOptions storageOptions, 
     }
 
     connectionStringBuilder.SslMode = SslMode.Require;
-    connectionStringBuilder.TrustServerCertificate = false;
 
     if (string.IsNullOrWhiteSpace(connectionStringBuilder.Username))
     {

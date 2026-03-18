@@ -286,6 +286,8 @@
         };
     }
 
-    private static string FormatAbsolute(DateTime timestamp)
-        => timestamp.ToLocalTime().ToString("MMM d, yyyy h:mm tt");
+    private static string FormatAbsolute(DateTime? timestamp)
+        => timestamp.HasValue
+            ? timestamp.Value.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
+            : "Not tracked yet";
 }
