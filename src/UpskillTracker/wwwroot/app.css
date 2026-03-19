@@ -483,6 +483,41 @@ a,
     transform: translateY(-2px);
 }
 
+.announcement-toolbar {
+    align-items: center;
+}
+
+.announcement-seen-toggle {
+    margin-left: auto;
+}
+
+.announcement-feed-list {
+    max-height: 52rem;
+    overflow-y: auto;
+    padding-right: 0.35rem;
+}
+
+.announcement-feed-list > * {
+    width: 100%;
+}
+
+.announcement-card {
+    display: block;
+    width: 100%;
+}
+
+@media (max-width: 959.98px) {
+    .announcement-seen-toggle {
+        margin-left: 0;
+    }
+
+    .announcement-feed-list {
+        max-height: none;
+        overflow-y: visible;
+        padding-right: 0;
+    }
+}
+
 .chat-shell {
     display: grid;
     gap: 1rem;
