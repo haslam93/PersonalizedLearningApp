@@ -10,6 +10,13 @@
 }
 else if (snapshot is not null)
 {
+    @if (TrackerService.HasRecentTransientReadFailure)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mb-4">
+            @TrackerService.DatabaseUnavailableMessage
+        </MudAlert>
+    }
+
     <MudGrid Class="dashboard-hero-grid">
         <MudItem xs="12" md="8" Class="d-flex">
             <MudPaper Class="hero-card dashboard-summary-card mb-4" Elevation="0">
@@ -482,10 +489,17 @@ else if (snapshot is not null)
 
     private async Task MarkVideoSeenAsync(int id)
     {
-        await TrackerService.UpdateVideoWatchStateAsync(id, UpskillTracker.Models.VideoWatchState.Seen);
-        snapshot = await TrackerService.GetDashboardSnapshotAsync();
-        videoWatchCompletionRate = snapshot is null ? 0 : (double)snapshot.VideoWatchCompletionRate;
-        Snackbar.Add("Video marked as seen.", Severity.Success);
+        try
+        {
+            await TrackerService.UpdateVideoWatchStateAsync(id, UpskillTracker.Models.VideoWatchState.Seen);
+            snapshot = await TrackerService.GetDashboardSnapshotAsync();
+            videoWatchCompletionRate = snapshot is null ? 0 : (double)snapshot.VideoWatchCompletionRate;
+            Snackbar.Add("Video marked as seen.", Severity.Success);
+        }
+        catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
     }
 
     private async Task SaveAnnouncementAsResourceAsync(UpskillTracker.Models.AnnouncementItem announcement)
@@ -502,6 +516,10 @@ else if (snapshot is not null)
             resources = await TrackerService.GetResourcesAsync();
             announcementStates = await TrackerService.GetAnnouncementStateLookupAsync(announcements);
             Snackbar.Add("Announcement saved to resources.", Severity.Success);
+        }
+        catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
         }
         catch (Exception ex)
         {
@@ -526,9 +544,16 @@ else if (snapshot is not null)
 
     private async Task SetAnnouncementSeenAsync(UpskillTracker.Models.AnnouncementItem announcement, bool isSeen)
     {
-        var state = await TrackerService.SetAnnouncementSeenAsync(announcement, isSeen);
-        announcementStates[announcement.Url] = state;
-        Snackbar.Add(isSeen ? "Announcement marked as seen." : "Announcement moved back to unread.", Severity.Success);
+        try
+        {
+            var state = await TrackerService.SetAnnouncementSeenAsync(announcement, isSeen);
+            announcementStates[announcement.Url] = state;
+            Snackbar.Add(isSeen ? "Announcement marked as seen." : "Announcement moved back to unread.", Severity.Success);
+        }
+        catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
     }
 
     private async Task OpenAnnouncementAsync(UpskillTracker.Models.AnnouncementItem announcement)
@@ -551,9 +576,17 @@ else if (snapshot is not null)
         }
         catch
         {
-            var state = await TrackerService.MarkAnnouncementOpenedAsync(announcement);
-            announcementStates[announcement.Url] = state;
-            await JSRuntime.InvokeVoidAsync("open", announcement.Url, "_blank", "noopener,noreferrer");
+            try
+            {
+                var state = await TrackerService.MarkAnnouncementOpenedAsync(announcement);
+                announcementStates[announcement.Url] = state;
+                await JSRuntime.InvokeVoidAsync("open", announcement.Url, "_blank", "noopener,noreferrer");
+            }
+            catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
+            {
+                Snackbar.Add(ex.Message, Severity.Warning);
+                await JSRuntime.InvokeVoidAsync("open", announcement.Url, "_blank", "noopener,noreferrer");
+            }
         }
     }
 
@@ -583,15 +616,31 @@ else if (snapshot is not null)
 
     private async Task OpenResourceAsync(UpskillTracker.Models.ResourceEntry resource)
     {
-        await TrackerService.TouchResourceOpenedAsync(resource.Id);
+        try
+        {
+            await TrackerService.TouchResourceOpenedAsync(resource.Id);
+        }
+        catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+
         await JSRuntime.InvokeVoidAsync("open", resource.Url, "_blank", "noopener,noreferrer");
     }
 
     private async Task OpenVideoAsync(int id, string url)
     {
-        await TrackerService.MarkVideoOpenedAsync(id);
-        snapshot = await TrackerService.GetDashboardSnapshotAsync();
-        videoWatchCompletionRate = snapshot is null ? 0 : (double)snapshot.VideoWatchCompletionRate;
+        try
+        {
+            await TrackerService.MarkVideoOpenedAsync(id);
+            snapshot = await TrackerService.GetDashboardSnapshotAsync();
+            videoWatchCompletionRate = snapshot is null ? 0 : (double)snapshot.VideoWatchCompletionRate;
+        }
+        catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+
         await JSRuntime.InvokeVoidAsync("open", url, "_blank", "noopener,noreferrer");
     }
 
@@ -654,6 +703,11 @@ else if (snapshot is not null)
 
     private string GetDashboardHeadline()
     {
+        if (TrackerService.HasRecentTransientReadFailure)
+        {
+            return "Database offline";
+        }
+
         if (snapshot is null)
         {
             return "Ready";
@@ -706,6 +760,11 @@ else if (snapshot is not null)
 
     private string GetDashboardSummary()
     {
+        if (TrackerService.HasRecentTransientReadFailure)
+        {
+            return "The PostgreSQL database is unavailable. Start it in Azure, then refresh this page to repopulate tracker data.";
+        }
+
         if (snapshot is null)
         {
             return "Use the dashboard to review plan status, saved resources, notes, and the latest curated updates.";

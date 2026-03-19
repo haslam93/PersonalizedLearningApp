@@ -4,6 +4,13 @@
 {
     <MudSkeleton Height="82px" />
 }
+else if (TrackerService.HasRecentTransientReadFailure)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mb-6 reminder-alert reminder-alert-warning">
+        <MudText Typo="Typo.subtitle1">Database offline</MudText>
+        <MudText Typo="Typo.body2">@TrackerService.DatabaseUnavailableMessage</MudText>
+    </MudAlert>
+}
 else if (overdueItems.Count > 0)
 {
     <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Dense="true" Class="mb-6 reminder-alert reminder-alert-warning">

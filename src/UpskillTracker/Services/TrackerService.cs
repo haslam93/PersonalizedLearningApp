@@ -1,159 +1,164 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using UpskillTracker.Data;
 using UpskillTracker.Models;
 
 namespace UpskillTracker.Services;
 
-public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
+public class TrackerService(
+    IDbContextFactory<TrackerDbContext> dbFactory,
+    ILogger<TrackerService> logger,
+    DatabaseAvailabilityState databaseAvailabilityState)
 {
+    public bool HasRecentTransientReadFailure => databaseAvailabilityState.IsUnavailable;
+
+    public string DatabaseUnavailableMessage => databaseAvailabilityState.UserMessage;
+
+    public DateTimeOffset? DatabaseUnavailableSinceUtc => databaseAvailabilityState.LastFailureUtc;
+
     public async Task<DashboardSnapshot> GetDashboardSnapshotAsync()
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        var today = GetUtcToday();
-        var endOfMonth = new DateTime(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month), 0, 0, 0, DateTimeKind.Utc);
-
-        var trainingItems = await db.TrainingItems
-            .AsNoTracking()
-            .OrderBy(item => item.TargetDate)
-            .ThenByDescending(item => item.Priority)
-            .ToListAsync();
-
-        var pinnedResources = await db.Resources
-            .AsNoTracking()
-            .Where(resource => resource.IsPinned)
-            .OrderBy(resource => resource.Section)
-            .ThenBy(resource => resource.SortOrder)
-            .Take(6)
-            .ToListAsync();
-
-        var recentNotes = await db.Notes
-            .AsNoTracking()
-            .OrderByDescending(note => note.UpdatedUtc)
-            .Take(4)
-            .ToListAsync();
-
-        var needToWatchVideos = await db.Videos
-            .AsNoTracking()
-            .Where(video => video.WatchState == VideoWatchState.NeedToWatch)
-            .OrderByDescending(video => video.PublishedUtc)
-            .Take(5)
-            .ToListAsync();
-
-        var trackedVideos = await db.Videos
-            .AsNoTracking()
-            .Where(video => video.WatchState != VideoWatchState.Removed)
-            .ToListAsync();
-
-        var completedItems = trainingItems.Count(item => item.Status == TrackerStatus.Completed);
-        var inboxVideos = trackedVideos.Count(video => video.WatchState == VideoWatchState.Inbox);
-        var queuedVideos = trackedVideos.Count(video => video.WatchState == VideoWatchState.NeedToWatch);
-        var seenVideos = trackedVideos.Count(video => video.WatchState == VideoWatchState.Seen);
-        var totalTrackedVideos = trackedVideos.Count;
-        var upcomingItems = trainingItems.Where(item => item.TargetDate >= today).Take(6).ToList();
-        var focusItems = trainingItems
-            .Where(item => item.Status != TrackerStatus.Completed)
-            .OrderByDescending(item => item.ProjectDriven)
-            .ThenBy(item => item.TargetDate)
-            .ThenByDescending(item => item.Priority)
-            .Take(5)
-            .ToList();
-
-        return new DashboardSnapshot
+        return await ExecuteReadAsync(async db =>
         {
-            TotalItems = trainingItems.Count,
-            CompletedItems = completedItems,
-            InProgressItems = trainingItems.Count(item => item.Status == TrackerStatus.InProgress),
-            OverdueItems = trainingItems.Count(item => item.Status != TrackerStatus.Completed && item.TargetDate < today),
-            DueThisMonth = trainingItems.Count(item => item.TargetDate >= today && item.TargetDate <= endOfMonth && item.Status != TrackerStatus.Completed),
-            RapidRampItems = trainingItems.Count(item => item.Lane == LearningLane.RapidRamp && item.Status != TrackerStatus.Completed),
-            CompletionRate = trainingItems.Count == 0 ? 0 : Math.Round((decimal)completedItems / trainingItems.Count * 100, 1),
-            TotalTrackedVideos = totalTrackedVideos,
-            InboxVideos = inboxVideos,
-            NeedToWatchCount = queuedVideos,
-            SeenVideos = seenVideos,
-            VideoWatchCompletionRate = totalTrackedVideos == 0 ? 0 : Math.Round((decimal)seenVideos / totalTrackedVideos * 100, 1),
-            UpcomingItems = upcomingItems,
-            FocusItems = focusItems,
-            PinnedResources = pinnedResources,
-            RecentNotes = recentNotes,
-            NeedToWatchVideos = needToWatchVideos
-        };
+            var today = GetUtcToday();
+            var endOfMonth = new DateTime(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month), 0, 0, 0, DateTimeKind.Utc);
+
+            var trainingItems = await db.TrainingItems
+                .AsNoTracking()
+                .OrderBy(item => item.TargetDate)
+                .ThenByDescending(item => item.Priority)
+                .ToListAsync();
+
+            var pinnedResources = await db.Resources
+                .AsNoTracking()
+                .Where(resource => resource.IsPinned)
+                .OrderBy(resource => resource.Section)
+                .ThenBy(resource => resource.SortOrder)
+                .Take(6)
+                .ToListAsync();
+
+            var recentNotes = await db.Notes
+                .AsNoTracking()
+                .OrderByDescending(note => note.UpdatedUtc)
+                .Take(4)
+                .ToListAsync();
+
+            var needToWatchVideos = await db.Videos
+                .AsNoTracking()
+                .Where(video => video.WatchState == VideoWatchState.NeedToWatch)
+                .OrderByDescending(video => video.PublishedUtc)
+                .Take(5)
+                .ToListAsync();
+
+            var trackedVideos = await db.Videos
+                .AsNoTracking()
+                .Where(video => video.WatchState != VideoWatchState.Removed)
+                .ToListAsync();
+
+            var completedItems = trainingItems.Count(item => item.Status == TrackerStatus.Completed);
+            var inboxVideos = trackedVideos.Count(video => video.WatchState == VideoWatchState.Inbox);
+            var queuedVideos = trackedVideos.Count(video => video.WatchState == VideoWatchState.NeedToWatch);
+            var seenVideos = trackedVideos.Count(video => video.WatchState == VideoWatchState.Seen);
+            var totalTrackedVideos = trackedVideos.Count;
+            var upcomingItems = trainingItems.Where(item => item.TargetDate >= today).Take(6).ToList();
+            var focusItems = trainingItems
+                .Where(item => item.Status != TrackerStatus.Completed)
+                .OrderByDescending(item => item.ProjectDriven)
+                .ThenBy(item => item.TargetDate)
+                .ThenByDescending(item => item.Priority)
+                .Take(5)
+                .ToList();
+
+            return new DashboardSnapshot
+            {
+                TotalItems = trainingItems.Count,
+                CompletedItems = completedItems,
+                InProgressItems = trainingItems.Count(item => item.Status == TrackerStatus.InProgress),
+                OverdueItems = trainingItems.Count(item => item.Status != TrackerStatus.Completed && item.TargetDate < today),
+                DueThisMonth = trainingItems.Count(item => item.TargetDate >= today && item.TargetDate <= endOfMonth && item.Status != TrackerStatus.Completed),
+                RapidRampItems = trainingItems.Count(item => item.Lane == LearningLane.RapidRamp && item.Status != TrackerStatus.Completed),
+                CompletionRate = trainingItems.Count == 0 ? 0 : Math.Round((decimal)completedItems / trainingItems.Count * 100, 1),
+                TotalTrackedVideos = totalTrackedVideos,
+                InboxVideos = inboxVideos,
+                NeedToWatchCount = queuedVideos,
+                SeenVideos = seenVideos,
+                VideoWatchCompletionRate = totalTrackedVideos == 0 ? 0 : Math.Round((decimal)seenVideos / totalTrackedVideos * 100, 1),
+                UpcomingItems = upcomingItems,
+                FocusItems = focusItems,
+                PinnedResources = pinnedResources,
+                RecentNotes = recentNotes,
+                NeedToWatchVideos = needToWatchVideos
+            };
+        }, new DashboardSnapshot(), "dashboard snapshot");
     }
 
     public async Task<List<TrainingItem>> GetTrainingItemsAsync()
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        return await db.TrainingItems
+        return await ExecuteReadAsync(db => db.TrainingItems
             .AsNoTracking()
             .OrderBy(item => item.TargetDate)
             .ThenByDescending(item => item.Priority)
-            .ToListAsync();
+            .ToListAsync(), new List<TrainingItem>(), "training items");
     }
 
     public async Task<List<ResourceEntry>> GetResourcesAsync()
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        return await db.Resources
+        return await ExecuteReadAsync(db => db.Resources
             .AsNoTracking()
             .OrderBy(resource => resource.Section)
             .ThenByDescending(resource => resource.IsPinned)
             .ThenBy(resource => resource.SortOrder)
             .ThenBy(resource => resource.Title)
-            .ToListAsync();
+            .ToListAsync(), new List<ResourceEntry>(), "resources");
     }
 
     public async Task<List<NoteEntry>> GetNotesAsync()
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        return await db.Notes
+        return await ExecuteReadAsync(db => db.Notes
             .AsNoTracking()
             .OrderByDescending(note => note.IsPinned)
             .ThenByDescending(note => note.UpdatedUtc)
-            .ToListAsync();
+            .ToListAsync(), new List<NoteEntry>(), "notes");
     }
 
     public async Task<List<VideoChannel>> GetVideoChannelsAsync()
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        return await db.VideoChannels
+        return await ExecuteReadAsync(db => db.VideoChannels
             .AsNoTracking()
             .OrderBy(channel => channel.DisplayName)
-            .ToListAsync();
+            .ToListAsync(), new List<VideoChannel>(), "video channels");
     }
 
     public async Task<List<VideoEntry>> GetVideosAsync()
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        return await db.Videos
+        return await ExecuteReadAsync(db => db.Videos
             .AsNoTracking()
             .OrderBy(video => video.WatchState)
             .ThenByDescending(video => video.PublishedUtc)
             .ThenBy(video => video.Title)
-            .ToListAsync();
+            .ToListAsync(), new List<VideoEntry>(), "videos");
     }
 
     public async Task<List<VideoEntry>> GetNeedToWatchVideosAsync(int take = 6)
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        return await db.Videos
+        return await ExecuteReadAsync(db => db.Videos
             .AsNoTracking()
             .Where(video => video.WatchState == VideoWatchState.NeedToWatch)
             .OrderByDescending(video => video.PublishedUtc)
             .Take(take)
-            .ToListAsync();
+            .ToListAsync(), new List<VideoEntry>(), "queued videos");
     }
 
     public async Task<List<TrainingItem>> GetOverdueItemsAsync()
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
         var today = GetUtcToday();
 
-        return await db.TrainingItems
+        return await ExecuteReadAsync(db => db.TrainingItems
             .AsNoTracking()
             .Where(item => item.Status != TrackerStatus.Completed && item.TargetDate < today)
             .OrderBy(item => item.TargetDate)
             .ThenByDescending(item => item.Priority)
-            .ToListAsync();
+            .ToListAsync(), new List<TrainingItem>(), "overdue items");
     }
 
     public async Task<Dictionary<string, AnnouncementState>> GetAnnouncementStateLookupAsync(IEnumerable<AnnouncementItem> announcements)
@@ -169,367 +174,399 @@ public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
             return new Dictionary<string, AnnouncementState>(StringComparer.OrdinalIgnoreCase);
         }
 
-        await using var db = await dbFactory.CreateDbContextAsync();
-        var states = await db.AnnouncementStates
-            .AsNoTracking()
-            .Where(state => urls.Contains(state.Url))
-            .ToListAsync();
+        return await ExecuteReadAsync(async db =>
+        {
+            var states = await db.AnnouncementStates
+                .AsNoTracking()
+                .Where(state => urls.Contains(state.Url))
+                .ToListAsync();
 
-        return states.ToDictionary(state => state.Url, StringComparer.OrdinalIgnoreCase);
+            return states.ToDictionary(state => state.Url, StringComparer.OrdinalIgnoreCase);
+        }, new Dictionary<string, AnnouncementState>(StringComparer.OrdinalIgnoreCase), "announcement state lookup");
     }
 
     public async Task<AnnouncementState> MarkAnnouncementOpenedAsync(AnnouncementItem announcement)
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        var state = await UpsertAnnouncementStateAsync(db, announcement);
-        var now = DateTime.UtcNow;
+        return await ExecuteWriteAsync(async db =>
+        {
+            var state = await UpsertAnnouncementStateAsync(db, announcement);
+            var now = DateTime.UtcNow;
 
-        state.IsSeen = true;
-        state.FirstSeenUtc ??= now;
-        state.LastSeenUtc = now;
-        state.LastOpenedUtc = now;
-        state.UpdatedUtc = now;
+            state.IsSeen = true;
+            state.FirstSeenUtc ??= now;
+            state.LastSeenUtc = now;
+            state.LastOpenedUtc = now;
+            state.UpdatedUtc = now;
 
-        await db.SaveChangesAsync();
-        return state;
+            await db.SaveChangesAsync();
+            return state;
+        }, "mark announcement opened");
     }
 
     public async Task<AnnouncementState> SetAnnouncementSeenAsync(AnnouncementItem announcement, bool isSeen)
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        var state = await UpsertAnnouncementStateAsync(db, announcement);
-        var now = DateTime.UtcNow;
-
-        state.IsSeen = isSeen;
-        if (isSeen)
+        return await ExecuteWriteAsync(async db =>
         {
-            state.FirstSeenUtc ??= now;
-            state.LastSeenUtc = now;
-        }
+            var state = await UpsertAnnouncementStateAsync(db, announcement);
+            var now = DateTime.UtcNow;
 
-        state.UpdatedUtc = now;
-        await db.SaveChangesAsync();
-        return state;
+            state.IsSeen = isSeen;
+            if (isSeen)
+            {
+                state.FirstSeenUtc ??= now;
+                state.LastSeenUtc = now;
+            }
+
+            state.UpdatedUtc = now;
+            await db.SaveChangesAsync();
+            return state;
+        }, "set announcement seen state");
     }
 
     public async Task<ResourceEntry> SaveAnnouncementAsResourceAsync(AnnouncementItem announcement)
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        var now = DateTime.UtcNow;
-        var existingResource = await db.Resources.FirstOrDefaultAsync(resource => resource.Url == announcement.Url);
-
-        if (existingResource is null)
+        return await ExecuteWriteAsync(async db =>
         {
-            var nextSortOrder = await db.Resources
-                .Where(resource => resource.Section == announcement.Topic)
-                .Select(resource => resource.SortOrder)
-                .DefaultIfEmpty(0)
-                .MaxAsync() + 10;
+            var now = DateTime.UtcNow;
+            var existingResource = await db.Resources.FirstOrDefaultAsync(resource => resource.Url == announcement.Url);
 
-            existingResource = BuildAnnouncementResource(announcement, nextSortOrder, now);
-            db.Resources.Add(existingResource);
-        }
+            if (existingResource is null)
+            {
+                var nextSortOrder = await db.Resources
+                    .Where(resource => resource.Section == announcement.Topic)
+                    .Select(resource => resource.SortOrder)
+                    .DefaultIfEmpty(0)
+                    .MaxAsync() + 10;
 
-        var state = await UpsertAnnouncementStateAsync(db, announcement);
-        state.IsSeen = true;
-        state.IsSavedToResources = true;
-        state.FirstSeenUtc ??= now;
-        state.LastSeenUtc = now;
-        state.SavedToResourcesUtc = now;
-        state.UpdatedUtc = now;
+                existingResource = BuildAnnouncementResource(announcement, nextSortOrder, now);
+                db.Resources.Add(existingResource);
+            }
 
-        await db.SaveChangesAsync();
-        return existingResource;
+            var state = await UpsertAnnouncementStateAsync(db, announcement);
+            state.IsSeen = true;
+            state.IsSavedToResources = true;
+            state.FirstSeenUtc ??= now;
+            state.LastSeenUtc = now;
+            state.SavedToResourcesUtc = now;
+            state.UpdatedUtc = now;
+
+            await db.SaveChangesAsync();
+            return existingResource;
+        }, "save announcement as resource");
     }
 
     public async Task SaveTrainingItemAsync(TrainingItem item)
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        var now = DateTime.UtcNow;
-        var normalizedTargetDate = NormalizeUtcDate(item.TargetDate);
-
-        if (item.Id == 0)
+        await ExecuteWriteAsync(async db =>
         {
-            item.TargetDate = normalizedTargetDate;
-            item.CreatedUtc = now;
-            item.UpdatedUtc = now;
-            item.LastStatusChangedUtc = now;
-            item.CompletedUtc = item.Status == TrackerStatus.Completed ? now : null;
-            db.TrainingItems.Add(item);
-        }
-        else
-        {
-            var existing = await db.TrainingItems.FirstAsync(existingItem => existingItem.Id == item.Id);
-            var statusChanged = existing.Status != item.Status;
-            existing.Title = item.Title;
-            existing.Domain = item.Domain;
-            existing.Category = item.Category;
-            existing.Description = item.Description;
-            existing.TargetDate = normalizedTargetDate;
-            existing.Status = item.Status;
-            existing.Lane = item.Lane;
-            existing.Type = item.Type;
-            existing.ProgressPercent = item.ProgressPercent;
-            existing.EstimatedHours = item.EstimatedHours;
-            existing.Priority = item.Priority;
-            existing.ProjectDriven = item.ProjectDriven;
-            existing.Notes = item.Notes;
-            existing.Evidence = item.Evidence;
-            existing.UpdatedUtc = now;
+            var now = DateTime.UtcNow;
+            var normalizedTargetDate = NormalizeUtcDate(item.TargetDate);
 
-            if (statusChanged)
+            if (item.Id == 0)
             {
-                existing.LastStatusChangedUtc = now;
+                item.TargetDate = normalizedTargetDate;
+                item.CreatedUtc = now;
+                item.UpdatedUtc = now;
+                item.LastStatusChangedUtc = now;
+                item.CompletedUtc = item.Status == TrackerStatus.Completed ? now : null;
+                db.TrainingItems.Add(item);
+            }
+            else
+            {
+                var existing = await db.TrainingItems.FirstAsync(existingItem => existingItem.Id == item.Id);
+                var statusChanged = existing.Status != item.Status;
+                existing.Title = item.Title;
+                existing.Domain = item.Domain;
+                existing.Category = item.Category;
+                existing.Description = item.Description;
+                existing.TargetDate = normalizedTargetDate;
+                existing.Status = item.Status;
+                existing.Lane = item.Lane;
+                existing.Type = item.Type;
+                existing.ProgressPercent = item.ProgressPercent;
+                existing.EstimatedHours = item.EstimatedHours;
+                existing.Priority = item.Priority;
+                existing.ProjectDriven = item.ProjectDriven;
+                existing.Notes = item.Notes;
+                existing.Evidence = item.Evidence;
+                existing.UpdatedUtc = now;
+
+                if (statusChanged)
+                {
+                    existing.LastStatusChangedUtc = now;
+                }
+
+                if (item.Status == TrackerStatus.Completed)
+                {
+                    existing.CompletedUtc ??= now;
+                }
+                else if (statusChanged)
+                {
+                    existing.CompletedUtc = null;
+                }
             }
 
-            if (item.Status == TrackerStatus.Completed)
-            {
-                existing.CompletedUtc ??= now;
-            }
-            else if (statusChanged)
-            {
-                existing.CompletedUtc = null;
-            }
-        }
-
-        await db.SaveChangesAsync();
+            await db.SaveChangesAsync();
+        }, "save training item");
     }
 
     public async Task DeleteTrainingItemAsync(int id)
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        var item = await db.TrainingItems.FirstOrDefaultAsync(existing => existing.Id == id);
-        if (item is null)
+        await ExecuteWriteAsync(async db =>
         {
-            return;
-        }
+            var item = await db.TrainingItems.FirstOrDefaultAsync(existing => existing.Id == id);
+            if (item is null)
+            {
+                return;
+            }
 
-        db.TrainingItems.Remove(item);
-        await db.SaveChangesAsync();
+            db.TrainingItems.Remove(item);
+            await db.SaveChangesAsync();
+        }, "delete training item");
     }
 
     public async Task SaveResourceAsync(ResourceEntry resource)
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        var now = DateTime.UtcNow;
-
-        if (resource.Id == 0)
+        await ExecuteWriteAsync(async db =>
         {
-            resource.CreatedUtc = now;
-            resource.UpdatedUtc = now;
-            db.Resources.Add(resource);
-        }
-        else
-        {
-            var existing = await db.Resources.FirstAsync(existingResource => existingResource.Id == resource.Id);
-            existing.Title = resource.Title;
-            existing.Section = resource.Section;
-            existing.Url = resource.Url;
-            existing.Kind = resource.Kind;
-            existing.IsPinned = resource.IsPinned;
-            existing.Summary = resource.Summary;
-            existing.Tags = resource.Tags;
-            existing.Notes = resource.Notes;
-            existing.SortOrder = resource.SortOrder;
-            existing.LastOpenedUtc = resource.LastOpenedUtc;
-            existing.UpdatedUtc = now;
-        }
+            var now = DateTime.UtcNow;
 
-        await db.SaveChangesAsync();
+            if (resource.Id == 0)
+            {
+                resource.CreatedUtc = now;
+                resource.UpdatedUtc = now;
+                db.Resources.Add(resource);
+            }
+            else
+            {
+                var existing = await db.Resources.FirstAsync(existingResource => existingResource.Id == resource.Id);
+                existing.Title = resource.Title;
+                existing.Section = resource.Section;
+                existing.Url = resource.Url;
+                existing.Kind = resource.Kind;
+                existing.IsPinned = resource.IsPinned;
+                existing.Summary = resource.Summary;
+                existing.Tags = resource.Tags;
+                existing.Notes = resource.Notes;
+                existing.SortOrder = resource.SortOrder;
+                existing.LastOpenedUtc = resource.LastOpenedUtc;
+                existing.UpdatedUtc = now;
+            }
+
+            await db.SaveChangesAsync();
+        }, "save resource");
     }
 
     public async Task TouchResourceOpenedAsync(int id)
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        var resource = await db.Resources.FirstOrDefaultAsync(existing => existing.Id == id);
-        if (resource is null)
+        await ExecuteWriteAsync(async db =>
         {
-            return;
-        }
+            var resource = await db.Resources.FirstOrDefaultAsync(existing => existing.Id == id);
+            if (resource is null)
+            {
+                return;
+            }
 
-        resource.LastOpenedUtc = DateTime.UtcNow;
-        await db.SaveChangesAsync();
+            resource.LastOpenedUtc = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+        }, "touch resource opened");
     }
 
     public async Task DeleteResourceAsync(int id)
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        var resource = await db.Resources.FirstOrDefaultAsync(existing => existing.Id == id);
-        if (resource is null)
+        await ExecuteWriteAsync(async db =>
         {
-            return;
-        }
+            var resource = await db.Resources.FirstOrDefaultAsync(existing => existing.Id == id);
+            if (resource is null)
+            {
+                return;
+            }
 
-        db.Resources.Remove(resource);
-        await db.SaveChangesAsync();
+            db.Resources.Remove(resource);
+            await db.SaveChangesAsync();
+        }, "delete resource");
     }
 
     public async Task SaveVideoChannelAsync(VideoChannel channel)
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        var now = DateTime.UtcNow;
-        var normalizedHandle = NormalizeHandle(channel.Handle);
-        var normalizedChannelUrl = string.IsNullOrWhiteSpace(channel.ChannelUrl)
-            ? string.Empty
-            : channel.ChannelUrl.Trim();
-
-        if (channel.Id == 0)
+        await ExecuteWriteAsync(async db =>
         {
-            var duplicate = await db.VideoChannels.FirstOrDefaultAsync(existing =>
-                existing.Handle == normalizedHandle ||
-                existing.ChannelId == channel.ChannelId);
+            var now = DateTime.UtcNow;
+            var normalizedHandle = NormalizeHandle(channel.Handle);
+            var normalizedChannelUrl = string.IsNullOrWhiteSpace(channel.ChannelUrl)
+                ? string.Empty
+                : channel.ChannelUrl.Trim();
 
-            if (duplicate is not null)
+            if (channel.Id == 0)
             {
-                duplicate.DisplayName = channel.DisplayName;
-                duplicate.ChannelId = channel.ChannelId;
-                duplicate.ChannelUrl = normalizedChannelUrl;
-                duplicate.Description = channel.Description;
-                duplicate.ThumbnailUrl = channel.ThumbnailUrl;
-                duplicate.IsSeeded = duplicate.IsSeeded || channel.IsSeeded;
-                duplicate.UpdatedUtc = now;
-                duplicate.LastSyncedUtc = channel.LastSyncedUtc ?? duplicate.LastSyncedUtc;
+                var duplicate = await db.VideoChannels.FirstOrDefaultAsync(existing =>
+                    existing.Handle == normalizedHandle ||
+                    existing.ChannelId == channel.ChannelId);
+
+                if (duplicate is not null)
+                {
+                    duplicate.DisplayName = channel.DisplayName;
+                    duplicate.ChannelId = channel.ChannelId;
+                    duplicate.ChannelUrl = normalizedChannelUrl;
+                    duplicate.Description = channel.Description;
+                    duplicate.ThumbnailUrl = channel.ThumbnailUrl;
+                    duplicate.IsSeeded = duplicate.IsSeeded || channel.IsSeeded;
+                    duplicate.UpdatedUtc = now;
+                    duplicate.LastSyncedUtc = channel.LastSyncedUtc ?? duplicate.LastSyncedUtc;
+                }
+                else
+                {
+                    channel.Handle = normalizedHandle;
+                    channel.ChannelUrl = normalizedChannelUrl;
+                    channel.CreatedUtc = now;
+                    channel.UpdatedUtc = now;
+                    db.VideoChannels.Add(channel);
+                }
             }
             else
             {
-                channel.Handle = normalizedHandle;
-                channel.ChannelUrl = normalizedChannelUrl;
-                channel.CreatedUtc = now;
-                channel.UpdatedUtc = now;
-                db.VideoChannels.Add(channel);
+                var existing = await db.VideoChannels.FirstAsync(current => current.Id == channel.Id);
+                existing.DisplayName = channel.DisplayName;
+                existing.Handle = normalizedHandle;
+                existing.ChannelId = channel.ChannelId;
+                existing.ChannelUrl = normalizedChannelUrl;
+                existing.Description = channel.Description;
+                existing.ThumbnailUrl = channel.ThumbnailUrl;
+                existing.IsSeeded = channel.IsSeeded;
+                existing.UpdatedUtc = now;
+                existing.LastSyncedUtc = channel.LastSyncedUtc;
             }
-        }
-        else
-        {
-            var existing = await db.VideoChannels.FirstAsync(current => current.Id == channel.Id);
-            existing.DisplayName = channel.DisplayName;
-            existing.Handle = normalizedHandle;
-            existing.ChannelId = channel.ChannelId;
-            existing.ChannelUrl = normalizedChannelUrl;
-            existing.Description = channel.Description;
-            existing.ThumbnailUrl = channel.ThumbnailUrl;
-            existing.IsSeeded = channel.IsSeeded;
-            existing.UpdatedUtc = now;
-            existing.LastSyncedUtc = channel.LastSyncedUtc;
-        }
 
-        await db.SaveChangesAsync();
+            await db.SaveChangesAsync();
+        }, "save video channel");
     }
 
     public async Task DeleteVideoChannelAsync(int id)
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        var channel = await db.VideoChannels.FirstOrDefaultAsync(existing => existing.Id == id);
-        if (channel is null)
+        await ExecuteWriteAsync(async db =>
         {
-            return;
-        }
+            var channel = await db.VideoChannels.FirstOrDefaultAsync(existing => existing.Id == id);
+            if (channel is null)
+            {
+                return;
+            }
 
-        db.VideoChannels.Remove(channel);
-        await db.SaveChangesAsync();
+            db.VideoChannels.Remove(channel);
+            await db.SaveChangesAsync();
+        }, "delete video channel");
     }
 
     public async Task UpdateVideoWatchStateAsync(int id, VideoWatchState watchState)
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        var video = await db.Videos.FirstOrDefaultAsync(existing => existing.Id == id);
-        if (video is null)
+        await ExecuteWriteAsync(async db =>
         {
-            return;
-        }
+            var video = await db.Videos.FirstOrDefaultAsync(existing => existing.Id == id);
+            if (video is null)
+            {
+                return;
+            }
 
-        var now = DateTime.UtcNow;
-        video.WatchState = watchState;
-        video.UpdatedUtc = now;
-        video.LastViewedUtc = watchState == VideoWatchState.Seen ? now : video.LastViewedUtc;
-        video.RemovedUtc = watchState == VideoWatchState.Removed ? now : null;
-        await db.SaveChangesAsync();
+            var now = DateTime.UtcNow;
+            video.WatchState = watchState;
+            video.UpdatedUtc = now;
+            video.LastViewedUtc = watchState == VideoWatchState.Seen ? now : video.LastViewedUtc;
+            video.RemovedUtc = watchState == VideoWatchState.Removed ? now : null;
+            await db.SaveChangesAsync();
+        }, "update video watch state");
     }
 
     public async Task MarkVideoOpenedAsync(int id)
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        var video = await db.Videos.FirstOrDefaultAsync(existing => existing.Id == id);
-        if (video is null)
+        await ExecuteWriteAsync(async db =>
         {
-            return;
-        }
+            var video = await db.Videos.FirstOrDefaultAsync(existing => existing.Id == id);
+            if (video is null)
+            {
+                return;
+            }
 
-        var now = DateTime.UtcNow;
-        video.WatchState = VideoWatchState.Seen;
-        video.LastViewedUtc = now;
-        video.RemovedUtc = null;
-        video.UpdatedUtc = now;
-        await db.SaveChangesAsync();
+            var now = DateTime.UtcNow;
+            video.WatchState = VideoWatchState.Seen;
+            video.LastViewedUtc = now;
+            video.RemovedUtc = null;
+            video.UpdatedUtc = now;
+            await db.SaveChangesAsync();
+        }, "mark video opened");
     }
 
     public async Task UpsertVideosAsync(IEnumerable<VideoEntry> videos)
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        var now = DateTime.UtcNow;
-
-        foreach (var video in videos)
+        await ExecuteWriteAsync(async db =>
         {
-            var existing = await db.Videos.FirstOrDefaultAsync(current => current.YouTubeVideoId == video.YouTubeVideoId);
-            if (existing is null)
+            var now = DateTime.UtcNow;
+
+            foreach (var video in videos)
             {
-                video.CreatedUtc = now;
-                video.UpdatedUtc = now;
-                db.Videos.Add(video);
-                continue;
+                var existing = await db.Videos.FirstOrDefaultAsync(current => current.YouTubeVideoId == video.YouTubeVideoId);
+                if (existing is null)
+                {
+                    video.CreatedUtc = now;
+                    video.UpdatedUtc = now;
+                    db.Videos.Add(video);
+                    continue;
+                }
+
+                existing.ChannelId = video.ChannelId;
+                existing.Title = video.Title;
+                existing.Url = video.Url;
+                existing.ThumbnailUrl = video.ThumbnailUrl;
+                existing.Summary = video.Summary;
+                existing.ChannelTitle = video.ChannelTitle;
+                existing.PublishedUtc = video.PublishedUtc;
+                existing.LastSyncedUtc = video.LastSyncedUtc;
+                existing.UpdatedUtc = now;
             }
 
-            existing.ChannelId = video.ChannelId;
-            existing.Title = video.Title;
-            existing.Url = video.Url;
-            existing.ThumbnailUrl = video.ThumbnailUrl;
-            existing.Summary = video.Summary;
-            existing.ChannelTitle = video.ChannelTitle;
-            existing.PublishedUtc = video.PublishedUtc;
-            existing.LastSyncedUtc = video.LastSyncedUtc;
-            existing.UpdatedUtc = now;
-        }
-
-        await db.SaveChangesAsync();
+            await db.SaveChangesAsync();
+        }, "upsert videos");
     }
 
     public async Task SaveNoteAsync(NoteEntry note)
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        var now = DateTime.UtcNow;
-
-        if (note.Id == 0)
+        await ExecuteWriteAsync(async db =>
         {
-            note.CreatedUtc = now;
-            note.UpdatedUtc = now;
-            db.Notes.Add(note);
-        }
-        else
-        {
-            var existing = await db.Notes.FirstAsync(existingNote => existingNote.Id == note.Id);
-            existing.Title = note.Title;
-            existing.Category = note.Category;
-            existing.RelatedArea = note.RelatedArea;
-            existing.Tags = note.Tags;
-            existing.Content = note.Content;
-            existing.IsPinned = note.IsPinned;
-            existing.UpdatedUtc = now;
-        }
+            var now = DateTime.UtcNow;
 
-        await db.SaveChangesAsync();
+            if (note.Id == 0)
+            {
+                note.CreatedUtc = now;
+                note.UpdatedUtc = now;
+                db.Notes.Add(note);
+            }
+            else
+            {
+                var existing = await db.Notes.FirstAsync(existingNote => existingNote.Id == note.Id);
+                existing.Title = note.Title;
+                existing.Category = note.Category;
+                existing.RelatedArea = note.RelatedArea;
+                existing.Tags = note.Tags;
+                existing.Content = note.Content;
+                existing.IsPinned = note.IsPinned;
+                existing.UpdatedUtc = now;
+            }
+
+            await db.SaveChangesAsync();
+        }, "save note");
     }
 
     public async Task DeleteNoteAsync(int id)
     {
-        await using var db = await dbFactory.CreateDbContextAsync();
-        var note = await db.Notes.FirstOrDefaultAsync(existing => existing.Id == id);
-        if (note is null)
+        await ExecuteWriteAsync(async db =>
         {
-            return;
-        }
+            var note = await db.Notes.FirstOrDefaultAsync(existing => existing.Id == id);
+            if (note is null)
+            {
+                return;
+            }
 
-        db.Notes.Remove(note);
-        await db.SaveChangesAsync();
+            db.Notes.Remove(note);
+            await db.SaveChangesAsync();
+        }, "delete note");
     }
 
     private static string NormalizeHandle(string handle)
@@ -622,5 +659,68 @@ public class TrackerService(IDbContextFactory<TrackerDbContext> dbFactory)
 
         SyncAnnouncementState(state, announcement);
         return state;
+    }
+
+    private async Task<TResult> ExecuteReadAsync<TResult>(Func<TrackerDbContext, Task<TResult>> operation, TResult fallback, string operationName)
+    {
+        try
+        {
+            await using var db = await dbFactory.CreateDbContextAsync();
+            var result = await operation(db);
+            databaseAvailabilityState.MarkAvailable();
+            return result;
+        }
+        catch (Exception ex) when (IsTransientReadException(ex))
+        {
+            databaseAvailabilityState.MarkUnavailable();
+            logger.LogWarning(ex, "Tracker read {OperationName} failed because the database is temporarily unavailable. Returning fallback data.", operationName);
+            return fallback;
+        }
+    }
+
+    private async Task ExecuteWriteAsync(Func<TrackerDbContext, Task> operation, string operationName)
+    {
+        try
+        {
+            await using var db = await dbFactory.CreateDbContextAsync();
+            await operation(db);
+            databaseAvailabilityState.MarkAvailable();
+        }
+        catch (Exception ex) when (IsTransientReadException(ex))
+        {
+            databaseAvailabilityState.MarkUnavailable();
+            logger.LogWarning(ex, "Tracker write {OperationName} failed because the database is unavailable.", operationName);
+            throw new TrackerStorageUnavailableException(databaseAvailabilityState.UserMessage, ex);
+        }
+    }
+
+    private async Task<TResult> ExecuteWriteAsync<TResult>(Func<TrackerDbContext, Task<TResult>> operation, string operationName)
+    {
+        try
+        {
+            await using var db = await dbFactory.CreateDbContextAsync();
+            var result = await operation(db);
+            databaseAvailabilityState.MarkAvailable();
+            return result;
+        }
+        catch (Exception ex) when (IsTransientReadException(ex))
+        {
+            databaseAvailabilityState.MarkUnavailable();
+            logger.LogWarning(ex, "Tracker write {OperationName} failed because the database is unavailable.", operationName);
+            throw new TrackerStorageUnavailableException(databaseAvailabilityState.UserMessage, ex);
+        }
+    }
+
+    private static bool IsTransientReadException(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is NpgsqlException or TimeoutException)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

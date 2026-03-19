@@ -117,10 +117,17 @@
             return;
         }
 
-        await TrackerService.SaveNoteAsync(editingNote);
-        Snackbar.Add("Note saved.", Severity.Success);
-        await LoadAsync();
-        CreateNew();
+        try
+        {
+            await TrackerService.SaveNoteAsync(editingNote);
+            Snackbar.Add("Note saved.", Severity.Success);
+            await LoadAsync();
+            CreateNew();
+        }
+        catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
     }
 
     private async Task DeleteAsync()
@@ -130,10 +137,17 @@
             return;
         }
 
-        await TrackerService.DeleteNoteAsync(editingNote.Id);
-        Snackbar.Add("Note deleted.", Severity.Info);
-        await LoadAsync();
-        CreateNew();
+        try
+        {
+            await TrackerService.DeleteNoteAsync(editingNote.Id);
+            Snackbar.Add("Note deleted.", Severity.Info);
+            await LoadAsync();
+            CreateNew();
+        }
+        catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
     }
 
     private static UpskillTracker.Models.NoteEntry CreateEmptyNote()

@@ -5,6 +5,13 @@
 
 <ReminderBanner />
 
+@if (TrackerService.HasRecentTransientReadFailure)
+{
+	<MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mb-4">
+		@TrackerService.DatabaseUnavailableMessage
+	</MudAlert>
+}
+
 @if (isLoading)
 {
 	<MudSkeleton Height="210px" Class="mb-6" />
@@ -88,6 +95,11 @@ else if (snapshot is not null)
 
 	private string GetOverviewSummary()
 	{
+		if (TrackerService.HasRecentTransientReadFailure)
+		{
+			return "The PostgreSQL database is currently down or stopped. Start it in Azure and refresh this page when it is back online.";
+		}
+
 		if (snapshot is null)
 		{
 			return "Your learning plan, notes, resources, and Copilot workspace live together here.";

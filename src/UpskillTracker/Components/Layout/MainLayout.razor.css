@@ -9,6 +9,10 @@
     padding: 2rem 1rem 3rem;
 }
 
+.database-status-banner {
+    border-width: 1px;
+}
+
 @media (min-width: 900px) {
     .shell-container {
         padding: 2.25rem 2rem 3rem;

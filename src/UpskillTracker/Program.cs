@@ -31,6 +31,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddMudServices();
 builder.Services.AddApplicationInsightsTelemetry();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<DatabaseAvailabilityState>();
 builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(StorageOptions.SectionName));
 builder.Services.Configure<GitHubOAuthOptions>(builder.Configuration.GetSection(GitHubOAuthOptions.SectionName));
 builder.Services.Configure<CopilotSdkOptions>(builder.Configuration.GetSection(CopilotSdkOptions.SectionName));
@@ -218,7 +219,15 @@ app.MapPost("/api/announcements/opened", async (AnnouncementOpenRequest request,
         SourceUrl = request.SourceUrl ?? string.Empty
     };
 
-    await trackerService.MarkAnnouncementOpenedAsync(announcement);
+    try
+    {
+        await trackerService.MarkAnnouncementOpenedAsync(announcement);
+    }
+    catch (TrackerStorageUnavailableException)
+    {
+        return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+    }
+
     return Results.Ok();
 }).AllowAnonymous();
 

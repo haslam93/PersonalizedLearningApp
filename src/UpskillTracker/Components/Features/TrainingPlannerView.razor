@@ -233,10 +233,17 @@
         }
 
         editingItem.TargetDate = targetDate ?? editingItem.TargetDate;
-        await TrackerService.SaveTrainingItemAsync(editingItem);
-        Snackbar.Add("Training item saved.", Severity.Success);
-        await LoadAsync();
-        CreateNew();
+        try
+        {
+            await TrackerService.SaveTrainingItemAsync(editingItem);
+            Snackbar.Add("Training item saved.", Severity.Success);
+            await LoadAsync();
+            CreateNew();
+        }
+        catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
     }
 
     private async Task DeleteAsync()
@@ -246,15 +253,30 @@
             return;
         }
 
-        await TrackerService.DeleteTrainingItemAsync(editingItem.Id);
-        Snackbar.Add("Training item deleted.", Severity.Info);
-        await LoadAsync();
-        CreateNew();
+        try
+        {
+            await TrackerService.DeleteTrainingItemAsync(editingItem.Id);
+            Snackbar.Add("Training item deleted.", Severity.Info);
+            await LoadAsync();
+            CreateNew();
+        }
+        catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
     }
 
     private async Task OpenResourceAsync(UpskillTracker.Models.ResourceEntry resource)
     {
-        await TrackerService.TouchResourceOpenedAsync(resource.Id);
+        try
+        {
+            await TrackerService.TouchResourceOpenedAsync(resource.Id);
+        }
+        catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+
         await JSRuntime.InvokeVoidAsync("open", resource.Url, "_blank", "noopener,noreferrer");
     }
 

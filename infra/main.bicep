@@ -56,6 +56,7 @@ param appServicePlanSku string = 'P0v3'
 var resourceSuffix = toLower(take(uniqueString(subscription().id, resourceGroupName, environmentName), 6))
 var tags = {
   'azd-env-name': environmentName
+  CostControl: 'Ignore'
   workload: 'personal-learning-app'
   owner: 'hammad'
 }

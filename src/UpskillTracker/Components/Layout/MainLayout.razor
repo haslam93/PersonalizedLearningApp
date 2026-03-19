@@ -1,4 +1,5 @@
 ﻿@inherits LayoutComponentBase
+@inject UpskillTracker.Services.DatabaseAvailabilityState DatabaseAvailabilityState
 
 <MudPopoverProvider />
 <MudSnackbarProvider />
@@ -18,6 +19,14 @@
     <MudMainContent>
         <PinGate>
             <div class="shell-container">
+                @if (DatabaseAvailabilityState.IsUnavailable)
+                {
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" Class="mb-4 database-status-banner">
+                        <MudText Typo="Typo.subtitle2">Database offline</MudText>
+                        <MudText Typo="Typo.body2">@DatabaseAvailabilityState.UserMessage</MudText>
+                    </MudAlert>
+                }
+
                 @Body
             </div>
         </PinGate>

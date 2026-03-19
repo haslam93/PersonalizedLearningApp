@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "4225031676596575755"
+      "templateHash": "14380294107065046721"
     }
   },
   "parameters": {
@@ -19,6 +19,13 @@
       "type": "string",
       "metadata": {
         "description": "Azure location for all resources."
+      }
+    },
+    "postgresLocation": {
+      "type": "string",
+      "defaultValue": "centralus",
+      "metadata": {
+        "description": "Azure location for PostgreSQL resources when the app region is quota restricted."
       }
     },
     "resourceGroupName": {
@@ -35,11 +42,73 @@
         "description": "Optional override for the web app name. Must be globally unique when provided."
       }
     },
+    "customHostname": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional custom hostname to bind to the web app. Leave empty to skip custom domain deployment."
+      }
+    },
+    "accessPin": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Access PIN shown by the app login screen. Stored as a secure app setting in Azure."
+      }
+    },
+    "gitHubOAuthClientId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "GitHub OAuth client id used by the in-app Copilot sign-in flow."
+      }
+    },
+    "gitHubOAuthClientSecret": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "GitHub OAuth client secret used by the in-app Copilot sign-in flow."
+      }
+    },
+    "youTubeApiKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "YouTube Data API key used to sync channel and video metadata."
+      }
+    },
+    "postgresAdminLogin": {
+      "type": "string",
+      "defaultValue": "pgbootstrap",
+      "metadata": {
+        "description": "Bootstrap PostgreSQL admin login used only for server creation and emergency access."
+      }
+    },
+    "postgresAdminPassword": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Bootstrap PostgreSQL admin password used only for server creation and emergency access."
+      }
+    },
+    "copilotCliPath": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional path to the GitHub Copilot CLI binary when it is bundled with the app."
+      }
+    },
+    "copilotDefaultModel": {
+      "type": "string",
+      "defaultValue": "gpt-5",
+      "metadata": {
+        "description": "Default model shown in the Copilot chat model picker."
+      }
+    },
     "appServicePlanSku": {
       "type": "string",
-      "defaultValue": "B1",
+      "defaultValue": "P0v3",
       "allowedValues": [
-        "B1",
         "P0v3",
         "P1v3"
       ],
@@ -52,6 +121,7 @@
     "resourceSuffix": "[toLower(take(uniqueString(subscription().id, parameters('resourceGroupName'), parameters('environmentName')), 6))]",
     "tags": {
       "azd-env-name": "[parameters('environmentName')]",
+      "CostControl": "Ignore",
       "workload": "personal-learning-app",
       "owner": "hammad"
     },
@@ -79,6 +149,9 @@
         },
         "mode": "Incremental",
         "parameters": {
+          "accessPin": {
+            "value": "[parameters('accessPin')]"
+          },
           "appInsightsName": {
             "value": "[variables('effectiveInsightsName')]"
           },
@@ -87,6 +160,33 @@
           },
           "appServicePlanSku": {
             "value": "[parameters('appServicePlanSku')]"
+          },
+          "copilotCliPath": {
+            "value": "[parameters('copilotCliPath')]"
+          },
+          "copilotDefaultModel": {
+            "value": "[parameters('copilotDefaultModel')]"
+          },
+          "customHostname": {
+            "value": "[parameters('customHostname')]"
+          },
+          "gitHubOAuthClientId": {
+            "value": "[parameters('gitHubOAuthClientId')]"
+          },
+          "gitHubOAuthClientSecret": {
+            "value": "[parameters('gitHubOAuthClientSecret')]"
+          },
+          "youTubeApiKey": {
+            "value": "[parameters('youTubeApiKey')]"
+          },
+          "postgresAdminLogin": {
+            "value": "[parameters('postgresAdminLogin')]"
+          },
+          "postgresAdminPassword": {
+            "value": "[parameters('postgresAdminPassword')]"
+          },
+          "postgresLocation": {
+            "value": "[parameters('postgresLocation')]"
           },
           "location": {
             "value": "[parameters('location')]"
@@ -108,7 +208,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "14089836511350176779"
+              "templateHash": "3722671231240622725"
             }
           },
           "parameters": {
@@ -119,11 +219,60 @@
                 "description": "Azure location for all resources."
               }
             },
+            "postgresLocation": {
+              "type": "string",
+              "defaultValue": "centralus",
+              "metadata": {
+                "description": "Azure location for PostgreSQL resources when the app region is quota restricted."
+              }
+            },
             "tags": {
               "type": "object",
               "defaultValue": {},
               "metadata": {
                 "description": "Tags to apply to all resources."
+              }
+            },
+            "accessPin": {
+              "type": "securestring",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Access PIN shown by the app login screen. Stored as a secure app setting in Azure."
+              }
+            },
+            "gitHubOAuthClientId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "GitHub OAuth client id used by the in-app Copilot sign-in flow."
+              }
+            },
+            "gitHubOAuthClientSecret": {
+              "type": "securestring",
+              "defaultValue": "",
+              "metadata": {
+                "description": "GitHub OAuth client secret used by the in-app Copilot sign-in flow."
+              }
+            },
+            "youTubeApiKey": {
+              "type": "securestring",
+              "defaultValue": "",
+              "metadata": {
+                "description": "YouTube Data API key used to sync channel and video metadata."
+              }
+            },
+            "copilotCliPath": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Optional path to the GitHub Copilot CLI binary when it is bundled with the app."
+              }
+            },
+            "copilotDefaultModel": {
+              "type": "string",
+              "defaultValue": "gpt-5",
+              "metadata": {
+                "description": "Default model shown in the Copilot chat model picker."
               }
             },
             "appServicePlanName": {
@@ -134,20 +283,26 @@
             },
             "appServicePlanSku": {
               "type": "string",
-              "defaultValue": "B1",
+              "defaultValue": "P0v3",
               "allowedValues": [
-                "B1",
                 "P0v3",
                 "P1v3"
               ],
               "metadata": {
-                "description": "SKU for the App Service plan."
+                "description": "SKU for the App Service plan. Private networking requires Premium v3 or better."
               }
             },
             "webAppName": {
               "type": "string",
               "metadata": {
                 "description": "Name of the App Service web app."
+              }
+            },
+            "customHostname": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Optional custom hostname to bind to the App Service web app."
               }
             },
             "logAnalyticsWorkspaceName": {
@@ -161,12 +316,40 @@
               "metadata": {
                 "description": "Name of the Application Insights component."
               }
+            },
+            "postgresAdminLogin": {
+              "type": "string",
+              "defaultValue": "pgbootstrap",
+              "metadata": {
+                "description": "Bootstrap PostgreSQL admin login used only for server creation and emergency access."
+              }
+            },
+            "postgresAdminPassword": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Bootstrap PostgreSQL admin password used only for server creation and emergency access."
+              }
             }
           },
           "variables": {
             "serviceName": "web",
             "hostingTags": "[union(parameters('tags'), createObject('azd-service-name', variables('serviceName')))]",
-            "linuxRuntime": "DOTNETCORE|8.0"
+            "linuxRuntime": "DOTNETCORE|8.0",
+            "nameSuffix": "[toLower(take(uniqueString(resourceGroup().id, parameters('webAppName'), parameters('location')), 6))]",
+            "postgresNameSuffix": "[toLower(take(uniqueString(resourceGroup().id, parameters('webAppName'), parameters('postgresLocation'), 'postgres'), 6))]",
+            "postgresVnetAddressPrefix": "[if(equals(parameters('postgresLocation'), 'centralus'), '10.43.0.0/16', if(equals(parameters('postgresLocation'), 'eastus'), '10.44.0.0/16', '10.45.0.0/16'))]",
+            "postgresSubnetAddressPrefix": "[if(equals(parameters('postgresLocation'), 'centralus'), '10.43.0.0/24', if(equals(parameters('postgresLocation'), 'eastus'), '10.44.0.0/24', '10.45.0.0/24'))]",
+            "appVnetName": "[take(format('vnet-{0}-{1}', parameters('webAppName'), variables('nameSuffix')), 64)]",
+            "postgresVnetName": "[take(format('vnet-{0}-pg-{1}', parameters('webAppName'), take(uniqueString(resourceGroup().id, parameters('webAppName'), parameters('postgresLocation')), 6)), 64)]",
+            "storageAccountName": "[format('st{0}', take(uniqueString(resourceGroup().id, parameters('webAppName'), 'storage'), 22))]",
+            "postgresServerName": "[take(format('pg-{0}-{1}', toLower(parameters('webAppName')), variables('postgresNameSuffix')), 63)]",
+            "postgresDatabaseName": "upskilltracker",
+            "blobContainerName": "dataprotection",
+            "blobName": "keyring.xml",
+            "postgresDnsZoneName": "private.postgres.database.azure.com",
+            "storageDnsZoneName": "[format('privatelink.blob.{0}', environment().suffixes.storage)]",
+            "blobServiceHostSuffix": "[environment().suffixes.storage]",
+            "blobDataContributorRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')]"
           },
           "resources": [
             {
@@ -203,6 +386,222 @@
               ]
             },
             {
+              "type": "Microsoft.Network/virtualNetworks",
+              "apiVersion": "2024-05-01",
+              "name": "[variables('appVnetName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "10.42.0.0/16"
+                  ]
+                },
+                "subnets": [
+                  {
+                    "name": "appsvc",
+                    "properties": {
+                      "addressPrefix": "10.42.0.0/24",
+                      "delegations": [
+                        {
+                          "name": "webapp-delegation",
+                          "properties": {
+                            "serviceName": "Microsoft.Web/serverFarms"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "postgres",
+                    "properties": {
+                      "addressPrefix": "10.42.1.0/24",
+                      "delegations": [
+                        {
+                          "name": "postgres-delegation",
+                          "properties": {
+                            "serviceName": "Microsoft.DBforPostgreSQL/flexibleServers"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "private-endpoints",
+                    "properties": {
+                      "addressPrefix": "10.42.2.0/24",
+                      "privateEndpointNetworkPolicies": "Disabled"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/virtualNetworks",
+              "apiVersion": "2024-05-01",
+              "name": "[variables('postgresVnetName')]",
+              "location": "[parameters('postgresLocation')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "[variables('postgresVnetAddressPrefix')]"
+                  ]
+                },
+                "subnets": [
+                  {
+                    "name": "postgres",
+                    "properties": {
+                      "addressPrefix": "[variables('postgresSubnetAddressPrefix')]",
+                      "delegations": [
+                        {
+                          "name": "postgres-delegation",
+                          "properties": {
+                            "serviceName": "Microsoft.DBforPostgreSQL/flexibleServers"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2024-06-01",
+              "name": "[variables('postgresDnsZoneName')]",
+              "location": "global",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2024-06-01",
+              "name": "[variables('storageDnsZoneName')]",
+              "location": "global",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2024-06-01",
+              "name": "[format('{0}/{1}', variables('postgresDnsZoneName'), format('{0}-link', variables('appVnetName')))]",
+              "location": "global",
+              "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                  "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('appVnetName'))]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('appVnetName'))]",
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('postgresDnsZoneName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2024-06-01",
+              "name": "[format('{0}/{1}', variables('postgresDnsZoneName'), format('{0}-link', variables('postgresVnetName')))]",
+              "location": "global",
+              "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                  "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('postgresVnetName'))]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('postgresDnsZoneName'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('postgresVnetName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+              "apiVersion": "2024-05-01",
+              "name": "[format('{0}/{1}', variables('appVnetName'), format('{0}-to-{1}', variables('appVnetName'), variables('postgresVnetName')))]",
+              "properties": {
+                "allowForwardedTraffic": true,
+                "allowVirtualNetworkAccess": true,
+                "remoteVirtualNetwork": {
+                  "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('postgresVnetName'))]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('appVnetName'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('postgresVnetName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+              "apiVersion": "2024-05-01",
+              "name": "[format('{0}/{1}', variables('postgresVnetName'), format('{0}-to-{1}', variables('postgresVnetName'), variables('appVnetName')))]",
+              "properties": {
+                "allowForwardedTraffic": true,
+                "allowVirtualNetworkAccess": true,
+                "remoteVirtualNetwork": {
+                  "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('appVnetName'))]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('appVnetName'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('postgresVnetName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2024-06-01",
+              "name": "[format('{0}/{1}', variables('storageDnsZoneName'), format('{0}-link', variables('appVnetName')))]",
+              "location": "global",
+              "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                  "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('appVnetName'))]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('appVnetName'))]",
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('storageDnsZoneName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2024-01-01",
+              "name": "[variables('storageAccountName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "kind": "StorageV2",
+              "properties": {
+                "accessTier": "Hot",
+                "allowBlobPublicAccess": false,
+                "minimumTlsVersion": "TLS1_2",
+                "publicNetworkAccess": "Disabled",
+                "supportsHttpsTrafficOnly": true,
+                "networkAcls": {
+                  "bypass": "AzureServices",
+                  "defaultAction": "Deny"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}', variables('storageAccountName'), 'default')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}/{2}', variables('storageAccountName'), 'default', variables('blobContainerName'))]",
+              "properties": {
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('storageAccountName'), 'default')]"
+              ]
+            },
+            {
               "type": "Microsoft.Web/serverfarms",
               "apiVersion": "2024-11-01",
               "name": "[parameters('appServicePlanName')]",
@@ -231,12 +630,14 @@
                 "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
                 "httpsOnly": true,
                 "publicNetworkAccess": "Enabled",
+                "virtualNetworkSubnetId": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('appVnetName'), 'appsvc')]",
                 "siteConfig": {
                   "alwaysOn": true,
                   "ftpsState": "Disabled",
                   "http20Enabled": true,
                   "linuxFxVersion": "[variables('linuxRuntime')]",
                   "minTlsVersion": "1.2",
+                  "vnetRouteAllEnabled": true,
                   "appSettings": [
                     {
                       "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
@@ -247,6 +648,34 @@
                       "value": "Production"
                     },
                     {
+                      "name": "AccessPin",
+                      "value": "[parameters('accessPin')]"
+                    },
+                    {
+                      "name": "GitHubOAuth__ClientId",
+                      "value": "[parameters('gitHubOAuthClientId')]"
+                    },
+                    {
+                      "name": "GitHubOAuth__ClientSecret",
+                      "value": "[parameters('gitHubOAuthClientSecret')]"
+                    },
+                    {
+                      "name": "YouTube__ApiKey",
+                      "value": "[parameters('youTubeApiKey')]"
+                    },
+                    {
+                      "name": "GitHubOAuth__CallbackPath",
+                      "value": "/signin-github"
+                    },
+                    {
+                      "name": "CopilotSdk__CliPath",
+                      "value": "[parameters('copilotCliPath')]"
+                    },
+                    {
+                      "name": "CopilotSdk__DefaultModel",
+                      "value": "[parameters('copilotDefaultModel')]"
+                    },
+                    {
                       "name": "ENABLE_ORYX_BUILD",
                       "value": "false"
                     },
@@ -255,8 +684,36 @@
                       "value": "false"
                     },
                     {
+                      "name": "Storage__Provider",
+                      "value": "Postgres"
+                    },
+                    {
                       "name": "Storage__ConnectionString",
+                      "value": "[format('Host={0};Database={1};Username={2};Ssl Mode=Require', reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('postgresServerName')), '2024-08-01').fullyQualifiedDomainName, variables('postgresDatabaseName'), parameters('webAppName'))]"
+                    },
+                    {
+                      "name": "Storage__DatabaseUser",
+                      "value": "[parameters('webAppName')]"
+                    },
+                    {
+                      "name": "Storage__UseManagedIdentity",
+                      "value": "true"
+                    },
+                    {
+                      "name": "Storage__LegacySqliteConnectionString",
                       "value": "Data Source=/home/data/upskilltracker.db"
+                    },
+                    {
+                      "name": "Storage__EnableLegacySqliteImport",
+                      "value": "true"
+                    },
+                    {
+                      "name": "Storage__KeyBlobUri",
+                      "value": "[format('https://{0}.blob.{1}/{2}/{3}', variables('storageAccountName'), variables('blobServiceHostSuffix'), variables('blobContainerName'), variables('blobName'))]"
+                    },
+                    {
+                      "name": "Storage__DataProtectionApplicationName",
+                      "value": "[parameters('webAppName')]"
                     },
                     {
                       "name": "WEBSITES_ENABLE_APP_SERVICE_STORAGE",
@@ -273,7 +730,128 @@
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Insights/components', parameters('appInsightsName'))]",
-                "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]"
+                "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('appVnetName'))]",
+                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers/databases', variables('postgresServerName'), variables('postgresDatabaseName'))]",
+                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('postgresServerName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Storage/storageAccounts/{0}', variables('storageAccountName'))]",
+              "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), parameters('webAppName'), 'blob-data-contributor')]",
+              "properties": {
+                "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('webAppName')), '2024-11-01', 'full').identity.principalId]",
+                "roleDefinitionId": "[variables('blobDataContributorRoleDefinitionId')]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+                "[resourceId('Microsoft.Web/sites', parameters('webAppName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateEndpoints",
+              "apiVersion": "2024-05-01",
+              "name": "[format('pe-{0}-blob', variables('storageAccountName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "subnet": {
+                  "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('appVnetName'), 'private-endpoints')]"
+                },
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "blob",
+                    "properties": {
+                      "privateLinkServiceId": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+                      "groupIds": [
+                        "blob"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('appVnetName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+              "apiVersion": "2024-05-01",
+              "name": "[format('{0}/{1}', format('pe-{0}-blob', variables('storageAccountName')), 'default')]",
+              "properties": {
+                "privateDnsZoneConfigs": [
+                  {
+                    "name": "blob-dns",
+                    "properties": {
+                      "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('storageDnsZoneName'))]"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('storageDnsZoneName'))]",
+                "[resourceId('Microsoft.Network/privateEndpoints', format('pe-{0}-blob', variables('storageAccountName')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DBforPostgreSQL/flexibleServers",
+              "apiVersion": "2024-08-01",
+              "name": "[variables('postgresServerName')]",
+              "location": "[parameters('postgresLocation')]",
+              "tags": "[parameters('tags')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "sku": {
+                "name": "Standard_D2s_v3",
+                "tier": "GeneralPurpose"
+              },
+              "properties": {
+                "administratorLogin": "[parameters('postgresAdminLogin')]",
+                "administratorLoginPassword": "[parameters('postgresAdminPassword')]",
+                "authConfig": {
+                  "activeDirectoryAuth": "Enabled",
+                  "passwordAuth": "Enabled",
+                  "tenantId": "[tenant().tenantId]"
+                },
+                "backup": {
+                  "backupRetentionDays": 7,
+                  "geoRedundantBackup": "Disabled"
+                },
+                "createMode": "Default",
+                "network": {
+                  "delegatedSubnetResourceId": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('postgresVnetName'), 'postgres')]",
+                  "privateDnsZoneArmResourceId": "[resourceId('Microsoft.Network/privateDnsZones', variables('postgresDnsZoneName'))]",
+                  "publicNetworkAccess": "Disabled"
+                },
+                "storage": {
+                  "autoGrow": "Enabled",
+                  "storageSizeGB": 32,
+                  "tier": "P4",
+                  "type": "Premium_LRS"
+                },
+                "version": "16"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('postgresDnsZoneName'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('postgresVnetName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DBforPostgreSQL/flexibleServers/databases",
+              "apiVersion": "2024-08-01",
+              "name": "[format('{0}/{1}', variables('postgresServerName'), variables('postgresDatabaseName'))]",
+              "properties": {
+                "charset": "UTF8",
+                "collation": "en_US.utf8"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('postgresServerName'))]"
               ]
             },
             {
@@ -303,6 +881,23 @@
               "dependsOn": [
                 "[resourceId('Microsoft.Web/sites', parameters('webAppName'))]"
               ]
+            },
+            {
+              "condition": "[not(empty(parameters('customHostname')))]",
+              "type": "Microsoft.Web/sites/hostNameBindings",
+              "apiVersion": "2024-11-01",
+              "name": "[format('{0}/{1}', parameters('webAppName'), parameters('customHostname'))]",
+              "properties": {
+                "azureResourceName": "[parameters('webAppName')]",
+                "azureResourceType": "Website",
+                "customHostNameDnsRecordType": "CName",
+                "hostNameType": "Verified",
+                "siteName": "[parameters('webAppName')]",
+                "sslState": "Disabled"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('webAppName'))]"
+              ]
             }
           ],
           "outputs": {
@@ -317,6 +912,18 @@
             "appInsightsConnectionString": {
               "type": "string",
               "value": "[reference(resourceId('Microsoft.Insights/components', parameters('appInsightsName')), '2020-02-02').ConnectionString]"
+            },
+            "postgresServerName": {
+              "type": "string",
+              "value": "[variables('postgresServerName')]"
+            },
+            "postgresDatabaseName": {
+              "type": "string",
+              "value": "[variables('postgresDatabaseName')]"
+            },
+            "storageAccountName": {
+              "type": "string",
+              "value": "[variables('storageAccountName')]"
             }
           }
         }

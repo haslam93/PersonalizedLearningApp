@@ -17,36 +17,48 @@ public static class DatabaseInitializer
         var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<TrackerDbContext>>();
         var environment = scope.ServiceProvider.GetRequiredService<IWebHostEnvironment>();
         var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseInitializer");
+        var databaseAvailabilityState = scope.ServiceProvider.GetRequiredService<DatabaseAvailabilityState>();
         var storageOptions = scope.ServiceProvider.GetRequiredService<IOptions<StorageOptions>>().Value;
-        await using var db = await dbFactory.CreateDbContextAsync();
 
-        await db.Database.EnsureCreatedAsync();
-        await EnsureVideoSchemaAsync(db);
-
-        if (IsPostgresProvider(db) && storageOptions.EnableLegacySqliteImport)
+        try
         {
-            var legacySqliteConnectionString = ResolveLegacySqliteConnectionString(storageOptions, environment);
-            await ImportLegacySqliteIfNeededAsync(db, legacySqliteConnectionString, logger);
+            await using var db = await dbFactory.CreateDbContextAsync();
+
+            await db.Database.EnsureCreatedAsync();
+            await EnsureVideoSchemaAsync(db);
+
+            if (IsPostgresProvider(db) && storageOptions.EnableLegacySqliteImport)
+            {
+                var legacySqliteConnectionString = ResolveLegacySqliteConnectionString(storageOptions, environment);
+                await ImportLegacySqliteIfNeededAsync(db, legacySqliteConnectionString, logger);
+            }
+
+            if (!await db.TrainingItems.AnyAsync())
+            {
+                db.TrainingItems.AddRange(GetSeedTrainingItems());
+            }
+
+            await EnsureSeedResourcesAsync(db);
+            await EnsureSeedVideoChannelsAsync(db);
+
+            if (!await db.Notes.AnyAsync())
+            {
+                db.Notes.AddRange(GetSeedNotes());
+            }
+
+            await db.SaveChangesAsync();
+
+            if (IsPostgresProvider(db))
+            {
+                await ResetIdentitySequencesAsync(db);
+            }
+
+            databaseAvailabilityState.MarkAvailable();
         }
-
-        if (!await db.TrainingItems.AnyAsync())
+        catch (Exception ex) when (IsTransientDatabaseException(ex))
         {
-            db.TrainingItems.AddRange(GetSeedTrainingItems());
-        }
-
-        await EnsureSeedResourcesAsync(db);
-        await EnsureSeedVideoChannelsAsync(db);
-
-        if (!await db.Notes.AnyAsync())
-        {
-            db.Notes.AddRange(GetSeedNotes());
-        }
-
-        await db.SaveChangesAsync();
-
-        if (IsPostgresProvider(db))
-        {
-            await ResetIdentitySequencesAsync(db);
+            databaseAvailabilityState.MarkUnavailable();
+            logger.LogWarning(ex, "Skipping database initialization because PostgreSQL is currently unavailable. The app will continue in degraded mode until the database is started again.");
         }
     }
 
@@ -149,6 +161,19 @@ public static class DatabaseInitializer
 
     private static bool IsPostgresProvider(TrackerDbContext db)
         => db.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true;
+
+    private static bool IsTransientDatabaseException(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is NpgsqlException or TimeoutException)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private static string ResolveLegacySqliteConnectionString(StorageOptions storageOptions, IWebHostEnvironment environment)
     {

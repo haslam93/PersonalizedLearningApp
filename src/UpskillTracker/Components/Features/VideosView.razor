@@ -252,27 +252,41 @@
             return;
         }
 
-        await TrackerService.SaveVideoChannelAsync(new UpskillTracker.Models.VideoChannel
+        try
         {
-            DisplayName = resolution.Channel.DisplayName,
-            Handle = resolution.Channel.Handle,
-            ChannelId = resolution.Channel.ChannelId,
-            ChannelUrl = resolution.Channel.ChannelUrl,
-            Description = resolution.Channel.Description,
-            ThumbnailUrl = resolution.Channel.ThumbnailUrl
-        });
+            await TrackerService.SaveVideoChannelAsync(new UpskillTracker.Models.VideoChannel
+            {
+                DisplayName = resolution.Channel.DisplayName,
+                Handle = resolution.Channel.Handle,
+                ChannelId = resolution.Channel.ChannelId,
+                ChannelUrl = resolution.Channel.ChannelUrl,
+                Description = resolution.Channel.Description,
+                ThumbnailUrl = resolution.Channel.ThumbnailUrl
+            });
 
-        channelInput = string.Empty;
-        Snackbar.Add("Channel saved.", Severity.Success);
-        await LoadAsync();
-        await RefreshVideosCoreAsync(showSnackbar: false, isAutomatic: true);
+            channelInput = string.Empty;
+            Snackbar.Add("Channel saved.", Severity.Success);
+            await LoadAsync();
+            await RefreshVideosCoreAsync(showSnackbar: false, isAutomatic: true);
+        }
+        catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
     }
 
     private async Task RemoveChannelAsync(int id)
     {
-        await TrackerService.DeleteVideoChannelAsync(id);
-        Snackbar.Add("Channel removed.", Severity.Info);
-        await LoadAsync();
+        try
+        {
+            await TrackerService.DeleteVideoChannelAsync(id);
+            Snackbar.Add("Channel removed.", Severity.Info);
+            await LoadAsync();
+        }
+        catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
     }
 
     private async Task RefreshVideosAsync()
@@ -305,9 +319,16 @@
 
     private async Task ChangeVideoStateAsync(int id, UpskillTracker.Models.VideoWatchState watchState, string message)
     {
-        await TrackerService.UpdateVideoWatchStateAsync(id, watchState);
-        Snackbar.Add(message, Severity.Success);
-        await LoadAsync();
+        try
+        {
+            await TrackerService.UpdateVideoWatchStateAsync(id, watchState);
+            Snackbar.Add(message, Severity.Success);
+            await LoadAsync();
+        }
+        catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
     }
 
     private Task MarkNeedToWatchAsync(int id)
@@ -318,8 +339,16 @@
 
     private async Task OpenVideoAsync(int id, string url)
     {
-        await TrackerService.MarkVideoOpenedAsync(id);
-        await LoadAsync();
+        try
+        {
+            await TrackerService.MarkVideoOpenedAsync(id);
+            await LoadAsync();
+        }
+        catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+
         await JSRuntime.InvokeVoidAsync("open", url, "_blank", "noopener,noreferrer");
     }
 
