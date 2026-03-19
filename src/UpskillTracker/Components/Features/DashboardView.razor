@@ -533,9 +533,52 @@ else if (snapshot is not null)
 
     private async Task OpenAnnouncementAsync(UpskillTracker.Models.AnnouncementItem announcement)
     {
-        var state = await TrackerService.MarkAnnouncementOpenedAsync(announcement);
-        announcementStates[announcement.Url] = state;
-        await JSRuntime.InvokeVoidAsync("open", announcement.Url, "_blank", "noopener,noreferrer");
+        announcementStates[announcement.Url] = BuildOptimisticOpenedAnnouncementState(announcement);
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("upskillTracker.openAnnouncement", new
+            {
+                url = announcement.Url,
+                title = announcement.Title,
+                summary = announcement.Summary,
+                publishedUtc = announcement.PublishedUtc,
+                source = announcement.Source,
+                topic = announcement.Topic,
+                stream = announcement.Stream.ToString(),
+                sourceUrl = announcement.SourceUrl
+            });
+        }
+        catch
+        {
+            var state = await TrackerService.MarkAnnouncementOpenedAsync(announcement);
+            announcementStates[announcement.Url] = state;
+            await JSRuntime.InvokeVoidAsync("open", announcement.Url, "_blank", "noopener,noreferrer");
+        }
+    }
+
+    private UpskillTracker.Models.AnnouncementState BuildOptimisticOpenedAnnouncementState(UpskillTracker.Models.AnnouncementItem announcement)
+    {
+        var now = DateTime.UtcNow;
+        var existingState = GetAnnouncementState(announcement);
+
+        return new UpskillTracker.Models.AnnouncementState
+        {
+            Url = announcement.Url,
+            Stream = announcement.Stream,
+            Title = announcement.Title,
+            Source = announcement.Source,
+            Topic = announcement.Topic,
+            Summary = announcement.Summary,
+            PublishedUtc = announcement.PublishedUtc,
+            IsSeen = true,
+            IsSavedToResources = existingState?.IsSavedToResources == true,
+            FirstSeenUtc = existingState?.FirstSeenUtc ?? now,
+            LastSeenUtc = now,
+            LastOpenedUtc = now,
+            SavedToResourcesUtc = existingState?.SavedToResourcesUtc,
+            UpdatedUtc = now
+        };
     }
 
     private async Task OpenResourceAsync(UpskillTracker.Models.ResourceEntry resource)

@@ -15,6 +15,7 @@ using MudBlazor.Services;
 using Npgsql;
 using UpskillTracker.Components;
 using UpskillTracker.Data;
+using UpskillTracker.Models;
 using UpskillTracker.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -198,6 +199,29 @@ app.MapGet("/auth/github/logout", async (HttpContext httpContext, GitHubTokenSto
     return Results.LocalRedirect(NormalizeReturnUrl(httpContext.Request.Query["returnUrl"]));
 }).AllowAnonymous();
 
+app.MapPost("/api/announcements/opened", async (AnnouncementOpenRequest request, TrackerService trackerService) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Url))
+    {
+        return Results.BadRequest();
+    }
+
+    var announcement = new AnnouncementItem
+    {
+        Url = request.Url,
+        Title = string.IsNullOrWhiteSpace(request.Title) ? request.Url : request.Title,
+        Summary = request.Summary ?? string.Empty,
+        PublishedUtc = NormalizeAnnouncementPublishedUtc(request.PublishedUtc),
+        Source = string.IsNullOrWhiteSpace(request.Source) ? "Unknown" : request.Source,
+        Topic = string.IsNullOrWhiteSpace(request.Topic) ? "General" : request.Topic,
+        Stream = ParseAnnouncementStream(request.Stream),
+        SourceUrl = request.SourceUrl ?? string.Empty
+    };
+
+    await trackerService.MarkAnnouncementOpenedAsync(announcement);
+    return Results.Ok();
+}).AllowAnonymous();
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
@@ -338,3 +362,33 @@ static string NormalizeReturnUrl(string? returnUrl)
 
     return returnUrl.StartsWith('/') ? returnUrl : $"/{returnUrl}";
 }
+
+static DateTime NormalizeAnnouncementPublishedUtc(DateTime? publishedUtc)
+{
+    if (publishedUtc is null)
+    {
+        return DateTime.UtcNow;
+    }
+
+    return publishedUtc.Value.Kind switch
+    {
+        DateTimeKind.Utc => publishedUtc.Value,
+        DateTimeKind.Local => publishedUtc.Value.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(publishedUtc.Value, DateTimeKind.Utc)
+    };
+}
+
+static AnnouncementStream ParseAnnouncementStream(string? stream)
+    => Enum.TryParse<AnnouncementStream>(stream, ignoreCase: true, out var parsed)
+        ? parsed
+        : AnnouncementStream.MicrosoftOfficial;
+
+internal sealed record AnnouncementOpenRequest(
+    string Url,
+    string? Title,
+    string? Summary,
+    DateTime? PublishedUtc,
+    string? Source,
+    string? Topic,
+    string? Stream,
+    string? SourceUrl);
