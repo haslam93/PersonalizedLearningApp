@@ -15,6 +15,13 @@ estimated_reading_time: 6
 
 ## 2026-06-25
 
+### Added a weekly CostControl tag refresh workflow
+
+* Added [.github/workflows/cost-control-tag.yml](.github/workflows/cost-control-tag.yml), a scheduled workflow that runs every Monday at 06:00 UTC (and on demand via `workflow_dispatch`)
+* The workflow signs in with GitHub OIDC and removes then re-adds the `CostControl=Ignore` tag on the `hammadlearningapp` resource group and all of its resources
+* Re-applying the tag weekly refreshes its timestamp so the company 2-week cost-control exemption window never expires and the PostgreSQL server is not shut down nightly
+* Confirmed the `CostControl=Ignore` tag is already declared in `infra/main.bicep` and applied to every resource on each infrastructure deployment
+
 ### Fixed the Plan tab table so tasks can be scrolled and edited
 
 * Fixed a CSS regression where `.surface-card .mud-table-container` used `overflow: hidden`, which clipped the right side of the Plan tab table and removed the horizontal scrollbar

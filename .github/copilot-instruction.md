@@ -154,6 +154,16 @@ File: [workflows/cd.yml](workflows/cd.yml)
 * Passes `APP_GH_OAUTH_CLIENT_ID` and `APP_GH_OAUTH_CLIENT_SECRET` into Bicep for the in-app Copilot sign-in flow
 * Targets App Service plan SKU `B2`
 
+### Cost control tag workflow
+
+File: [workflows/cost-control-tag.yml](workflows/cost-control-tag.yml)
+
+* Runs on a weekly schedule (Mondays at 06:00 UTC) and can also run manually with `workflow_dispatch`
+* Uses GitHub OIDC with `azure/login@v2`
+* Removes and re-adds the `CostControl=Ignore` tag on the resource group and every resource inside `hammadlearningapp`
+* Re-applying the tag updates its timestamp, which resets the company 2-week cost-control exemption window so the PostgreSQL server is not shut down nightly
+* The `CostControl=Ignore` tag is also defined in [../infra/main.bicep](../infra/main.bicep) so it is applied on every infrastructure deployment
+
 ## Known platform notes
 
 * `azd deploy` has previously failed due to `Microsoft.Web` deployment history `504 Gateway Timeout`
