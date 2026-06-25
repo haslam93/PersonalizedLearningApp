@@ -20,6 +20,12 @@ estimated_reading_time: 6
 * Reworked the Plan tab into a single-column layout: the training items table now spans the full width instead of being squeezed into a narrow side-by-side column, so the trailing Edit action stays on screen without horizontal scrolling
 * Moved the "Add training item" form below the table and arranged its fields in a responsive multi-column grid so the whole interface is easier to scan and fill in
 * Made the per-row Edit button a filled button that smoothly scrolls down to the editor (via a new `scrollToElement` JS helper) so editing a task's timeline is always reachable
+### Added a weekly CostControl tag refresh workflow
+
+* Added [.github/workflows/cost-control-tag.yml](.github/workflows/cost-control-tag.yml), a scheduled workflow that runs every Monday at 06:00 UTC (and on demand via `workflow_dispatch`)
+* The workflow signs in with GitHub OIDC and removes then re-adds the `CostControl=Ignore` tag on the `hammadlearningapp` resource group and all of its resources
+* Re-applying the tag weekly refreshes its timestamp so the company 2-week cost-control exemption window never expires and the PostgreSQL server is not shut down nightly
+* Confirmed the `CostControl=Ignore` tag is already declared in `infra/main.bicep` and applied to every resource on each infrastructure deployment
 
 ### Fixed the Plan tab table so tasks can be scrolled and edited
 
