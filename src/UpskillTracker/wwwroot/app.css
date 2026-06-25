@@ -706,7 +706,7 @@ a,
 .surface-card .mud-table-container {
     border: 1px solid rgba(148, 163, 184, 0.20);
     border-radius: 18px;
-    overflow: hidden;
+    overflow-x: auto;
 }
 
 .surface-card .mud-table-head .mud-table-cell {
