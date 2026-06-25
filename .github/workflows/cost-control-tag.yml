@@ -47,7 +47,7 @@ jobs:
 
           mapfile -t resource_ids < <(az resource list --resource-group "$resource_group" --query "[].id" -o tsv)
 
-          target_ids=("$resource_group_id" "${resource_ids[@]}")
+          target_ids=("$resource_group_id" ${resource_ids[@]+"${resource_ids[@]}"})
 
           for resource_id in "${target_ids[@]}"; do
             echo "Refreshing ${tag_name}=${tag_value} on ${resource_id}"
