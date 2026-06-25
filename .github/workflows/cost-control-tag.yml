@@ -1,0 +1,58 @@
+name: cost-control-tag
+
+on:
+  schedule:
+    # Every Monday at 06:00 UTC. Re-applying the tag weekly keeps the
+    # CostControl=Ignore exemption window from ever reaching its 2-week expiry.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AZURE_RESOURCE_GROUP: hammadlearningapp
+  COST_CONTROL_TAG_NAME: CostControl
+  COST_CONTROL_TAG_VALUE: Ignore
+
+jobs:
+  refresh-cost-control-tag:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Sign in to Azure with OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Refresh CostControl tag to reset the exemption window
+        run: |
+          set -euo pipefail
+
+          subscription_id="${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+          resource_group="${{ env.AZURE_RESOURCE_GROUP }}"
+          tag_name="${{ env.COST_CONTROL_TAG_NAME }}"
+          tag_value="${{ env.COST_CONTROL_TAG_VALUE }}"
+
+          az account set --subscription "$subscription_id"
+
+          # Target the resource group itself plus every resource inside it so the
+          # exemption applies broadly. Removing the tag and re-adding it updates
+          # its last-modified timestamp, which restarts the 2-week cost-control timer.
+          resource_group_id=$(az group show --name "$resource_group" --query id -o tsv)
+
+          mapfile -t resource_ids < <(az resource list --resource-group "$resource_group" --query "[].id" -o tsv)
+
+          target_ids=("$resource_group_id" "${resource_ids[@]}")
+
+          for resource_id in "${target_ids[@]}"; do
+            echo "Refreshing ${tag_name}=${tag_value} on ${resource_id}"
+            az tag update --resource-id "$resource_id" --operation Delete --tags "${tag_name}=${tag_value}"
+            az tag update --resource-id "$resource_id" --operation Merge --tags "${tag_name}=${tag_value}"
+          done
+
+          echo "CostControl tag refreshed on ${#target_ids[@]} resource(s)."
