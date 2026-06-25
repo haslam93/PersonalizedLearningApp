@@ -14,10 +14,10 @@
     </MudPaper>
 
 <MudGrid Class="section-grid">
-    <MudItem xs="12" lg="7">
+    <MudItem xs="12">
         <MudPaper Class="surface-card content-card planner-table-card mb-4" Elevation="0">
             <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-4 reminder-alert">
-                Each task now suggests the best matching links from your resource library so the work can be opened directly from the plan. To personalize it, edit tasks here and add links in the Resources tab.
+                Each task now suggests the best matching links from your resource library so the work can be opened directly from the plan. To personalize it, edit tasks here and add links in the form below.
             </MudAlert>
 
             <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" Class="mb-4">
@@ -85,7 +85,7 @@
                     </MudTd>
                     <MudTd DataLabel="Progress">@context.ProgressPercent%</MudTd>
                     <MudTd Style="text-align: right;">
-                        <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => BeginEdit(context))">Edit</MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Edit" OnClick="@(() => BeginEditAsync(context))">Edit</MudButton>
                     </MudTd>
                 </RowTemplate>
                 <NoRecordsContent>
@@ -95,69 +95,76 @@
         </MudPaper>
     </MudItem>
 
-    <MudItem xs="12" lg="5">
+    <MudItem xs="12">
+        <div id="planner-editor"></div>
         <MudPaper Class="surface-card content-card editor-card mb-4" Elevation="0">
-            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+            <MudStack Row="true" Wrap="Wrap.Wrap" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
                 <MudText Typo="Typo.h6">@(editingItem.Id == 0 ? "Add training item" : "Edit training item")</MudText>
-                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateNew">New</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateNew">New item</MudButton>
             </MudStack>
 
-            <MudStack Spacing="2">
-                <MudTextField @bind-Value="editingItem.Title" Label="Title" Variant="Variant.Outlined" Required="true" />
-                <MudTextField @bind-Value="editingItem.Domain" Label="Domain" Variant="Variant.Outlined" Required="true" />
-                <MudTextField @bind-Value="editingItem.Category" Label="Category" Variant="Variant.Outlined" />
-                <MudTextField @bind-Value="editingItem.Description" Label="Description" Variant="Variant.Outlined" Lines="3" />
-                <MudGrid>
-                    <MudItem xs="12" sm="6">
-                        <MudDatePicker Label="Target date" Date="@targetDate" DateChanged="OnTargetDateChanged" Variant="Variant.Outlined" Editable="true" />
-                    </MudItem>
-                    <MudItem xs="12" sm="6">
-                        <MudNumericField T="decimal" @bind-Value="editingItem.EstimatedHours" Label="Hours" Variant="Variant.Outlined" Min="0.5m" Max="40m" Step="0.5m" />
-                    </MudItem>
-                </MudGrid>
-                <MudGrid>
-                    <MudItem xs="12" sm="4">
-                        <MudSelect T="UpskillTracker.Models.TrackerStatus" @bind-Value="editingItem.Status" Label="Status" Variant="Variant.Outlined">
-                            @foreach (var status in Enum.GetValues<UpskillTracker.Models.TrackerStatus>())
-                            {
-                                <MudSelectItem T="UpskillTracker.Models.TrackerStatus" Value="@status">@status</MudSelectItem>
-                            }
-                        </MudSelect>
-                    </MudItem>
-                    <MudItem xs="12" sm="4">
-                        <MudSelect T="UpskillTracker.Models.LearningLane" @bind-Value="editingItem.Lane" Label="Lane" Variant="Variant.Outlined">
-                            @foreach (var lane in Enum.GetValues<UpskillTracker.Models.LearningLane>())
-                            {
-                                <MudSelectItem T="UpskillTracker.Models.LearningLane" Value="@lane">@lane</MudSelectItem>
-                            }
-                        </MudSelect>
-                    </MudItem>
-                    <MudItem xs="12" sm="4">
-                        <MudSelect T="UpskillTracker.Models.TrainingItemType" @bind-Value="editingItem.Type" Label="Type" Variant="Variant.Outlined">
-                            @foreach (var itemType in Enum.GetValues<UpskillTracker.Models.TrainingItemType>())
-                            {
-                                <MudSelectItem T="UpskillTracker.Models.TrainingItemType" Value="@itemType">@itemType</MudSelectItem>
-                            }
-                        </MudSelect>
-                    </MudItem>
-                </MudGrid>
-                <MudGrid>
-                    <MudItem xs="12" sm="6">
-                        <MudSlider T="int" @bind-Value="editingItem.ProgressPercent" Min="0" Max="100" Step="5" Color="Color.Primary" />
-                        <MudText Typo="Typo.caption" Class="mud-secondary-text">Progress: @editingItem.ProgressPercent%</MudText>
-                    </MudItem>
-                    <MudItem xs="12" sm="3">
-                        <MudNumericField T="int" @bind-Value="editingItem.Priority" Label="Priority" Variant="Variant.Outlined" Min="1" Max="5" Step="1" />
-                    </MudItem>
-                    <MudItem xs="12" sm="3">
-                        <MudCheckBox @bind-Value="editingItem.ProjectDriven" Label="Project-driven" Color="Color.Primary" />
-                    </MudItem>
-                </MudGrid>
-                <MudTextField @bind-Value="editingItem.Notes" Label="Notes" Variant="Variant.Outlined" Lines="4" />
-                <MudTextField @bind-Value="editingItem.Evidence" Label="Evidence or next proof point" Variant="Variant.Outlined" Lines="2" />
-            </MudStack>
+            <MudGrid Spacing="3">
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="editingItem.Title" Label="Title" Variant="Variant.Outlined" Required="true" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="editingItem.Domain" Label="Domain" Variant="Variant.Outlined" Required="true" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="editingItem.Category" Label="Category" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudDatePicker Label="Target date" Date="@targetDate" DateChanged="OnTargetDateChanged" Variant="Variant.Outlined" Editable="true" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="editingItem.Description" Label="Description" Variant="Variant.Outlined" Lines="3" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudSelect T="UpskillTracker.Models.TrackerStatus" @bind-Value="editingItem.Status" Label="Status" Variant="Variant.Outlined">
+                        @foreach (var status in Enum.GetValues<UpskillTracker.Models.TrackerStatus>())
+                        {
+                            <MudSelectItem T="UpskillTracker.Models.TrackerStatus" Value="@status">@status</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudSelect T="UpskillTracker.Models.LearningLane" @bind-Value="editingItem.Lane" Label="Lane" Variant="Variant.Outlined">
+                        @foreach (var lane in Enum.GetValues<UpskillTracker.Models.LearningLane>())
+                        {
+                            <MudSelectItem T="UpskillTracker.Models.LearningLane" Value="@lane">@lane</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudSelect T="UpskillTracker.Models.TrainingItemType" @bind-Value="editingItem.Type" Label="Type" Variant="Variant.Outlined">
+                        @foreach (var itemType in Enum.GetValues<UpskillTracker.Models.TrainingItemType>())
+                        {
+                            <MudSelectItem T="UpskillTracker.Models.TrainingItemType" Value="@itemType">@itemType</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudNumericField T="decimal" @bind-Value="editingItem.EstimatedHours" Label="Hours" Variant="Variant.Outlined" Min="0.5m" Max="40m" Step="0.5m" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudNumericField T="int" @bind-Value="editingItem.Priority" Label="Priority" Variant="Variant.Outlined" Min="1" Max="5" Step="1" />
+                </MudItem>
+                <MudItem xs="12" sm="4" Class="d-flex align-center">
+                    <MudCheckBox @bind-Value="editingItem.ProjectDriven" Label="Project-driven" Color="Color.Primary" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudSlider T="int" @bind-Value="editingItem.ProgressPercent" Min="0" Max="100" Step="5" Color="Color.Primary" />
+                    <MudText Typo="Typo.caption" Class="mud-secondary-text">Progress: @editingItem.ProgressPercent%</MudText>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="editingItem.Notes" Label="Notes" Variant="Variant.Outlined" Lines="4" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="editingItem.Evidence" Label="Evidence or next proof point" Variant="Variant.Outlined" Lines="4" />
+                </MudItem>
+            </MudGrid>
 
-            <MudStack Row="true" Spacing="2" Class="mt-4">
+            <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" Class="mt-4">
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync">Save item</MudButton>
                 <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="CreateNew">Reset</MudButton>
                 @if (editingItem.Id != 0)
@@ -210,6 +217,19 @@
     {
         editingItem = item.Clone();
         targetDate = editingItem.TargetDate;
+    }
+
+    private async Task BeginEditAsync(UpskillTracker.Models.TrainingItem item)
+    {
+        BeginEdit(item);
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("scrollToElement", "planner-editor");
+        }
+        catch (JSException)
+        {
+            // Scrolling is a best-effort enhancement; ignore if unavailable.
+        }
     }
 
     private void CreateNew()

@@ -50,6 +50,7 @@ When making meaningful changes, update this file and also update
   * the Home page opens with a tracker-driven workspace overview instead of hardcoded focus-area copy
   * the Dashboard summary card adapts to live completion, in-progress, and overdue counts
   * data tables inside surface cards keep `overflow-x: auto` so wide rows stay horizontally scrollable and the trailing action column (for example the Plan tab Edit button) stays reachable
+  * the Plan tab uses a single-column layout: a full-width training items table on top and the "Add/Edit training item" form below it, and the per-row Edit button scrolls to that form via the `scrollToElement` helper in `wwwroot/app.js`
 * Live feed behavior:
   * the Dashboard shows a server-side cached feed of official Microsoft announcements
   * users can open an announcement directly or save it into the shared Resources library

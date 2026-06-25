@@ -15,6 +15,12 @@ estimated_reading_time: 6
 
 ## 2026-06-25
 
+### Redesigned the Plan tab for easier navigation
+
+* Reworked the Plan tab into a single-column layout: the training items table now spans the full width instead of being squeezed into a narrow side-by-side column, so the trailing Edit action stays on screen without horizontal scrolling
+* Moved the "Add training item" form below the table and arranged its fields in a responsive multi-column grid so the whole interface is easier to scan and fill in
+* Made the per-row Edit button a filled button that smoothly scrolls down to the editor (via a new `scrollToElement` JS helper) so editing a task's timeline is always reachable
+
 ### Fixed the Plan tab table so tasks can be scrolled and edited
 
 * Fixed a CSS regression where `.surface-card .mud-table-container` used `overflow: hidden`, which clipped the right side of the Plan tab table and removed the horizontal scrollbar
