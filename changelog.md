@@ -13,6 +13,14 @@ keywords:
 estimated_reading_time: 6
 ---
 
+## 2026-06-25
+
+### Fixed the Plan tab table so tasks can be scrolled and edited
+
+* Fixed a CSS regression where `.surface-card .mud-table-container` used `overflow: hidden`, which clipped the right side of the Plan tab table and removed the horizontal scrollbar
+* Restored horizontal scrolling with `overflow-x: auto` so the suggested resource links and the per-row Edit action stay reachable on narrow widths
+* Re-enabled editing a task timeline by keeping the Edit button (which opens the target-date picker) accessible for overdue and past-due items
+
 ## 2026-03-17
 
 ### Repaired and refreshed the dashboard UI

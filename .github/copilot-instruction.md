@@ -49,6 +49,7 @@ When making meaningful changes, update this file and also update
   * the main app bar uses a minimal title and no fixed date badge
   * the Home page opens with a tracker-driven workspace overview instead of hardcoded focus-area copy
   * the Dashboard summary card adapts to live completion, in-progress, and overdue counts
+  * data tables inside surface cards keep `overflow-x: auto` so wide rows stay horizontally scrollable and the trailing action column (for example the Plan tab Edit button) stays reachable
 * Live feed behavior:
   * the Dashboard shows a server-side cached feed of official Microsoft announcements
   * users can open an announcement directly or save it into the shared Resources library
