@@ -52,6 +52,14 @@ jobs:
           # update simply cannot proceed until the resource reaches the
           # "Succeeded" state. We wait and retry a few times instead of letting
           # the whole workflow fail on a temporary race condition.
+          #
+          # Arguments:
+          #   $1 - the resource id to tag
+          #   $2 - the az tag operation (Delete or Merge)
+          # Return codes:
+          #   0 - the tag update succeeded
+          #   1 - the resource was still provisioning after max_attempts (skip)
+          #   2 - a genuine, non-transient failure occurred (fatal)
           tag_update_with_retry() {
             local resource_id="$1"
             local operation="$2"
@@ -65,13 +73,13 @@ jobs:
 
               # Only retry the "still provisioning" conflict. Surface any other
               # failure so genuine problems are not silently swallowed.
-              if echo "$output" | grep -qiE "provisioning state is not Succeeded|Conflict"; then
+              if echo "$output" | grep -qiE "provisioning state is not Succeeded"; then
                 if [ "$attempt" -ge "$max_attempts" ]; then
                   echo "::warning::Skipping ${operation} on ${resource_id}: still provisioning after ${max_attempts} attempt(s)."
                   echo "$output"
                   return 1
                 fi
-                echo "Resource is still provisioning; waiting ${retry_delay}s before retry (attempt ${attempt}/${max_attempts})."
+                echo "Resource is still provisioning; attempt ${attempt}/${max_attempts} failed, waiting ${retry_delay}s before retrying."
                 attempt=$((attempt + 1))
                 sleep "$retry_delay"
                 continue
