@@ -7,6 +7,15 @@ on:
 permissions:
   contents: read
 timeout-minutes: 20
+network:
+  allowed:
+    - defaults
+    - github
+    - "learn.microsoft.com"
+    - "azure.microsoft.com"
+    - "devblogs.microsoft.com"
+    - "techcommunity.microsoft.com"
+    - "azure.github.io"
 tools:
   web-fetch:
 safe-outputs:
@@ -31,6 +40,10 @@ Use web fetch to review announcements from roughly the last 7 days. Fetch these 
 - Azure updates feed: <https://azure.microsoft.com/en-us/updates/>
 - Microsoft Agent Framework blog: <https://devblogs.microsoft.com/agent-framework/>
 - .NET blog: <https://devblogs.microsoft.com/dotnet/>
+- Azure App Service team blog: <https://azure.github.io/AppService/>
+- Apps on Azure blog (App Service, Container Apps): <https://techcommunity.microsoft.com/category/azure/blog/appsonazureblog>
+- Integrations on Azure blog (APIM, Logic Apps, Service Bus): <https://techcommunity.microsoft.com/category/azure/blog/integrationsonazureblog>
+- API Management release notes: <https://learn.microsoft.com/en-us/azure/api-management/release-notes>
 
 Focus on items relevant to the existing learning plan domains: Microsoft Foundry, GitHub Copilot, Agent Framework, Azure AI Search, App Innovation (App Service, Container Apps, APIM), Integration Services, Architecture and Operations.
 
