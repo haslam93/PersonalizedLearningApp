@@ -1,4 +1,75 @@
 {
   "$schema": "./learning-radar.schema.json",
-  "items": []
+  "items": [
+    {
+      "title": "Explore azure-ai-projects 2.3.0: Hosted Agent, Sessions, and Toolboxes go stable",
+      "domain": "Microsoft Foundry",
+      "category": "Foundry",
+      "description": "The Python azure-ai-projects 2.3.0 SDK (July 1 2026) graduates Hosted Agent creation, Session and Session Files, Agent code methods, and Toolboxes from beta to stable, removing the allow_preview=True requirement. New draft agent versions, enable/disable methods, and a revised Agent Optimization API that aligns with standard Foundry job patterns. Engineers building against the Foundry Agents surface should upgrade and remove any beta-client workarounds.",
+      "targetDate": "2026-07-20",
+      "lane": "RapidRamp",
+      "type": "Learning",
+      "estimatedHours": 2,
+      "priority": 4,
+      "link": "https://github.com/Azure/azure-sdk-for-python/releases/tag/azure-ai-projects_2.3.0",
+      "source": "GitHub Releases — Azure SDK for Python",
+      "addedOn": "2026-07-06"
+    },
+    {
+      "title": "Explore MAF Python 1.10.0: Foundry V2 protocol, DurableTask hosting, and Adaptive evals",
+      "domain": "Agent Framework",
+      "category": "Agents",
+      "description": "Microsoft Agent Framework Python 1.10.0 (June 30 2026) ships a BREAKING Foundry Hosted Agent V2 protocol upgrade, a new FoundryAgent conversation session helper, Foundry Adaptive evals support, DurableTask standalone worker hosting, and Azure AI Search (Foundry IQ) stable/preview API versions. MCP is now a hard dependency for Foundry hosting. Engineers running Foundry-hosted agents must migrate to V2; DurableTask is the canonical pattern for durable resumable agent workflows.",
+      "targetDate": "2026-07-20",
+      "lane": "RapidRamp",
+      "type": "Learning",
+      "estimatedHours": 3,
+      "priority": 4,
+      "link": "https://github.com/microsoft/agent-framework/releases/tag/python-1.10.0",
+      "source": "GitHub Releases — Microsoft Agent Framework",
+      "addedOn": "2026-07-06"
+    },
+    {
+      "title": "Explore MAF .NET 1.13.0: Skills API stable, Foundry session isolation, file editing tools",
+      "domain": "Agent Framework",
+      "category": "Agents",
+      "description": "Microsoft Agent Framework .NET 1.13.0 (July 3 2026) promotes the Skills API out of Experimental status, adds per-user session isolation in Foundry Hosting, introduces file editing tools alongside a reworked FileAccess/FileMemory store API (BREAKING), and adds configurable skill approval options. With Skills API now stable, .NET agent developers can depend on the interface without workarounds. Foundry session isolation and OAuth consent support are important for multi-user production deployments.",
+      "targetDate": "2026-07-20",
+      "lane": "RapidRamp",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 4,
+      "link": "https://github.com/microsoft/agent-framework/releases/tag/dotnet-1.13.0",
+      "source": "GitHub Releases — Microsoft Agent Framework",
+      "addedOn": "2026-07-06"
+    },
+    {
+      "title": "Explore GitHub Copilot SDK v1.0.5: MCP OAuth and multi-platform app embedding",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "GitHub Copilot SDK v1.0.5 (July 1 2026) adds MCP OAuth host token handlers so SDK-embedded Copilot apps can satisfy OAuth challenges from MCP servers without user friction. Session config gains citations, excluded built-in agents, and AI-credit spending limits. The SDK spans Node/TypeScript, C#, Java, and Rust. Java gains @CopilotTool annotation-based tool registration. Directly actionable for App Innovation engineers embedding Copilot intelligence into enterprise apps and portals.",
+      "targetDate": "2026-07-27",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 3,
+      "link": "https://github.com/github/copilot-sdk/releases/tag/v1.0.5",
+      "source": "GitHub Releases — GitHub Copilot SDK",
+      "addedOn": "2026-07-06"
+    },
+    {
+      "title": "Explore GitHub Copilot SDK v1.0.6-preview.1: Context attribution and slash command choices",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "Copilot SDK v1.0.6-preview.1 (July 2 2026) adds experimental context attribution APIs — getContextAttribution() and getContextHeaviestMessages() — letting host apps inspect token usage broken down by skill, subagent, MCP server, and tool. SlashCommandInput gains a choices field for declaring selectable literal options with human-facing descriptions. These observability hooks are valuable for diagnosing context pressure and optimising skill packaging in multi-skill Copilot agents.",
+      "targetDate": "2026-08-03",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1,
+      "priority": 2,
+      "link": "https://github.com/github/copilot-sdk/releases/tag/v1.0.6-preview.1",
+      "source": "GitHub Releases — GitHub Copilot SDK",
+      "addedOn": "2026-07-06"
+    }
+  ]
 }
