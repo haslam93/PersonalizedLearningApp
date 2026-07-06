@@ -13,6 +13,14 @@ keywords:
 estimated_reading_time: 6
 ---
 
+## 2026-07-06
+
+### Made the CostControl tag refresh workflow resilient to provisioning conflicts
+
+* Updated [.github/workflows/cost-control-tag.yml](.github/workflows/cost-control-tag.yml) so `az tag update` calls retry with a wait when Azure reports a `Conflict` because a resource is still provisioning (`provisioning state is not Succeeded`)
+* Each resource is retried up to 5 times with a 30-second wait between attempts; if it is still provisioning afterward the resource is skipped with a warning instead of failing the whole workflow
+* Genuine (non-conflict) tag failures still surface as errors so real problems are not silently swallowed, and a summary reports how many resources were refreshed versus skipped
+
 ## 2026-06-25
 
 ### Redesigned the Plan tab for easier navigation

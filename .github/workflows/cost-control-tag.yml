@@ -30,6 +30,11 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Refresh CostControl tag to reset the exemption window
+        env:
+          # Number of times to retry a tag update while a resource is still
+          # provisioning, and how long (in seconds) to wait between attempts.
+          TAG_UPDATE_MAX_ATTEMPTS: '5'
+          TAG_UPDATE_RETRY_DELAY: '30'
         run: |
           set -euo pipefail
 
@@ -37,8 +42,54 @@ jobs:
           resource_group="${{ env.AZURE_RESOURCE_GROUP }}"
           tag_name="${{ env.COST_CONTROL_TAG_NAME }}"
           tag_value="${{ env.COST_CONTROL_TAG_VALUE }}"
+          max_attempts="${TAG_UPDATE_MAX_ATTEMPTS}"
+          retry_delay="${TAG_UPDATE_RETRY_DELAY}"
 
           az account set --subscription "$subscription_id"
+
+          # Run an "az tag update" call, retrying when Azure reports that the
+          # resource is still provisioning. Such conflicts are transient: the
+          # update simply cannot proceed until the resource reaches the
+          # "Succeeded" state. We wait and retry a few times instead of letting
+          # the whole workflow fail on a temporary race condition.
+          #
+          # Arguments:
+          #   $1 - the resource id to tag
+          #   $2 - the az tag operation (Delete or Merge)
+          # Return codes:
+          #   0 - the tag update succeeded
+          #   1 - the resource was still provisioning after max_attempts (skip)
+          #   2 - a genuine, non-transient failure occurred (fatal)
+          tag_update_with_retry() {
+            local resource_id="$1"
+            local operation="$2"
+            local attempt=1
+
+            while true; do
+              local output=""
+              if output=$(az tag update --resource-id "$resource_id" --operation "$operation" --tags "${tag_name}=${tag_value}" 2>&1); then
+                return 0
+              fi
+
+              # Only retry the "still provisioning" conflict. Surface any other
+              # failure so genuine problems are not silently swallowed.
+              if echo "$output" | grep -qiE "provisioning state is not Succeeded"; then
+                if [ "$attempt" -ge "$max_attempts" ]; then
+                  echo "::warning::Skipping ${operation} on ${resource_id}: still provisioning after ${max_attempts} attempt(s)."
+                  echo "$output"
+                  return 1
+                fi
+                echo "Resource is still provisioning; attempt ${attempt}/${max_attempts} failed, waiting ${retry_delay}s before retrying."
+                attempt=$((attempt + 1))
+                sleep "$retry_delay"
+                continue
+              fi
+
+              echo "::error::Failed to ${operation} tag on ${resource_id}."
+              echo "$output"
+              return 2
+            done
+          }
 
           # Target the resource group itself plus every resource inside it so the
           # exemption applies broadly. Removing the tag and re-adding it updates
@@ -49,10 +100,31 @@ jobs:
 
           target_ids=("$resource_group_id" ${resource_ids[@]+"${resource_ids[@]}"})
 
+          refreshed=0
+          skipped=0
           for resource_id in "${target_ids[@]}"; do
             echo "Refreshing ${tag_name}=${tag_value} on ${resource_id}"
-            az tag update --resource-id "$resource_id" --operation Delete --tags "${tag_name}=${tag_value}"
-            az tag update --resource-id "$resource_id" --operation Merge --tags "${tag_name}=${tag_value}"
+
+            status=0
+            tag_update_with_retry "$resource_id" Delete || status=$?
+            if [ "$status" -eq 0 ]; then
+              tag_update_with_retry "$resource_id" Merge || status=$?
+            fi
+
+            case "$status" in
+              0)
+                refreshed=$((refreshed + 1))
+                ;;
+              1)
+                # Transient provisioning conflict that outlasted our retries.
+                # Skip this resource so a single busy resource does not fail the run.
+                skipped=$((skipped + 1))
+                ;;
+              *)
+                echo "::error::Unexpected error refreshing ${resource_id}."
+                exit 1
+                ;;
+            esac
           done
 
-          echo "CostControl tag refreshed on ${#target_ids[@]} resource(s)."
+          echo "CostControl tag refreshed on ${refreshed} resource(s); ${skipped} skipped while provisioning."
