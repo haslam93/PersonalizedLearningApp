@@ -222,6 +222,8 @@ csx/
 .artifacts/
 *.publishsettings
 src/UpskillTracker/Data/*.db
+src/UpskillTracker/Data/*.db-shm
+src/UpskillTracker/Data/*.db-wal
 
 # Microsoft Azure Emulator
 ecf/
