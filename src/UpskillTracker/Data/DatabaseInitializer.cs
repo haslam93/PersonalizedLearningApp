@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -37,6 +39,8 @@ public static class DatabaseInitializer
             {
                 db.TrainingItems.AddRange(GetSeedTrainingItems());
             }
+
+            await ImportLearningRadarItemsAsync(db, environment, logger);
 
             await EnsureSeedResourcesAsync(db);
             await EnsureSeedVideoChannelsAsync(db);
@@ -800,5 +804,124 @@ public static class DatabaseInitializer
                 Content = "When you finish a lab, note what worked, where it broke, the architecture lesson, the customer story, and what would be required for production readiness."
             }
         ];
+    }
+
+    private static readonly JsonSerializerOptions LearningRadarJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true
+    };
+
+    private static async Task ImportLearningRadarItemsAsync(TrackerDbContext db, IWebHostEnvironment environment, ILogger logger)
+    {
+        var candidatePaths = new[]
+        {
+            Path.Combine(environment.ContentRootPath, "Data", "SeedData", "learning-radar.json"),
+            Path.Combine(AppContext.BaseDirectory, "Data", "SeedData", "learning-radar.json")
+        };
+
+        var path = candidatePaths.FirstOrDefault(File.Exists);
+        if (path is null)
+        {
+            return;
+        }
+
+        LearningRadarDocument? document;
+        try
+        {
+            await using var stream = File.OpenRead(path);
+            document = await JsonSerializer.DeserializeAsync<LearningRadarDocument>(stream, LearningRadarJsonOptions);
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Skipping learning radar import because {Path} could not be parsed.", path);
+            return;
+        }
+
+        if (document?.Items is not { Count: > 0 })
+        {
+            return;
+        }
+
+        var existingTitles = (await db.TrainingItems
+            .AsNoTracking()
+            .Select(item => item.Title)
+            .ToListAsync())
+            .Concat(db.TrainingItems.Local.Select(item => item.Title))
+            .Select(title => title.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var entry in document.Items)
+        {
+            if (string.IsNullOrWhiteSpace(entry.Title))
+            {
+                continue;
+            }
+
+            var title = entry.Title.Trim();
+            if (title.Length > 140 || !existingTitles.Add(title))
+            {
+                continue;
+            }
+
+            var noteLines = new[]
+            {
+                entry.Notes?.Trim(),
+                string.IsNullOrWhiteSpace(entry.Link) ? null : $"Link: {entry.Link.Trim()}",
+                string.IsNullOrWhiteSpace(entry.Source) ? null : $"Source: {entry.Source.Trim()}",
+                string.IsNullOrWhiteSpace(entry.AddedOn) ? null : $"Added by learning radar on {entry.AddedOn.Trim()}."
+            };
+
+            var notes = string.Join('\n', noteLines.Where(line => !string.IsNullOrWhiteSpace(line)));
+
+            db.TrainingItems.Add(new TrainingItem
+            {
+                Title = title,
+                Domain = Truncate(string.IsNullOrWhiteSpace(entry.Domain) ? "Learning Radar" : entry.Domain.Trim(), 80),
+                Category = Truncate(entry.Category?.Trim() ?? string.Empty, 80),
+                Description = Truncate(entry.Description?.Trim() ?? string.Empty, 1500),
+                TargetDate = ParseDateOrDefault(entry.TargetDate, DateTime.UtcNow.Date.AddDays(14)),
+                Lane = ParseEnumOrDefault(entry.Lane, LearningLane.Stretch),
+                Type = ParseEnumOrDefault(entry.Type, TrainingItemType.Learning),
+                EstimatedHours = entry.EstimatedHours is >= 0.5m and <= 40m ? entry.EstimatedHours.Value : 2,
+                Priority = entry.Priority is >= 1 and <= 5 ? entry.Priority.Value : 3,
+                Notes = Truncate(notes, 4000)
+            });
+
+            logger.LogInformation("Learning radar import queued new training item: {Title}", title);
+        }
+    }
+
+    private static string Truncate(string value, int maxLength)
+        => value.Length <= maxLength ? value : value[..maxLength];
+
+    private static DateTime ParseDateOrDefault(string? value, DateTime fallback)
+        => DateTime.TryParse(value, out var parsed) ? parsed.Date : fallback;
+
+    private static TEnum ParseEnumOrDefault<TEnum>(string? value, TEnum fallback) where TEnum : struct
+        => Enum.TryParse<TEnum>(value, ignoreCase: true, out var parsed) ? parsed : fallback;
+
+    private sealed class LearningRadarDocument
+    {
+        [JsonPropertyName("items")]
+        public List<LearningRadarItem> Items { get; set; } = [];
+    }
+
+    private sealed class LearningRadarItem
+    {
+        public string? Title { get; set; }
+        public string? Domain { get; set; }
+        public string? Category { get; set; }
+        public string? Description { get; set; }
+        public string? TargetDate { get; set; }
+        public string? Lane { get; set; }
+        public string? Type { get; set; }
+        public decimal? EstimatedHours { get; set; }
+        public int? Priority { get; set; }
+        public string? Link { get; set; }
+        public string? Source { get; set; }
+        public string? Notes { get; set; }
+        public string? AddedOn { get; set; }
     }
 }

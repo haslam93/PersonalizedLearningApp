@@ -22,4 +22,8 @@
     <PackageReference Include="MudBlazor" Version="8.*" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Update="Data\SeedData\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
