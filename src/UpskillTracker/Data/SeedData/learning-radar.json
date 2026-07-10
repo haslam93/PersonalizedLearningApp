@@ -1,4 +1,75 @@
 {
   "$schema": "./learning-radar.schema.json",
-  "items": []
+  "items": [
+    {
+      "title": "Explore Agent Framework Orchestration Patterns 1.0 GA",
+      "domain": "Agent Framework",
+      "category": "Multi-Agent Systems",
+      "description": "Sequential, concurrent, group chat, handoff, and magentic orchestration patterns are now stable (1.0) in the Microsoft Agent Framework SDKs. You can pick the coordination pattern that best fits your use case without working around SDK maturity. Magentic is the most autonomous: give it a goal, a manager, and specialists and the manager decides how the team works. Review the patterns, build a small multi-agent demo using magentic orchestration, and understand when to use each pattern.",
+      "targetDate": "2026-07-24",
+      "lane": "RapidRamp",
+      "type": "Lab",
+      "estimatedHours": 3,
+      "priority": 2,
+      "link": "https://devblogs.microsoft.com/agent-framework/agent-frameworks-orchestration-patterns-reach-1-0/",
+      "source": "Microsoft Agent Framework Blog",
+      "addedOn": "2026-07-10"
+    },
+    {
+      "title": "Explore Agent Skills for .NET — stable GA release",
+      "domain": "Agent Framework",
+      "category": "Agent Capabilities",
+      "description": "Agent Skills is now GA in the Microsoft Agent Framework for .NET. It is an open format for packaging domain expertise that agents discover and use on demand. Each skill has a SKILL.md metadata file, optional scripts, and reference documents. Agents load only what they need using a four-stage progressive disclosure pattern (advertise → load instructions → read resources → execute), keeping context windows lean. Build and register a custom skill, then wire it into an agent to see on-demand skill loading in action.",
+      "targetDate": "2026-07-24",
+      "lane": "RapidRamp",
+      "type": "Lab",
+      "estimatedHours": 3,
+      "priority": 2,
+      "link": "https://devblogs.microsoft.com/agent-framework/agent-skills-for-net-is-now-released/",
+      "source": "Microsoft Agent Framework Blog",
+      "addedOn": "2026-07-10"
+    },
+    {
+      "title": "Explore the GitHub Copilot desktop app — now available to all plans",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "The GitHub Copilot standalone desktop app is now GA and available on every Copilot plan (including Free). It provides agent-driven development from the desktop without needing a browser or IDE plugin — sign in with your GitHub account and start autonomous coding sessions on macOS, Windows, or Linux. Download the app, run a real-world task end-to-end, and compare the agent session workflow to chat-in-IDE use.",
+      "targetDate": "2026-07-17",
+      "lane": "RapidRamp",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 1,
+      "link": "https://github.blog/changelog/2026-07-07-github-copilot-app-available-to-all",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-07-10"
+    },
+    {
+      "title": "Explore GitHub Copilot's .NET upgrade agent for application modernization",
+      "domain": "App Innovation",
+      "category": "Application Modernisation",
+      "description": "The GitHub Copilot app now includes a .NET upgrade agent that automates the full modernisation workflow: it assesses the application, evaluates dependencies, generates a structured upgrade plan, creates implementation tasks, and executes the work — handling build failures and dependency conflicts as they surface. This is highly relevant for teams managing legacy .NET Framework or .NET 6/7/8 applications. Try it against a real or sample project and review the generated upgrade plan and PRs.",
+      "targetDate": "2026-07-31",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 3,
+      "priority": 3,
+      "link": "https://devblogs.microsoft.com/dotnet/modernize-dotnet-in-github-copilot-app/",
+      "source": ".NET Blog",
+      "addedOn": "2026-07-10"
+    },
+    {
+      "title": "Explore Microsoft Foundry June 2026 — agent publishing to M365 GA and Toolboxes",
+      "domain": "Microsoft Foundry",
+      "category": "Foundry",
+      "description": "The June 2026 Microsoft Foundry release covers two major milestones: (1) Publishing Foundry agents directly into Microsoft 365 Copilot and Teams is now GA — agents support goal-driven execution, checkpoints, and human escalation natively inside Teams. (2) Toolboxes add new built-in skills including Browser Automation, Work IQ, Fabric IQ, and Tool Search, plus Routines for repeatable task sequences. Claude in Foundry also reached GA. Read the What's New digest, then build and publish a simple agent to Teams to validate the end-to-end flow.",
+      "targetDate": "2026-07-24",
+      "lane": "Core",
+      "type": "Lab",
+      "estimatedHours": 4,
+      "priority": 2,
+      "link": "https://devblogs.microsoft.com/foundry/whats-new-in-microsoft-foundry-june-2026/",
+      "source": "Microsoft Foundry Blog",
+      "addedOn": "2026-07-10"
+    }
+  ]
 }
