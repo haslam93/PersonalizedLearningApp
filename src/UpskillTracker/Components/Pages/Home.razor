@@ -29,29 +29,29 @@ else if (snapshot is not null)
 					</div>
 
 					<MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
-						<MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Icon="@Icons.Material.Filled.TaskAlt">@snapshot.CompletedItems completed</MudChip>
-						<MudChip T="string" Color="Color.Info" Variant="Variant.Filled" Icon="@Icons.Material.Filled.PendingActions">@snapshot.InProgressItems in progress</MudChip>
-						<MudChip T="string" Color="Color.Warning" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Schedule">@snapshot.DueThisMonth due this month</MudChip>
+						<MudChip T="string" Color="@(snapshot.AtRiskItems > 0 ? Color.Error : Color.Success)" Variant="Variant.Filled" Icon="@Icons.Material.Filled.PriorityHigh">@snapshot.AtRiskItems at risk</MudChip>
+						<MudChip T="string" Color="Color.Info" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Checklist">@snapshot.CoreRemainingItems core commitments</MudChip>
+						<MudChip T="string" Color="Color.Secondary" Variant="Variant.Filled" Icon="@Icons.Material.Filled.WorkspacePremium">@snapshot.CertificationGoals certification goals</MudChip>
 					</MudStack>
 				</MudStack>
 			</MudItem>
 			<MudItem xs="12" md="5">
 				<div class="overview-stats-grid">
 					<MudPaper Class="overview-stat" Elevation="0">
-						<MudText Typo="Typo.caption" Class="mud-secondary-text">Completion</MudText>
-						<MudText Typo="Typo.h4">@snapshot.CompletionRate%</MudText>
+						<MudText Typo="Typo.caption" Class="mud-secondary-text">Core completion</MudText>
+						<MudText Typo="Typo.h4">@snapshot.CommitmentCompletionRate%</MudText>
 					</MudPaper>
 					<MudPaper Class="overview-stat" Elevation="0">
-						<MudText Typo="Typo.caption" Class="mud-secondary-text">Pinned resources</MudText>
-						<MudText Typo="Typo.h4">@snapshot.PinnedResources.Count</MudText>
+						<MudText Typo="Typo.caption" Class="mud-secondary-text">Due in 14 days</MudText>
+						<MudText Typo="Typo.h4">@snapshot.DueNext14Days</MudText>
 					</MudPaper>
 					<MudPaper Class="overview-stat" Elevation="0">
-						<MudText Typo="Typo.caption" Class="mud-secondary-text">Recent notes</MudText>
-						<MudText Typo="Typo.h4">@snapshot.RecentNotes.Count</MudText>
+						<MudText Typo="Typo.caption" Class="mud-secondary-text">At risk</MudText>
+						<MudText Typo="Typo.h4">@snapshot.AtRiskItems</MudText>
 					</MudPaper>
 					<MudPaper Class="overview-stat" Elevation="0">
-						<MudText Typo="Typo.caption" Class="mud-secondary-text">Needs attention</MudText>
-						<MudText Typo="Typo.h4">@snapshot.OverdueItems</MudText>
+						<MudText Typo="Typo.caption" Class="mud-secondary-text">Nice to have</MudText>
+						<MudText Typo="Typo.h4">@snapshot.NiceToHaveItems</MudText>
 					</MudPaper>
 				</div>
 			</MudItem>
@@ -65,6 +65,9 @@ else if (snapshot is not null)
 	</MudTabPanel>
 	<MudTabPanel Text="Plan" Icon="@Icons.Material.Filled.Checklist">
 		<TrainingPlannerView />
+	</MudTabPanel>
+	<MudTabPanel Text="Certifications" Icon="@Icons.Material.Filled.WorkspacePremium">
+		<CertificationsView />
 	</MudTabPanel>
 	<MudTabPanel Text="Timeline" Icon="@Icons.Material.Filled.Timeline">
 		<TimelineView />
@@ -105,14 +108,20 @@ else if (snapshot is not null)
 			return "Your learning plan, notes, resources, and Copilot workspace live together here.";
 		}
 
-		if (snapshot.OverdueItems > 0)
+		if (snapshot.AtRiskItems > 0)
 		{
-			return $"{snapshot.OverdueItems} item{(snapshot.OverdueItems == 1 ? string.Empty : "s")} need attention, {FormatInProgressItems(snapshot.InProgressItems)}, and {snapshot.DueThisMonth} are due this month.";
+			var nextItem = snapshot.FocusItems.FirstOrDefault()?.Title;
+			return nextItem is null
+				? $"{snapshot.AtRiskItems} core item{(snapshot.AtRiskItems == 1 ? string.Empty : "s")} need attention. Review dates and reduce the nice-to-have backlog."
+				: $"{FormatItemCount(snapshot.AtRiskItems)} at risk. Start with \"{nextItem}\" and keep nice-to-have work behind core commitments.";
 		}
 
-		return $"No overdue items right now. {FormatInProgressItems(snapshot.InProgressItems)}, and {snapshot.DueThisMonth} are due this month.";
+		return $"The committed plan is on schedule. {FormatInProgressItems(snapshot.InProgressItems)}, {snapshot.DueNext14Days} are due in the next 14 days, and {snapshot.NiceToHaveItems} are optional.";
 	}
 
 	private static string FormatInProgressItems(int count)
 		=> $"{count} item{(count == 1 ? string.Empty : "s")} {(count == 1 ? "is" : "are")} in progress";
+
+	private static string FormatItemCount(int count)
+		=> $"{count} item{(count == 1 ? " is" : "s are")}";
 }

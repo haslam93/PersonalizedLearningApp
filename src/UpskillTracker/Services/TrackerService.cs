@@ -60,12 +60,24 @@ public class TrackerService(
             var queuedVideos = trackedVideos.Count(video => video.WatchState == VideoWatchState.NeedToWatch);
             var seenVideos = trackedVideos.Count(video => video.WatchState == VideoWatchState.Seen);
             var totalTrackedVideos = trackedVideos.Count;
-            var upcomingItems = trainingItems.Where(item => item.TargetDate >= today).Take(6).ToList();
-            var focusItems = trainingItems
+            var activeItems = trainingItems
                 .Where(item => item.Status != TrackerStatus.Completed)
-                .OrderByDescending(item => item.ProjectDriven)
-                .ThenBy(item => item.TargetDate)
+                .ToList();
+            var committedItems = trainingItems
+                .Where(item => !TrainingPlanPrioritizer.IsNiceToHave(item))
+                .ToList();
+            var activeCommittedItems = activeItems
+                .Where(item => !TrainingPlanPrioritizer.IsNiceToHave(item))
+                .ToList();
+            var completedCommittedItems = committedItems.Count(item => item.Status == TrackerStatus.Completed);
+            var upcomingItems = activeItems
+                .Where(item => item.TargetDate >= today)
+                .OrderBy(item => item.TargetDate)
                 .ThenByDescending(item => item.Priority)
+                .Take(6)
+                .ToList();
+            var focusItems = TrainingPlanPrioritizer
+                .OrderForFocus(activeItems, today)
                 .Take(5)
                 .ToList();
 
@@ -74,10 +86,16 @@ public class TrackerService(
                 TotalItems = trainingItems.Count,
                 CompletedItems = completedItems,
                 InProgressItems = trainingItems.Count(item => item.Status == TrackerStatus.InProgress),
-                OverdueItems = trainingItems.Count(item => item.Status != TrackerStatus.Completed && item.TargetDate < today),
-                DueThisMonth = trainingItems.Count(item => item.TargetDate >= today && item.TargetDate <= endOfMonth && item.Status != TrackerStatus.Completed),
+                OverdueItems = activeCommittedItems.Count(item => item.TargetDate < today),
+                DueThisMonth = activeCommittedItems.Count(item => item.TargetDate >= today && item.TargetDate <= endOfMonth),
+                DueNext14Days = activeCommittedItems.Count(item => item.TargetDate >= today && item.TargetDate <= today.AddDays(14)),
+                AtRiskItems = activeItems.Count(item => TrainingPlanPrioritizer.IsAtRisk(item, today)),
+                CoreRemainingItems = activeItems.Count(item => !TrainingPlanPrioritizer.IsNiceToHave(item)),
+                NiceToHaveItems = activeItems.Count(TrainingPlanPrioritizer.IsNiceToHave),
+                CertificationGoals = activeItems.Count(item => item.Type == TrainingItemType.Certification),
                 RapidRampItems = trainingItems.Count(item => item.Lane == LearningLane.RapidRamp && item.Status != TrackerStatus.Completed),
                 CompletionRate = trainingItems.Count == 0 ? 0 : Math.Round((decimal)completedItems / trainingItems.Count * 100, 1),
+                CommitmentCompletionRate = committedItems.Count == 0 ? 0 : Math.Round((decimal)completedCommittedItems / committedItems.Count * 100, 1),
                 TotalTrackedVideos = totalTrackedVideos,
                 InboxVideos = inboxVideos,
                 NeedToWatchCount = queuedVideos,
@@ -99,6 +117,32 @@ public class TrackerService(
             .OrderBy(item => item.TargetDate)
             .ThenByDescending(item => item.Priority)
             .ToListAsync(), new List<TrainingItem>(), "training items");
+    }
+
+    public async Task<bool> ImportCertificationAsync(CertificationCatalogItem certification)
+    {
+        return await ExecuteWriteAsync(async db =>
+        {
+            var alreadyImported = await db.TrainingItems.AnyAsync(item =>
+                item.Type == TrainingItemType.Certification &&
+                (item.Title == certification.Title || item.Category == certification.Code));
+
+            if (alreadyImported)
+            {
+                return false;
+            }
+
+            db.TrainingItems.Add(certification.CreateTrainingItem());
+
+            var resourceExists = await db.Resources.AnyAsync(resource => resource.Url == certification.CredentialUrl);
+            if (!resourceExists)
+            {
+                db.Resources.Add(certification.CreateResource());
+            }
+
+            await db.SaveChangesAsync();
+            return true;
+        }, "import certification");
     }
 
     public async Task<List<ResourceEntry>> GetResourcesAsync()

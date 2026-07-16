@@ -12,6 +12,7 @@ namespace UpskillTracker.Data;
 public static class DatabaseInitializer
 {
     private const string LegacySqliteImportMetadataKey = "legacy-sqlite-import-v1";
+    private const string PlanExpansionMetadataKey = "fabric-databricks-certifications-plan-v1";
 
     public static async Task InitializeAsync(IServiceProvider services)
     {
@@ -40,6 +41,7 @@ public static class DatabaseInitializer
                 db.TrainingItems.AddRange(GetSeedTrainingItems());
             }
 
+            await EnsurePlanExpansionTrainingItemsAsync(db);
             await ImportLearningRadarItemsAsync(db, environment, logger);
 
             await EnsureSeedResourcesAsync(db);
@@ -86,6 +88,44 @@ public static class DatabaseInitializer
 
             db.Resources.Add(resource);
         }
+    }
+
+    private static async Task EnsurePlanExpansionTrainingItemsAsync(TrackerDbContext db)
+    {
+        var expansionAlreadyApplied = await db.AppMetadataEntries
+            .AsNoTracking()
+            .AnyAsync(entry => entry.Key == PlanExpansionMetadataKey);
+
+        if (expansionAlreadyApplied ||
+            db.AppMetadataEntries.Local.Any(entry => entry.Key == PlanExpansionMetadataKey))
+        {
+            return;
+        }
+
+        var existingTitles = (await db.TrainingItems
+            .AsNoTracking()
+            .Select(item => item.Title)
+            .ToListAsync())
+            .Concat(db.TrainingItems.Local.Select(item => item.Title))
+            .Select(title => title.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var item in GetPlanExpansionTrainingItems())
+        {
+            if (!existingTitles.Add(item.Title.Trim()))
+            {
+                continue;
+            }
+
+            db.TrainingItems.Add(item);
+        }
+
+        db.AppMetadataEntries.Add(new AppMetadataEntry
+        {
+            Key = PlanExpansionMetadataKey,
+            Value = $"Applied:{DateTime.UtcNow:O}",
+            UpdatedUtc = DateTime.UtcNow
+        });
     }
 
     private static async Task EnsureVideoSchemaAsync(TrackerDbContext db)
@@ -548,16 +588,19 @@ public static class DatabaseInitializer
     private static string BuildResourceKey(string title, string section)
         => string.Concat(section.Trim(), "::", title.Trim());
 
+    private static DateTime UtcDate(int year, int month, int day)
+        => new(year, month, day, 0, 0, 0, DateTimeKind.Utc);
+
     private static IEnumerable<TrainingItem> GetSeedTrainingItems()
     {
         var today = DateTime.UtcNow.Date;
-        var march = new DateTime(2026, 3, 17);
-        var april = new DateTime(2026, 4, 18);
-        var may = new DateTime(2026, 5, 16);
-        var june = new DateTime(2026, 6, 20);
-        var july = new DateTime(2026, 7, 18);
-        var august = new DateTime(2026, 8, 15);
-        var september = new DateTime(2026, 9, 12);
+        var march = UtcDate(2026, 3, 17);
+        var april = UtcDate(2026, 4, 18);
+        var may = UtcDate(2026, 5, 16);
+        var june = UtcDate(2026, 6, 20);
+        var july = UtcDate(2026, 7, 18);
+        var august = UtcDate(2026, 8, 15);
+        var september = UtcDate(2026, 9, 12);
 
         return
         [
@@ -711,6 +754,111 @@ public static class DatabaseInitializer
         ];
     }
 
+    private static IEnumerable<TrainingItem> GetPlanExpansionTrainingItems()
+    {
+        var ai103Goal = CertificationCatalog.FindByKey("ai-103")?.CreateTrainingItem()
+            ?? throw new InvalidOperationException("The AI-103 certification catalog entry is required.");
+        ai103Goal.ProjectDriven = true;
+
+        return
+        [
+            ai103Goal,
+            new TrainingItem
+            {
+                Title = "Learn Microsoft Fabric fundamentals",
+                Domain = "Microsoft Fabric",
+                Category = "Fundamentals",
+                Description = "Learn the Fabric workloads, OneLake, lakehouses, warehouses, real-time intelligence, data science, and Power BI at a true beginner level.",
+                TargetDate = UtcDate(2026, 9, 11),
+                Lane = LearningLane.Core,
+                Type = TrainingItemType.Learning,
+                EstimatedHours = 2,
+                Priority = 5,
+                Notes = "Start with the official introduction module before opening deeper workload-specific content."
+            },
+            new TrainingItem
+            {
+                Title = "Complete the Microsoft Fabric beginner path",
+                Domain = "Microsoft Fabric",
+                Category = "Learning path",
+                Description = "Complete the official Get started with Microsoft Fabric path across lakehouses, warehouses, real-time intelligence, and data science.",
+                TargetDate = UtcDate(2026, 10, 16),
+                Lane = LearningLane.Core,
+                Type = TrainingItemType.Learning,
+                EstimatedHours = 8,
+                Priority = 4,
+                Notes = "Capture a one-page service map showing when each Fabric workload is the right fit."
+            },
+            new TrainingItem
+            {
+                Title = "Build a Microsoft Fabric lakehouse end to end",
+                Domain = "Microsoft Fabric",
+                Category = "Lakehouse",
+                Description = "Complete the official lakehouse tutorial by creating a lakehouse, ingesting and transforming data, and producing a report.",
+                TargetDate = UtcDate(2026, 11, 20),
+                Lane = LearningLane.Core,
+                Type = TrainingItemType.Project,
+                EstimatedHours = 6,
+                Priority = 4,
+                ProjectDriven = true,
+                Notes = "Save screenshots and architecture notes as evidence for later DP-600 or DP-700 preparation."
+            },
+            new TrainingItem
+            {
+                Title = "Explore Azure Databricks fundamentals",
+                Domain = "Azure Databricks",
+                Category = "Fundamentals",
+                Description = "Learn Azure Databricks workspaces, notebooks, Spark, lakehouse concepts, Unity Catalog, and the main data and AI workloads.",
+                TargetDate = UtcDate(2026, 9, 25),
+                Lane = LearningLane.Core,
+                Type = TrainingItemType.Learning,
+                EstimatedHours = 2,
+                Priority = 5,
+                Notes = "Use the official Explore Azure Databricks module and complete its exercise."
+            },
+            new TrainingItem
+            {
+                Title = "Run a first Azure Databricks notebook",
+                Domain = "Azure Databricks",
+                Category = "Notebook quickstart",
+                Description = "Provision or use an Azure Databricks workspace, open a notebook, query sample data with SQL or Python, and capture the workspace concepts learned.",
+                TargetDate = UtcDate(2026, 10, 30),
+                Lane = LearningLane.Core,
+                Type = TrainingItemType.Lab,
+                EstimatedHours = 4,
+                Priority = 4,
+                ProjectDriven = true,
+                Notes = "Keep the first notebook small: load data, inspect a DataFrame, run SQL, and create one visualization."
+            },
+            new TrainingItem
+            {
+                Title = "Complete the Azure Databricks data engineering path",
+                Domain = "Azure Databricks",
+                Category = "Data engineering",
+                Description = "Complete the official data analytics solution path covering Spark, Delta Lake, ETL, orchestration, streaming, and Unity Catalog.",
+                TargetDate = UtcDate(2026, 12, 11),
+                Lane = LearningLane.Core,
+                Type = TrainingItemType.Learning,
+                EstimatedHours = 8,
+                Priority = 4,
+                Notes = "Use Python and SQL together and record the concepts that map directly to the DP-750 study guide."
+            },
+            new TrainingItem
+            {
+                Title = "Build a Delta Lake ETL pipeline in Azure Databricks",
+                Domain = "Azure Databricks",
+                Category = "Delta Lake",
+                Description = "Use the official MicrosoftLearning Databricks labs to build and explain a small Delta Lake ingestion and transformation pipeline.",
+                TargetDate = UtcDate(2027, 1, 15),
+                Lane = LearningLane.Stretch,
+                Type = TrainingItemType.Lab,
+                EstimatedHours = 6,
+                Priority = 3,
+                Notes = "This is the nice-to-have proof project after the core Databricks learning path."
+            }
+        ];
+    }
+
     private static IEnumerable<VideoChannel> GetSeedVideoChannels()
     {
         return
@@ -770,7 +918,20 @@ public static class DatabaseInitializer
             new ResourceEntry { Title = "Well-Architected Framework", Section = "Architecture and Operations", Url = "https://learn.microsoft.com/en-us/azure/well-architected/", Kind = ResourceKind.Documentation, SortOrder = 10, Summary = "Use this to shape production guidance for security, reliability, operational excellence, performance, and cost.", Tags = "architecture, reliability, security, cost, operations" },
             new ResourceEntry { Title = "Azure Monitor and Application Insights", Section = "Architecture and Operations", Url = "https://learn.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview", Kind = ResourceKind.Documentation, SortOrder = 20, Summary = "Telemetry and observability foundation for productionizing AI and App Innovation workloads.", Tags = "monitoring, telemetry, application insights, observability" },
             new ResourceEntry { Title = "Choose between App Service, Container Apps, and AKS", Section = "App Innovation", Url = "https://learn.microsoft.com/en-us/azure/architecture/guide/technology-choices/compute-decision-tree", Kind = ResourceKind.Documentation, SortOrder = 10, Summary = "Decision guidance for selecting the right Azure compute platform for APIs, web apps, containers, and AI workloads.", Tags = "app innovation, app service, container apps, hosting, architecture" },
-            new ResourceEntry { Title = "Develop generative AI apps in Azure", Section = "Learning Paths", Url = "https://learn.microsoft.com/en-us/training/paths/develop-ai-solutions-azure-openai/", Kind = ResourceKind.Learn, SortOrder = 10, Summary = "Structured Microsoft Learn path to complement Foundry and AI app development work.", Tags = "learn, azure ai, path" }
+            new ResourceEntry { Title = "Develop generative AI apps in Azure", Section = "Learning Paths", Url = "https://learn.microsoft.com/en-us/training/paths/develop-ai-solutions-azure-openai/", Kind = ResourceKind.Learn, SortOrder = 10, Summary = "Structured Microsoft Learn path to complement Foundry and AI app development work.", Tags = "learn, azure ai, path" },
+            new ResourceEntry { Title = "Microsoft Fabric documentation", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/fabric/", Kind = ResourceKind.Documentation, SortOrder = 10, Summary = "Official documentation hub for Fabric workloads, administration, governance, and architecture.", Tags = "fabric, onelake, analytics, beginner" },
+            new ResourceEntry { Title = "Introduction to Microsoft Fabric", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/training/modules/introduction-end-analytics-use-microsoft-fabric/", Kind = ResourceKind.Learn, IsPinned = true, SortOrder = 20, Summary = "Short beginner module explaining Fabric's end-to-end analytics workloads and OneLake.", Tags = "fabric, fundamentals, beginner, onelake" },
+            new ResourceEntry { Title = "Get started with Microsoft Fabric learning path", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/training/paths/get-started-fabric/", Kind = ResourceKind.Learn, SortOrder = 30, Summary = "Official beginner path covering lakehouses, warehouses, real-time intelligence, and data science.", Tags = "fabric, learning path, lakehouse, warehouse, beginner" },
+            new ResourceEntry { Title = "Microsoft Fabric lakehouse tutorial", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/fabric/data-engineering/tutorial-build-lakehouse", Kind = ResourceKind.Lab, SortOrder = 40, Summary = "End-to-end beginner project for ingesting, transforming, and reporting on data in a Fabric lakehouse.", Tags = "fabric, lakehouse, tutorial, project, lab" },
+            new ResourceEntry { Title = "Microsoft Fabric end-to-end tutorials", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/fabric/fundamentals/end-to-end-tutorials", Kind = ResourceKind.Lab, SortOrder = 50, Summary = "Scenario-based tutorials across Fabric data engineering, warehousing, science, and real-time workloads.", Tags = "fabric, tutorials, hands-on" },
+            new ResourceEntry { Title = "Azure Databricks documentation", Section = "Azure Databricks", Url = "https://learn.microsoft.com/en-us/azure/databricks/", Kind = ResourceKind.Documentation, SortOrder = 10, Summary = "Official Azure Databricks reference for workspaces, notebooks, Spark, Delta Lake, Unity Catalog, and operations.", Tags = "databricks, spark, delta lake, unity catalog" },
+            new ResourceEntry { Title = "Explore Azure Databricks module", Section = "Azure Databricks", Url = "https://learn.microsoft.com/en-us/training/modules/explore-azure-databricks/", Kind = ResourceKind.Learn, IsPinned = true, SortOrder = 20, Summary = "Beginner module covering the Azure Databricks platform, workloads, governance, and a hands-on exercise.", Tags = "databricks, fundamentals, beginner, module" },
+            new ResourceEntry { Title = "Azure Databricks getting started tutorials", Section = "Azure Databricks", Url = "https://learn.microsoft.com/en-us/azure/databricks/getting-started/", Kind = ResourceKind.Lab, SortOrder = 30, Summary = "Official quickstarts for opening a workspace, running notebooks, querying data, and building first workflows.", Tags = "databricks, quickstart, notebook, tutorial" },
+            new ResourceEntry { Title = "Azure Databricks data engineering learning path", Section = "Azure Databricks", Url = "https://learn.microsoft.com/en-us/training/paths/data-engineer-azure-databricks/", Kind = ResourceKind.Learn, SortOrder = 40, Summary = "Structured path covering Spark, SQL, Delta Lake, ETL, orchestration, streaming, and Unity Catalog.", Tags = "databricks, data engineering, spark, delta lake, learning path" },
+            new ResourceEntry { Title = "Microsoft Learn Azure Databricks labs", Section = "Azure Databricks", Url = "https://github.com/MicrosoftLearning/mslearn-databricks", Kind = ResourceKind.Lab, SortOrder = 50, Summary = "Official lab assets for the Microsoft Learn Azure Databricks modules and end-to-end exercises.", Tags = "databricks, github, labs, delta lake, etl" },
+            new ResourceEntry { Title = "Free Azure Databricks training", Section = "Azure Databricks", Url = "https://learn.microsoft.com/en-us/azure/databricks/getting-started/free-training", Kind = ResourceKind.Learn, SortOrder = 60, Summary = "Free Databricks Academy courses and webinars for additional platform and Spark foundations.", Tags = "databricks, academy, free training, beginner" },
+            new ResourceEntry { Title = "AI-103 certification page", Section = "Certifications", Url = "https://learn.microsoft.com/en-us/credentials/certifications/azure-ai-apps-and-agents-developer-associate/", Kind = ResourceKind.Learn, IsPinned = true, SortOrder = 10, Summary = "Official Azure AI Apps and Agents Developer Associate credential page.", Tags = "certification, ai-103, azure ai, agents, foundry" },
+            new ResourceEntry { Title = "AI-103 study guide", Section = "Certifications", Url = "https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/ai-103", Kind = ResourceKind.Learn, SortOrder = 20, Summary = "Official AI-103 skills outline and preparation guidance.", Tags = "certification, ai-103, study guide, azure ai, agents" }
         ];
     }
 

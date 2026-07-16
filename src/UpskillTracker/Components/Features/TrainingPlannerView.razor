@@ -17,11 +17,44 @@
     <MudItem xs="12">
         <MudPaper Class="surface-card content-card planner-table-card mb-4" Elevation="0">
             <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-4 reminder-alert">
-                Each task now suggests the best matching links from your resource library so the work can be opened directly from the plan. To personalize it, edit tasks here and add links in the form below.
+                Work top to bottom in the focus view. Overdue and near-term core commitments come first; nice-to-have work stays visible without competing with required progress.
             </MudAlert>
+
+            <MudGrid Spacing="2" Class="mb-4 planner-focus-summary">
+                <MudItem xs="6" md="3">
+                    <MudPaper Class="planner-focus-stat planner-focus-stat-risk" Elevation="0">
+                        <MudText Typo="Typo.h5">@AtRiskCount</MudText>
+                        <MudText Typo="Typo.caption">At risk</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudPaper Class="planner-focus-stat planner-focus-stat-core" Elevation="0">
+                        <MudText Typo="Typo.h5">@CoreCommitmentCount</MudText>
+                        <MudText Typo="Typo.caption">Core remaining</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudPaper Class="planner-focus-stat planner-focus-stat-active" Elevation="0">
+                        <MudText Typo="Typo.h5">@InProgressCount</MudText>
+                        <MudText Typo="Typo.caption">In progress</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudPaper Class="planner-focus-stat planner-focus-stat-optional" Elevation="0">
+                        <MudText Typo="Typo.h5">@NiceToHaveCount</MudText>
+                        <MudText Typo="Typo.caption">Nice to have</MudText>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
 
             <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" Class="mb-4">
                 <MudTextField @bind-Value="searchText" Placeholder="Search training items" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="flex-1" />
+                <MudSelect T="string" @bind-Value="selectedFocusFilter" Label="Focus" Variant="Variant.Outlined">
+                    @foreach (var option in FocusFilterOptions)
+                    {
+                        <MudSelectItem T="string" Value="@option">@option</MudSelectItem>
+                    }
+                </MudSelect>
                 <MudSelect T="UpskillTracker.Models.TrackerStatus?" @bind-Value="selectedStatus" Label="Status" Variant="Variant.Outlined" Clearable="true">
                     @foreach (var status in Enum.GetValues<UpskillTracker.Models.TrackerStatus>())
                     {
@@ -48,11 +81,22 @@
                 <RowTemplate>
                     <MudTd DataLabel="Item">
                         <MudText Typo="Typo.subtitle2">@context.Title</MudText>
-                        <MudText Typo="Typo.caption" Class="mud-secondary-text">@context.Type • @context.Lane</MudText>
+                        <MudText Typo="Typo.caption" Class="mud-secondary-text">@context.Type • @TrainingPlanPrioritizer.GetCommitmentLabel(context)</MudText>
                         @if (!string.IsNullOrWhiteSpace(context.Description))
                         {
                             <MudText Typo="Typo.body2" Class="mt-1 mud-secondary-text">@context.Description</MudText>
                         }
+                        <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-2">
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@GetAttentionColor(context)">
+                                @TrainingPlanPrioritizer.GetAttentionLabel(context, today)
+                            </MudChip>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetCommitmentColor(context)">
+                                @TrainingPlanPrioritizer.GetCommitmentLabel(context)
+                            </MudChip>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default">
+                                Priority @context.Priority
+                            </MudChip>
+                        </MudStack>
 
                         @{ var suggestedResources = GetSuggestedResources(context); }
                         @if (suggestedResources.Count > 0)
@@ -79,11 +123,17 @@
                         </MudStack>
                     </MudTd>
                     <MudTd DataLabel="Domain">@context.Domain</MudTd>
-                    <MudTd DataLabel="Due">@context.TargetDate.ToString("MMM d")</MudTd>
+                    <MudTd DataLabel="Due">
+                        <MudText Typo="Typo.body2">@context.TargetDate.ToString("MMM d")</MudText>
+                        <MudText Typo="Typo.caption" Class="@GetDueTextClass(context)">@TrainingPlanPrioritizer.GetAttentionLabel(context, today)</MudText>
+                    </MudTd>
                     <MudTd DataLabel="Status">
                         <MudChip T="string" Variant="Variant.Filled" Color="@GetStatusColor(context.Status)">@context.Status</MudChip>
                     </MudTd>
-                    <MudTd DataLabel="Progress">@context.ProgressPercent%</MudTd>
+                    <MudTd DataLabel="Progress">
+                        <MudProgressLinear Value="@context.ProgressPercent" Rounded="true" Color="@GetAttentionColor(context)" />
+                        <MudText Typo="Typo.caption" Class="mud-secondary-text">@context.ProgressPercent%</MudText>
+                    </MudTd>
                     <MudTd Style="text-align: right;">
                         <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Edit" OnClick="@(() => BeginEditAsync(context))">Edit</MudButton>
                     </MudTd>
@@ -131,7 +181,7 @@
                     <MudSelect T="UpskillTracker.Models.LearningLane" @bind-Value="editingItem.Lane" Label="Lane" Variant="Variant.Outlined">
                         @foreach (var lane in Enum.GetValues<UpskillTracker.Models.LearningLane>())
                         {
-                            <MudSelectItem T="UpskillTracker.Models.LearningLane" Value="@lane">@lane</MudSelectItem>
+                            <MudSelectItem T="UpskillTracker.Models.LearningLane" Value="@lane">@GetLaneLabel(lane)</MudSelectItem>
                         }
                     </MudSelect>
                 </MudItem>
@@ -147,7 +197,7 @@
                     <MudNumericField T="decimal" @bind-Value="editingItem.EstimatedHours" Label="Hours" Variant="Variant.Outlined" Min="0.5m" Max="40m" Step="0.5m" />
                 </MudItem>
                 <MudItem xs="12" sm="4">
-                    <MudNumericField T="int" @bind-Value="editingItem.Priority" Label="Priority" Variant="Variant.Outlined" Min="1" Max="5" Step="1" />
+                    <MudNumericField T="int" @bind-Value="editingItem.Priority" Label="Priority (1 optional, 5 critical)" Variant="Variant.Outlined" Min="1" Max="5" Step="1" />
                 </MudItem>
                 <MudItem xs="12" sm="4" Class="d-flex align-center">
                     <MudCheckBox @bind-Value="editingItem.ProjectDriven" Label="Project-driven" Color="Color.Primary" />
@@ -184,17 +234,31 @@
     private string searchText = string.Empty;
     private UpskillTracker.Models.TrackerStatus? selectedStatus;
     private UpskillTracker.Models.LearningLane? selectedLane;
+    private string selectedFocusFilter = "Do next";
     private DateTime? targetDate;
+    private readonly DateTime today = DateTime.UtcNow.Date;
+    private static readonly string[] FocusFilterOptions = ["Do next", "All work", "At risk", "Core commitments", "Nice to have", "Certifications"];
 
     protected override async Task OnInitializedAsync()
     {
         await LoadAsync();
     }
 
-    private IEnumerable<UpskillTracker.Models.TrainingItem> FilteredItems => items.Where(item =>
-        (string.IsNullOrWhiteSpace(searchText) || item.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) || item.Domain.Contains(searchText, StringComparison.OrdinalIgnoreCase) || item.Category.Contains(searchText, StringComparison.OrdinalIgnoreCase)) &&
-        (!selectedStatus.HasValue || item.Status == selectedStatus.Value) &&
-        (!selectedLane.HasValue || item.Lane == selectedLane.Value));
+    private IEnumerable<UpskillTracker.Models.TrainingItem> FilteredItems => TrainingPlanPrioritizer.OrderForFocus(
+        items.Where(item =>
+            (string.IsNullOrWhiteSpace(searchText) || item.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) || item.Domain.Contains(searchText, StringComparison.OrdinalIgnoreCase) || item.Category.Contains(searchText, StringComparison.OrdinalIgnoreCase)) &&
+            (!selectedStatus.HasValue || item.Status == selectedStatus.Value) &&
+            (!selectedLane.HasValue || item.Lane == selectedLane.Value) &&
+            MatchesFocusFilter(item)),
+        today);
+
+    private int AtRiskCount => items.Count(item => TrainingPlanPrioritizer.IsAtRisk(item, today));
+
+    private int CoreCommitmentCount => items.Count(item => item.Status != UpskillTracker.Models.TrackerStatus.Completed && !TrainingPlanPrioritizer.IsNiceToHave(item));
+
+    private int InProgressCount => items.Count(item => item.Status == UpskillTracker.Models.TrackerStatus.InProgress);
+
+    private int NiceToHaveCount => items.Count(item => item.Status != UpskillTracker.Models.TrackerStatus.Completed && TrainingPlanPrioritizer.IsNiceToHave(item));
 
     private async Task LoadAsync()
     {
@@ -300,11 +364,27 @@
         await JSRuntime.InvokeVoidAsync("open", resource.Url, "_blank", "noopener,noreferrer");
     }
 
-    private static string GetRowClass(UpskillTracker.Models.TrainingItem item, int _) => item.Status switch
+    private bool MatchesFocusFilter(UpskillTracker.Models.TrainingItem item) => selectedFocusFilter switch
+    {
+        "Do next" => item.Status != UpskillTracker.Models.TrackerStatus.Completed && !TrainingPlanPrioritizer.IsNiceToHave(item),
+        "At risk" => TrainingPlanPrioritizer.IsAtRisk(item, today),
+        "Core commitments" => item.Status != UpskillTracker.Models.TrackerStatus.Completed && !TrainingPlanPrioritizer.IsNiceToHave(item),
+        "Nice to have" => item.Status != UpskillTracker.Models.TrackerStatus.Completed && TrainingPlanPrioritizer.IsNiceToHave(item),
+        "Certifications" => item.Type == UpskillTracker.Models.TrainingItemType.Certification,
+        _ => true
+    };
+
+    private string GetRowClass(UpskillTracker.Models.TrainingItem item, int _) => item.Status switch
     {
         UpskillTracker.Models.TrackerStatus.Completed => "row-completed",
         UpskillTracker.Models.TrackerStatus.Blocked => "row-blocked",
-        _ => string.Empty
+        _ => TrainingPlanPrioritizer.GetAttentionLevel(item, today) switch
+        {
+            UpskillTracker.Models.PlanAttentionLevel.Overdue => "row-overdue",
+            UpskillTracker.Models.PlanAttentionLevel.DueSoon => "row-due-soon",
+            UpskillTracker.Models.PlanAttentionLevel.NiceToHave => "row-nice-to-have",
+            _ => string.Empty
+        }
     };
 
     private static Color GetStatusColor(UpskillTracker.Models.TrackerStatus status) => status switch
@@ -313,6 +393,40 @@
         UpskillTracker.Models.TrackerStatus.InProgress => Color.Info,
         UpskillTracker.Models.TrackerStatus.Blocked => Color.Error,
         _ => Color.Default
+    };
+
+    private Color GetAttentionColor(UpskillTracker.Models.TrainingItem item)
+        => TrainingPlanPrioritizer.GetAttentionLevel(item, today) switch
+        {
+            UpskillTracker.Models.PlanAttentionLevel.Overdue => Color.Error,
+            UpskillTracker.Models.PlanAttentionLevel.DueSoon => Color.Warning,
+            UpskillTracker.Models.PlanAttentionLevel.InProgress => Color.Info,
+            UpskillTracker.Models.PlanAttentionLevel.NiceToHave => Color.Default,
+            UpskillTracker.Models.PlanAttentionLevel.Completed => Color.Success,
+            _ => Color.Primary
+        };
+
+    private static Color GetCommitmentColor(UpskillTracker.Models.TrainingItem item) => item.Lane switch
+    {
+        UpskillTracker.Models.LearningLane.RapidRamp => Color.Warning,
+        UpskillTracker.Models.LearningLane.Stretch when !item.ProjectDriven => Color.Default,
+        _ => Color.Primary
+    };
+
+    private string GetDueTextClass(UpskillTracker.Models.TrainingItem item)
+        => TrainingPlanPrioritizer.GetAttentionLevel(item, today) switch
+        {
+            UpskillTracker.Models.PlanAttentionLevel.Overdue => "planner-due planner-due-overdue",
+            UpskillTracker.Models.PlanAttentionLevel.DueSoon => "planner-due planner-due-soon",
+            _ => "planner-due mud-secondary-text"
+        };
+
+    private static string GetLaneLabel(UpskillTracker.Models.LearningLane lane) => lane switch
+    {
+        UpskillTracker.Models.LearningLane.Core => "Core commitment",
+        UpskillTracker.Models.LearningLane.Stretch => "Nice to have",
+        UpskillTracker.Models.LearningLane.RapidRamp => "Rapid ramp",
+        _ => lane.ToString()
     };
 
     private static UpskillTracker.Models.TrainingItem CreateEmptyItem()

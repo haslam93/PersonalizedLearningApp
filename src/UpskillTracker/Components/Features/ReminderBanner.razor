@@ -14,9 +14,9 @@ else if (TrackerService.HasRecentTransientReadFailure)
 else if (overdueItems.Count > 0)
 {
     <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Dense="true" Class="mb-6 reminder-alert reminder-alert-warning">
-        <MudText Typo="Typo.subtitle1">@($"{overdueItems.Count} item{(overdueItems.Count == 1 ? string.Empty : "s")} need attention")</MudText>
+        <MudText Typo="Typo.subtitle1">@($"{overdueItems.Count} core commitment{(overdueItems.Count == 1 ? string.Empty : "s")} need attention")</MudText>
         <MudText Typo="Typo.body2" Class="mb-3">
-            Review the next due item, update its status, or move the target date when priorities changed.
+            Start the first item, update its progress, or move the target date if the plan is no longer realistic. Nice-to-have work is excluded from this warning.
         </MudText>
         <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2">
             @foreach (var item in overdueItems.Take(3))
@@ -26,6 +26,13 @@ else if (overdueItems.Count > 0)
                 </MudChip>
             }
         </MudStack>
+    </MudAlert>
+}
+else if (optionalOverdueCount > 0)
+{
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-6 reminder-alert">
+        <MudText Typo="Typo.subtitle1">Core plan is on schedule</MudText>
+        <MudText Typo="Typo.body2">@optionalOverdueCount nice-to-have item@(optionalOverdueCount == 1 ? " is" : "s are") past its target date. Reschedule it when you intentionally bring it back into focus.</MudText>
     </MudAlert>
 }
 else
@@ -39,10 +46,15 @@ else
 @code {
     private bool isLoading = true;
     private List<UpskillTracker.Models.TrainingItem> overdueItems = [];
+    private int optionalOverdueCount;
 
     protected override async Task OnInitializedAsync()
     {
-        overdueItems = await TrackerService.GetOverdueItemsAsync();
+        var allOverdueItems = await TrackerService.GetOverdueItemsAsync();
+        overdueItems = allOverdueItems
+            .Where(item => !TrainingPlanPrioritizer.IsNiceToHave(item))
+            .ToList();
+        optionalOverdueCount = allOverdueItems.Count(TrainingPlanPrioritizer.IsNiceToHave);
         isLoading = false;
     }
 }

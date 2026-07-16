@@ -15,6 +15,26 @@ estimated_reading_time: 6
 
 ## 2026-07-16
 
+### Expanded the tracked learning plan
+
+* Added beginner Microsoft Fabric and Azure Databricks learning sequences with official Microsoft Learn, product documentation, tutorials, and hands-on lab resources
+* Added practical Fabric lakehouse and Databricks Delta Lake project milestones so the new topics progress from fundamentals into applied work
+* Added an AI-103 Azure AI Apps and Agents Developer Associate goal targeting August 31, 2026, including official credential and study-guide links
+* Added deduplicating startup inserts so the new plan items and resources reach an existing production PostgreSQL database without overwriting user-managed records
+
+### Added persistent certification planning
+
+* Added a Certifications tab that tracks target dates, progress, status, study notes, and evidence using the existing training-item data model
+* Added a curated import catalog for Microsoft AI, Microsoft Fabric, Azure Databricks, Databricks, and GitHub credentials
+* Added custom certification-goal creation so credentials outside the curated catalog can be tracked without a code or schema change
+
+### Made deadlines and priorities actionable
+
+* Added shared plan-prioritization rules for overdue, due-soon, active, core, and nice-to-have work
+* Updated the Dashboard with schedule-pressure metrics, a core completion rate, and a ranked "Do next" list with direct resource links
+* Updated the Plan tab with at-risk, core, active, optional, and certification focus filters plus commitment and attention labels
+* Changed reminder warnings so overdue optional backlog no longer obscures urgent core commitments
+
 ### Repaired the README and PostgreSQL recovery workflow
 
 * Fixed the malformed README front matter, restored a visible page title, and updated the architecture and deployment documentation for the production PostgreSQL, managed identity, private networking, storage, and `P0v3` configuration

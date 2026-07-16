@@ -231,6 +231,12 @@ a,
         linear-gradient(180deg, rgba(245, 243, 255, 0.96) 0%, rgba(248, 250, 255, 0.94) 100%);
 }
 
+.certification-intro-card {
+    background:
+        radial-gradient(circle at top right, rgba(217, 119, 6, 0.14), transparent 28%),
+        linear-gradient(180deg, rgba(255, 251, 235, 0.98) 0%, rgba(248, 250, 255, 0.94) 100%);
+}
+
 .notes-intro-card {
     background:
         radial-gradient(circle at top right, rgba(22, 163, 74, 0.12), transparent 28%),
@@ -250,6 +256,73 @@ a,
 .notes-library-card,
 .timeline-month-card {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(247, 250, 255, 0.94) 100%);
+}
+
+.planner-focus-stat,
+.certification-summary-card {
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    border-radius: 18px;
+    min-height: 104px;
+    padding: 1rem;
+}
+
+.planner-focus-stat {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.planner-focus-stat-risk,
+.certification-summary-warning {
+    background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%);
+}
+
+.planner-focus-stat-core,
+.certification-summary-primary {
+    background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+}
+
+.planner-focus-stat-active,
+.certification-summary-info {
+    background: linear-gradient(180deg, #ecfeff 0%, #cffafe 100%);
+}
+
+.planner-focus-stat-optional {
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.certification-summary-success {
+    background: linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%);
+}
+
+.certification-goal-card,
+.certification-catalog-entry {
+    background: var(--shell-surface-strong);
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    border-radius: 20px;
+    height: 100%;
+    padding: 1.2rem;
+}
+
+.certification-goal-card {
+    border-left: 4px solid #d97706;
+}
+
+.certification-catalog-entry {
+    border-left: 4px solid #4f46e5;
+}
+
+.certification-summary-grid .mud-grid-item,
+.certification-goals-card .mud-grid-item,
+.certification-catalog-card .mud-grid-item {
+    display: flex;
+}
+
+.certification-summary-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 100%;
 }
 
 .dashboard-summary-card,
@@ -630,6 +703,32 @@ a,
 
 .row-blocked {
     background: rgba(239, 68, 68, 0.08);
+}
+
+.row-overdue {
+    background: rgba(254, 226, 226, 0.58);
+}
+
+.row-due-soon {
+    background: rgba(254, 243, 199, 0.42);
+}
+
+.row-nice-to-have {
+    background: rgba(241, 245, 249, 0.56);
+}
+
+.planner-due {
+    display: block;
+    font-weight: 600;
+    margin-top: 0.2rem;
+}
+
+.planner-due-overdue {
+    color: #b91c1c !important;
+}
+
+.planner-due-soon {
+    color: #b45309 !important;
 }
 
 .flex-1 {

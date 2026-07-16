@@ -27,10 +27,10 @@ else if (snapshot is not null)
                         <MudText Typo="Typo.body1" Class="overview-summary">@GetDashboardSummary()</MudText>
                     </div>
                     <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
-                        <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Flag">@snapshot.FocusItems.Count active focus items</MudChip>
-                        <MudChip T="string" Color="Color.Info" Variant="Variant.Filled" Icon="@Icons.Material.Filled.OndemandVideo">@snapshot.NeedToWatchCount queued videos</MudChip>
-                        <MudChip T="string" Color="Color.Secondary" Variant="Variant.Filled" Icon="@Icons.Material.Filled.LibraryBooks">@snapshot.PinnedResources.Count pinned resources</MudChip>
-                        <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Icon="@Icons.Material.Filled.StickyNote2">@snapshot.RecentNotes.Count recent notes</MudChip>
+                        <MudChip T="string" Color="@(snapshot.AtRiskItems > 0 ? Color.Error : Color.Success)" Variant="Variant.Filled" Icon="@Icons.Material.Filled.PriorityHigh">@snapshot.AtRiskItems at risk</MudChip>
+                        <MudChip T="string" Color="Color.Warning" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Event">@snapshot.DueNext14Days due in 14 days</MudChip>
+                        <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Checklist">@snapshot.CoreRemainingItems core commitments</MudChip>
+                        <MudChip T="string" Color="Color.Secondary" Variant="Variant.Filled" Icon="@Icons.Material.Filled.WorkspacePremium">@snapshot.CertificationGoals certification goals</MudChip>
                     </MudStack>
                 </MudStack>
             </MudPaper>
@@ -38,29 +38,30 @@ else if (snapshot is not null)
         <MudItem xs="12" md="4" Class="d-flex">
             <MudStack Spacing="2" Class="dashboard-side-stack w-100">
                 <MudPaper Class="surface-card mb-0 stat-card dashboard-stat-card dashboard-accent-blue" Elevation="0">
-                    <MudText Typo="Typo.subtitle2" Class="dashboard-card-label">Completion rate</MudText>
-                    <MudText Typo="Typo.h3" Class="mb-3 dashboard-card-value">@snapshot.CompletionRate%</MudText>
+                    <MudText Typo="Typo.subtitle2" Class="dashboard-card-label">Core completion</MudText>
+                    <MudText Typo="Typo.h3" Class="mb-3 dashboard-card-value">@snapshot.CommitmentCompletionRate%</MudText>
                     <MudProgressLinear Value="@completionRate" Rounded="true" Color="Color.Primary" Size="Size.Large" />
                     <MudText Typo="Typo.body2" Class="mt-3 dashboard-muted-text">
-                        @snapshot.CompletedItems of @snapshot.TotalItems planned items are done.
+                        Nice-to-have items do not reduce this score.
                     </MudText>
                 </MudPaper>
 
-                <MudPaper Class="surface-card mb-4 dashboard-video-tracker-card dashboard-accent-teal" Elevation="0">
+                <MudPaper Class="surface-card mb-4 dashboard-video-tracker-card dashboard-accent-rose" Elevation="0">
                     <MudStack Spacing="2">
                         <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
                             <div>
-                                <MudText Typo="Typo.subtitle2" Class="dashboard-card-label">Video watch tracker</MudText>
-                                <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.NeedToWatchCount queued to watch</MudText>
-                                <MudText Typo="Typo.body2" Class="dashboard-muted-text">@snapshot.SeenVideos watched across @snapshot.TotalTrackedVideos tracked videos.</MudText>
+                                <MudText Typo="Typo.subtitle2" Class="dashboard-card-label">Schedule pressure</MudText>
+                                <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.AtRiskItems item@(snapshot.AtRiskItems == 1 ? string.Empty : "s") at risk</MudText>
+                                <MudText Typo="Typo.body2" Class="dashboard-muted-text">Overdue work and near-term commitments below 50% progress count as at risk.</MudText>
                             </div>
-                            <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined">@snapshot.VideoWatchCompletionRate%</MudChip>
+                            <MudChip T="string" Color="@(snapshot.AtRiskItems > 0 ? Color.Error : Color.Success)" Variant="Variant.Filled">
+                                @(snapshot.AtRiskItems > 0 ? "Recover" : "On track")
+                            </MudChip>
                         </MudStack>
-                        <MudProgressLinear Value="@videoWatchCompletionRate" Rounded="true" Color="Color.Success" Size="Size.Large" />
                         <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
-                            <MudChip T="string" Color="Color.Default" Variant="Variant.Outlined">@snapshot.InboxVideos inbox</MudChip>
-                            <MudChip T="string" Color="Color.Warning" Variant="Variant.Outlined">@snapshot.NeedToWatchCount need to watch</MudChip>
-                            <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined">@snapshot.SeenVideos seen</MudChip>
+                            <MudChip T="string" Color="Color.Error" Variant="Variant.Outlined">@snapshot.OverdueItems overdue</MudChip>
+                            <MudChip T="string" Color="Color.Warning" Variant="Variant.Outlined">@snapshot.DueNext14Days due soon</MudChip>
+                            <MudChip T="string" Color="Color.Default" Variant="Variant.Outlined">@snapshot.NiceToHaveItems optional</MudChip>
                         </MudStack>
                     </MudStack>
                 </MudPaper>
@@ -70,31 +71,31 @@ else if (snapshot is not null)
 
     <MudGrid Class="mb-4 dashboard-metrics-grid">
         <MudItem xs="6" md="3">
-            <MudPaper Class="surface-card metric-card dashboard-metric-card dashboard-accent-green" Elevation="0">
-                <MudIcon Icon="@Icons.Material.Filled.TaskAlt" Color="Color.Success" Size="Size.Large" />
-                <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.CompletedItems</MudText>
-                <MudText Typo="Typo.body2" Class="dashboard-muted-text">Completed</MudText>
+            <MudPaper Class="surface-card metric-card dashboard-metric-card dashboard-accent-rose" Elevation="0">
+                <MudIcon Icon="@Icons.Material.Filled.PriorityHigh" Color="Color.Error" Size="Size.Large" />
+                <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.AtRiskItems</MudText>
+                <MudText Typo="Typo.body2" Class="dashboard-muted-text">At risk</MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="6" md="3">
             <MudPaper Class="surface-card metric-card dashboard-metric-card dashboard-accent-sky" Elevation="0">
-                <MudIcon Icon="@Icons.Material.Filled.PendingActions" Color="Color.Info" Size="Size.Large" />
-                <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.InProgressItems</MudText>
-                <MudText Typo="Typo.body2" Class="dashboard-muted-text">In progress</MudText>
+                <MudIcon Icon="@Icons.Material.Filled.Event" Color="Color.Warning" Size="Size.Large" />
+                <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.DueNext14Days</MudText>
+                <MudText Typo="Typo.body2" Class="dashboard-muted-text">Due in 14 days</MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="6" md="3">
-            <MudPaper Class="surface-card metric-card dashboard-metric-card dashboard-accent-amber" Elevation="0">
-                <MudIcon Icon="@Icons.Material.Filled.Schedule" Color="Color.Warning" Size="Size.Large" />
-                <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.DueThisMonth</MudText>
-                <MudText Typo="Typo.body2" Class="dashboard-muted-text">Due this month</MudText>
+            <MudPaper Class="surface-card metric-card dashboard-metric-card dashboard-accent-blue" Elevation="0">
+                <MudIcon Icon="@Icons.Material.Filled.Checklist" Color="Color.Primary" Size="Size.Large" />
+                <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.CoreRemainingItems</MudText>
+                <MudText Typo="Typo.body2" Class="dashboard-muted-text">Core remaining</MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="6" md="3">
-            <MudPaper Class="surface-card metric-card dashboard-metric-card dashboard-accent-rose" Elevation="0">
-                <MudIcon Icon="@Icons.Material.Filled.Bolt" Color="Color.Error" Size="Size.Large" />
-                <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.RapidRampItems</MudText>
-                <MudText Typo="Typo.body2" Class="dashboard-muted-text">Rapid-ramp ready</MudText>
+            <MudPaper Class="surface-card metric-card dashboard-metric-card dashboard-accent-violet" Elevation="0">
+                <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Color="Color.Secondary" Size="Size.Large" />
+                <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.NiceToHaveItems</MudText>
+                <MudText Typo="Typo.body2" Class="dashboard-muted-text">Nice to have</MudText>
             </MudPaper>
         </MudItem>
     </MudGrid>
@@ -103,17 +104,29 @@ else if (snapshot is not null)
         <MudItem xs="12" md="6">
             <MudPaper Class="surface-card mb-4 dashboard-panel-card dashboard-accent-indigo" Elevation="0">
                 <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
-                    <MudText Typo="Typo.h6">Current focus</MudText>
-                    <MudChip T="string" Variant="Variant.Outlined" Color="Color.Primary">Top 5</MudChip>
+                    <div>
+                        <MudText Typo="Typo.h6">Do next</MudText>
+                        <MudText Typo="Typo.caption" Class="dashboard-muted-text">Ranked by overdue status, due date, active work, and commitment level.</MudText>
+                    </div>
+                    <MudChip T="string" Variant="Variant.Outlined" Color="Color.Primary">Top @snapshot.FocusItems.Count</MudChip>
                 </MudStack>
                 <MudList T="string" Class="dashboard-focus-list">
                     @foreach (var item in snapshot.FocusItems)
                     {
                         <MudListItem T="string" Class="focus-item">
-                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="w-100">
-                                <div>
+                            <MudStack Row="true" Wrap="Wrap.Wrap" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start" Class="w-100">
+                                <div class="flex-1">
                                     <MudText Typo="Typo.subtitle2">@item.Title</MudText>
-                                    <MudText Typo="Typo.body2" Class="mud-secondary-text">@item.Domain • @item.Lane • due @item.TargetDate.ToString("MMM d")</MudText>
+                                    <MudText Typo="Typo.body2" Class="mud-secondary-text">@item.Domain • @item.TargetDate.ToString("MMM d")</MudText>
+                                    <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-2">
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@GetAttentionColor(item)">
+                                            @TrainingPlanPrioritizer.GetAttentionLabel(item, DateTime.UtcNow.Date)
+                                        </MudChip>
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetCommitmentColor(item)">
+                                            @TrainingPlanPrioritizer.GetCommitmentLabel(item)
+                                        </MudChip>
+                                    </MudStack>
+                                    <MudProgressLinear Class="mt-2" Value="@item.ProgressPercent" Rounded="true" Color="@GetAttentionColor(item)" />
                                     @{ var suggestedResources = GetSuggestedResources(item); }
                                     @if (suggestedResources.Count > 0)
                                     {
@@ -125,6 +138,12 @@ else if (snapshot is not null)
                                                 </MudButton>
                                             }
                                         </MudStack>
+                                    }
+                                    @if (item.Status == UpskillTracker.Models.TrackerStatus.NotStarted)
+                                    {
+                                        <MudButton Class="mt-2" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.PlayArrow" OnClick="@(() => StartItemAsync(item))">
+                                            Start now
+                                        </MudButton>
                                     }
                                 </div>
                                 <MudChip T="string" Variant="Variant.Filled" Color="@GetStatusColor(item.Status)">@item.Status</MudChip>
@@ -410,7 +429,6 @@ else if (snapshot is not null)
     private int visibleAnnouncementCount = AnnouncementPageSize;
     private string? announcementError;
     private double completionRate;
-    private double videoWatchCompletionRate;
 
     protected override async Task OnInitializedAsync()
     {
@@ -422,8 +440,7 @@ else if (snapshot is not null)
         resources = await resourcesTask;
         await announcementsTask;
 
-        completionRate = snapshot is null ? 0 : (double)snapshot.CompletionRate;
-        videoWatchCompletionRate = snapshot is null ? 0 : (double)snapshot.VideoWatchCompletionRate;
+        completionRate = snapshot is null ? 0 : (double)snapshot.CommitmentCompletionRate;
         isLoading = false;
     }
 
@@ -524,7 +541,7 @@ else if (snapshot is not null)
         {
             await TrackerService.UpdateVideoWatchStateAsync(id, UpskillTracker.Models.VideoWatchState.Seen);
             snapshot = await TrackerService.GetDashboardSnapshotAsync();
-            videoWatchCompletionRate = snapshot is null ? 0 : (double)snapshot.VideoWatchCompletionRate;
+            completionRate = snapshot is null ? 0 : (double)snapshot.CommitmentCompletionRate;
             Snackbar.Add("Video marked as seen.", Severity.Success);
         }
         catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
@@ -677,7 +694,7 @@ else if (snapshot is not null)
         {
             await TrackerService.MarkVideoOpenedAsync(id);
             snapshot = await TrackerService.GetDashboardSnapshotAsync();
-            videoWatchCompletionRate = snapshot is null ? 0 : (double)snapshot.VideoWatchCompletionRate;
+            completionRate = snapshot is null ? 0 : (double)snapshot.CommitmentCompletionRate;
         }
         catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
         {
@@ -699,6 +716,43 @@ else if (snapshot is not null)
         UpskillTracker.Models.TrackerStatus.Blocked => Color.Error,
         _ => Color.Default
     };
+
+    private static Color GetAttentionColor(UpskillTracker.Models.TrainingItem item)
+        => TrainingPlanPrioritizer.GetAttentionLevel(item, DateTime.UtcNow.Date) switch
+        {
+            UpskillTracker.Models.PlanAttentionLevel.Overdue => Color.Error,
+            UpskillTracker.Models.PlanAttentionLevel.DueSoon => Color.Warning,
+            UpskillTracker.Models.PlanAttentionLevel.InProgress => Color.Info,
+            UpskillTracker.Models.PlanAttentionLevel.NiceToHave => Color.Default,
+            UpskillTracker.Models.PlanAttentionLevel.Completed => Color.Success,
+            _ => Color.Primary
+        };
+
+    private static Color GetCommitmentColor(UpskillTracker.Models.TrainingItem item) => item.Lane switch
+    {
+        UpskillTracker.Models.LearningLane.RapidRamp => Color.Warning,
+        UpskillTracker.Models.LearningLane.Stretch when !item.ProjectDriven => Color.Default,
+        _ => Color.Primary
+    };
+
+    private async Task StartItemAsync(UpskillTracker.Models.TrainingItem item)
+    {
+        var updatedItem = item.Clone();
+        updatedItem.Status = UpskillTracker.Models.TrackerStatus.InProgress;
+        updatedItem.ProgressPercent = Math.Max(5, updatedItem.ProgressPercent);
+
+        try
+        {
+            await TrackerService.SaveTrainingItemAsync(updatedItem);
+            snapshot = await TrackerService.GetDashboardSnapshotAsync();
+            completionRate = snapshot is null ? 0 : (double)snapshot.CommitmentCompletionRate;
+            Snackbar.Add($"Started \"{updatedItem.Title}\".", Severity.Success);
+        }
+        catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+    }
 
     private static string Truncate(string value, int length)
     {
@@ -756,17 +810,17 @@ else if (snapshot is not null)
             return "Ready";
         }
 
-        if (snapshot.OverdueItems > 0)
+        if (snapshot.AtRiskItems > 0)
         {
-            return "Needs attention";
+            return "Recover the plan";
         }
 
         if (snapshot.InProgressItems > 0)
         {
-            return "In motion";
+            return "Keep momentum";
         }
 
-        return "On Track";
+        return "Choose the next commitment";
     }
 
     private void RebuildAnnouncementFilters()
@@ -815,11 +869,14 @@ else if (snapshot is not null)
             return "Use the dashboard to review plan status, saved resources, notes, and the latest curated updates.";
         }
 
-        if (snapshot.OverdueItems > 0)
+        if (snapshot.AtRiskItems > 0)
         {
-            return $"{snapshot.OverdueItems} overdue, {snapshot.InProgressItems} in progress, and {snapshot.DueThisMonth} due this month. Open the plan when you want to adjust dates or status.";
+            var nextItem = snapshot.FocusItems.FirstOrDefault()?.Title;
+            return nextItem is null
+                ? $"{snapshot.AtRiskItems} items are at risk. Review dates, pause optional work, and choose one core commitment to restart."
+                : $"{snapshot.AtRiskItems} item{(snapshot.AtRiskItems == 1 ? " is" : "s are")} at risk. Start with \"{nextItem}\", then work down the ranked list.";
         }
 
-        return $"{snapshot.InProgressItems} in progress, {snapshot.DueThisMonth} due this month, and {snapshot.CompletedItems} completed so far. Use resources, notes, or Copilot to decide the next step.";
+        return $"{snapshot.InProgressItems} in progress and {snapshot.DueNext14Days} due in the next 14 days. Keep core commitments moving before pulling from {snapshot.NiceToHaveItems} nice-to-have items.";
     }
 }

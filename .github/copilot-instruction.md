@@ -37,6 +37,7 @@ When making meaningful changes, update this file and also update
   * Dashboard
   * Live announcements
   * Plan
+  * Certifications
   * Timeline
   * Resources
   * Notes
@@ -45,10 +46,19 @@ When making meaningful changes, update this file and also update
   * the Plan tab shows task-level matching links from the shared Resources library
   * the Dashboard focus list also surfaces matching links for active items
   * the Resources tab remains the single place where users add or edit links that power those suggestions
+* Learning-plan behavior:
+  * `TrainingPlanPrioritizer` ranks overdue, due-soon, active, core, and nice-to-have items consistently across the Dashboard and Plan tabs
+  * core completion excludes `LearningLane.Stretch` items unless they are project-driven
+  * Microsoft Fabric and Azure Databricks beginner tasks are inserted into existing databases by title without overwriting user changes
+  * certifications reuse the existing `TrainingItems` table with `TrainingItemType.Certification`, avoiding a production schema migration
+  * the Certifications tab tracks target date, progress, status, preparation notes, and evidence and can import curated Microsoft, GitHub, and Databricks goals
+  * AI-103 is the seeded near-term certification goal with an August 31, 2026 target
 * UI shell behavior:
   * the main app bar uses a minimal title and no fixed date badge
   * the Home page opens with a tracker-driven workspace overview instead of hardcoded focus-area copy
   * the Dashboard summary card adapts to live completion, in-progress, and overdue counts
+  * the Dashboard emphasizes schedule pressure, core-plan completion, and a ranked "Do next" list
+  * overdue optional work does not trigger the main reminder warning
   * the Dashboard announcement feed initially renders six items and uses show-more/show-fewer controls to avoid excessively long mobile pages
   * data tables inside surface cards keep `overflow-x: auto` so wide rows stay horizontally scrollable and the trailing action column (for example the Plan tab Edit button) stays reachable
   * the Plan tab uses a single-column layout: a full-width training items table on top and the "Add/Edit training item" form below it, and the per-row Edit button scrolls to that form via the `scrollToElement` helper in `wwwroot/app.js`
@@ -72,10 +82,14 @@ When making meaningful changes, update this file and also update
 * Main layout: [src/UpskillTracker/Components/Layout/MainLayout.razor](../src/UpskillTracker/Components/Layout/MainLayout.razor)
 * PIN gate: [src/UpskillTracker/Components/Features/PinGate.razor](../src/UpskillTracker/Components/Features/PinGate.razor)
 * Dashboard: [src/UpskillTracker/Components/Features/DashboardView.razor](../src/UpskillTracker/Components/Features/DashboardView.razor)
+* Training planner: [src/UpskillTracker/Components/Features/TrainingPlannerView.razor](../src/UpskillTracker/Components/Features/TrainingPlannerView.razor)
+* Certifications: [src/UpskillTracker/Components/Features/CertificationsView.razor](../src/UpskillTracker/Components/Features/CertificationsView.razor)
 * Home page: [src/UpskillTracker/Components/Pages/Home.razor](../src/UpskillTracker/Components/Pages/Home.razor)
 * Copilot chat UI: [src/UpskillTracker/Components/Features/CopilotChatView.razor](../src/UpskillTracker/Components/Features/CopilotChatView.razor)
 * Styles: [src/UpskillTracker/wwwroot/app.css](../src/UpskillTracker/wwwroot/app.css)
 * Announcement feed service: [src/UpskillTracker/Services/AnnouncementFeedService.cs](../src/UpskillTracker/Services/AnnouncementFeedService.cs)
+* Certification catalog: [src/UpskillTracker/Services/CertificationCatalog.cs](../src/UpskillTracker/Services/CertificationCatalog.cs)
+* Plan prioritization: [src/UpskillTracker/Services/TrainingPlanPrioritizer.cs](../src/UpskillTracker/Services/TrainingPlanPrioritizer.cs)
 * Copilot chat service: [src/UpskillTracker/Services/CopilotChatService.cs](../src/UpskillTracker/Services/CopilotChatService.cs)
 * Infra entry point: [infra/main.bicep](../infra/main.bicep)
 * RG-scoped infra: [infra/resources.bicep](../infra/resources.bicep)

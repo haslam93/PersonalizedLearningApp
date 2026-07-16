@@ -1,6 +1,6 @@
 ---
 title: Hammad's Learning Portal
-description: Personal learning tracker with dual announcement streams, GitHub Copilot chat, notes, resources, timelines, and Azure deployment automation
+description: Personal learning and certification tracker with urgency-based planning, dual announcement streams, GitHub Copilot chat, and Azure deployment automation
 author: Microsoft
 ms.date: 2026-07-16
 ms.topic: overview
@@ -28,7 +28,7 @@ The app is organized as a lightweight interactive Blazor experience hosted on
 Azure App Service.
 
 * The browser loads a Blazor web app with a lightweight PIN gate in the main layout.
-* Feature views for Dashboard, Plan, Timeline, Resources, Notes, and Copilot run
+* Feature views for Dashboard, Plan, Certifications, Timeline, Resources, Notes, and Copilot run
    through shared application services.
 * `AnnouncementFeedService` loads and caches both official Microsoft updates and
   curated thought-leader or industry posts for the dashboard feed.
@@ -46,8 +46,9 @@ For the Mermaid version of the architecture, see [arch.md](arch.md).
 
 It is designed to help you:
 
-* Track plan items, notes, evidence, and timelines
+* Track plan items, certification goals, notes, evidence, and timelines
 * Add new work as customer projects shift priorities
+* Separate overdue and core commitments from nice-to-have learning so the next action is clear
 * Review a live dashboard feed that switches between Microsoft updates and curated industry posts that matter to your plan
 * Keep a reusable resource library for Microsoft Foundry, GitHub Copilot,
   App Service, Container Apps, and related topics
@@ -57,17 +58,20 @@ It is designed to help you:
 
 ## Main app features
 
-* Dashboard with completion and focus metrics
+* Dashboard with schedule-risk, core-completion, and ranked "Do next" metrics
 * Dashboard cards with readable semantic color accents for progress, videos, resources, notes, and announcements
 * Dynamic home and dashboard summary cards that react to live tracker data instead of fixed promotional copy
 * Dual announcement streams with Microsoft updates and thought-leader or industry posts, paged for faster scanning with actions to open and save useful updates
-* Planner tab for adding and editing training items, with direct task links suggested from the shared resource library
+* Planner tab with focus filters for at-risk, core, active, optional, and certification work, plus direct task links suggested from the shared resource library
+* Certifications tab for tracking target dates, progress, status, preparation notes, and evidence
+* Curated certification import catalog for Microsoft, GitHub, and Databricks credentials
 * Timeline tab grouped by month
 * Resources tab with editable sections and links that power task-level suggestions across the app
 * Notes tab for reflections, architecture notes, and lab takeaways
 * Copilot tab with GitHub OAuth sign-in, runtime model discovery, and tracker-grounded chat tools
 * PIN login backed by a secure Azure app setting and GitHub Actions secret
-* Seeded content for the March to September 2026 plan, including Azure SRE Agent
+* Seeded beginner tracks for Microsoft Fabric and Azure Databricks, including a Fabric lakehouse and Databricks Delta Lake project
+* Seeded AI-103 certification goal targeting August 31, 2026, with official credential and study-guide links
 
 ## UI notes
 
@@ -75,12 +79,14 @@ The current shell avoids fixed labels where tracker data is already available.
 
 * The top app bar uses the product name Hammad's Learning Portal and no hardcoded date badge
 * The home view opens with a tracker-driven overview card instead of a commentary-style hero title
-* The dashboard summary card adapts to overdue, in-progress, and completed work with short, direct headings
+* The dashboard summary card adapts to overdue, due-soon, in-progress, and completed core work with short, direct headings
+* Ranked next actions put overdue and near-term core commitments ahead of optional backlog
+* Core completion excludes nice-to-have work so optional topics do not hide whether committed work is on schedule
 * Dashboard cards use soft semantic color surfaces so sections are easier to scan without sacrificing contrast
 * The dashboard includes a dedicated video watch tracker with queue, seen count, and completion progress
 * The announcement section uses a stream switcher so Microsoft updates and curated industry posts stay separate
 * The announcement feed starts with six items and offers show-more and show-fewer controls instead of creating an excessively long mobile page
-* Reminder copy stays short and action-oriented so it remains useful as the plan changes
+* Reminder warnings focus on overdue core commitments and report optional backlog separately
 
 ## Local development
 

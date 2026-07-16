@@ -66,6 +66,46 @@ public static partial class TaskResourceMatcher
             "Microsoft Agent Framework overview",
             "Azure API Management documentation",
             "Service Bus documentation"
+        ],
+        ["Learn Microsoft Fabric fundamentals"] =
+        [
+            "Introduction to Microsoft Fabric",
+            "Microsoft Fabric documentation"
+        ],
+        ["Complete the Microsoft Fabric beginner path"] =
+        [
+            "Get started with Microsoft Fabric learning path",
+            "Microsoft Fabric documentation"
+        ],
+        ["Build a Microsoft Fabric lakehouse end to end"] =
+        [
+            "Microsoft Fabric lakehouse tutorial",
+            "Microsoft Fabric end-to-end tutorials"
+        ],
+        ["Explore Azure Databricks fundamentals"] =
+        [
+            "Explore Azure Databricks module",
+            "Azure Databricks documentation"
+        ],
+        ["Run a first Azure Databricks notebook"] =
+        [
+            "Azure Databricks getting started tutorials",
+            "Azure Databricks documentation"
+        ],
+        ["Complete the Azure Databricks data engineering path"] =
+        [
+            "Azure Databricks data engineering learning path",
+            "Microsoft Learn Azure Databricks labs"
+        ],
+        ["Build a Delta Lake ETL pipeline in Azure Databricks"] =
+        [
+            "Microsoft Learn Azure Databricks labs",
+            "Azure Databricks documentation"
+        ],
+        ["Azure AI Apps and Agents Developer Associate"] =
+        [
+            "AI-103 certification page",
+            "AI-103 study guide"
         ]
     };
 
@@ -167,6 +207,11 @@ public static partial class TaskResourceMatcher
         if (item.Type == TrainingItemType.Capstone && (resource.Kind == ResourceKind.Documentation || resource.Kind == ResourceKind.Lab))
         {
             score += 1;
+        }
+
+        if (item.Type == TrainingItemType.Certification && resource.Section.Equals("Certifications", StringComparison.OrdinalIgnoreCase))
+        {
+            score += 10;
         }
 
         return score;
