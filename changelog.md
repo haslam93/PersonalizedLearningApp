@@ -20,6 +20,7 @@ estimated_reading_time: 6
 * Rebuilt the workspace overview metrics with stacked semantic text so completion, urgency, and action labels no longer run together
 * Made Learning History filters wrap within the viewport, removed redundant hidden day text, and automatically scrolled the heatmap to recent dates on narrow screens
 * Added a one-click Mark complete action to certification goals and made status labels human-readable
+* Added a Blazor reconnect overlay that automatically reloads tabs whose server circuit was replaced by an Azure deployment
 
 ### Turned status summaries into direct navigation
 

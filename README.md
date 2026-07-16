@@ -92,6 +92,7 @@ The current shell avoids fixed labels where tracker data is already available.
 * The forward Timeline excludes completed work, highlights recovery items, and shows planned hours by month
 * The learning heatmap uses labeled, keyboard-navigable day cells, opens on recent activity on narrow screens, and treats breaks as neutral rather than punishing a lost streak
 * Overview metrics use stacked labels, values, and actions so completion and urgency counts stay readable at desktop and mobile widths
+* If an Azure deployment replaces an open Blazor Server circuit, the shell shows a reconnect overlay and reloads automatically when the old circuit is rejected
 * Dashboard cards use soft semantic color surfaces so sections are easier to scan without sacrificing contrast
 * The dashboard includes a dedicated video watch tracker with queue, seen count, and completion progress
 * The announcement section uses a stream switcher so Microsoft updates and curated industry posts stay separate

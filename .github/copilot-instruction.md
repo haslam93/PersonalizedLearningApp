@@ -73,6 +73,7 @@ When making meaningful changes, update this file and also update
   * tool launches are recorded in Learning History
 * UI shell behavior:
   * the main app bar uses a minimal title and no fixed date badge
+  * `components-reconnect-modal` must remain available so an open tab recovers cleanly when an Azure deployment replaces its Blazor Server circuit
   * the Home page opens with a tracker-driven workspace overview instead of hardcoded focus-area copy
   * the Dashboard summary card adapts to live completion, in-progress, and overdue counts
   * the Dashboard emphasizes schedule pressure, core-plan completion, and a ranked "Do next" list

@@ -20,7 +20,23 @@
     <CascadingAuthenticationState>
         <Routes @rendermode="InteractiveServer" />
     </CascadingAuthenticationState>
+    <div id="components-reconnect-modal"
+         class="components-reconnect-hide reconnect-modal"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="components-reconnect-title"
+         aria-describedby="components-reconnect-description">
+        <div class="reconnect-card">
+            <MudIcon Icon="@Icons.Material.Filled.CloudSync" Color="Color.Primary" Size="Size.Large" />
+            <h2 id="components-reconnect-title" class="reconnect-title">Restoring your learning portal</h2>
+            <p id="components-reconnect-description" class="reconnect-description">
+                The Azure connection changed while this page was open. Navigation will resume automatically, or you can reload now.
+            </p>
+            <button id="components-reconnect-reload" type="button" class="reconnect-button">Reload portal</button>
+        </div>
+    </div>
     <script src="app.js"></script>
+    <script>window.upskillTracker.initializeReconnectRecovery();</script>
     <script src="_framework/blazor.web.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
 </body>
