@@ -63,7 +63,7 @@ When making meaningful changes, update this file and also update
   * repeated resource, video, announcement, and tool activity is deduplicated per source and UTC day
   * history rows keep denormalized titles and details and do not use foreign keys, so source deletion does not erase the learning record
   * browser-local history dates and times are produced through `BrowserTimeZoneService`; do not group user-facing calendar days using the Azure host time zone
-  * the History heatmap uses a roving keyboard tab stop with arrow-key navigation and does not frame inactive days as failures
+  * the History heatmap uses a roving keyboard tab stop with arrow-key navigation, scrolls to recent days on first render, and does not frame inactive days as failures
 * Navigation behavior:
   * overview, reminder, dashboard, and planner summary controls navigate to the relevant Plan filter
   * cross-tab Plan requests include a monotonically increasing request id so later Home renders do not overwrite a user's manual Plan filters
@@ -76,6 +76,7 @@ When making meaningful changes, update this file and also update
   * the Home page opens with a tracker-driven workspace overview instead of hardcoded focus-area copy
   * the Dashboard summary card adapts to live completion, in-progress, and overdue counts
   * the Dashboard emphasizes schedule pressure, core-plan completion, and a ranked "Do next" list
+  * overview metric buttons keep their label, value, and action as separate stacked elements; do not place heading components inline inside native buttons
   * overdue optional work does not trigger the main reminder warning
   * the Dashboard announcement feed initially renders six items and uses show-more/show-fewer controls to avoid excessively long mobile pages
   * data tables inside surface cards keep `overflow-x: auto` so wide rows stay horizontally scrollable and the trailing action column (for example the Plan tab Edit button) stays reachable

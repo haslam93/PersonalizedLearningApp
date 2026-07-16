@@ -86,7 +86,7 @@
                                     <MudProgressLinear Value="@goal.ProgressPercent" Rounded="true" Color="@GetAttentionColor(goal)" Size="Size.Large" />
                                     <MudStack Row="true" Wrap="Wrap.Wrap" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
                                         <MudText Typo="Typo.caption" Class="mud-secondary-text">@goal.ProgressPercent% prepared • target @goal.TargetDate.ToString("MMM d, yyyy")</MudText>
-                                        <MudChip T="string" Variant="Variant.Outlined" Color="@GetStatusColor(goal.Status)" Size="Size.Small">@goal.Status</MudChip>
+                                        <MudChip T="string" Variant="Variant.Outlined" Color="@GetStatusColor(goal.Status)" Size="Size.Small">@FormatStatus(goal.Status)</MudChip>
                                     </MudStack>
 
                                     <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
@@ -105,6 +105,15 @@
                                         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit" OnClick="@(() => BeginEdit(goal))">
                                             Update progress
                                         </MudButton>
+                                        @if (goal.Status != UpskillTracker.Models.TrackerStatus.Completed)
+                                        {
+                                            <MudButton Variant="Variant.Filled"
+                                                       Color="Color.Success"
+                                                       StartIcon="@Icons.Material.Filled.CheckCircle"
+                                                       OnClick="@(() => CompleteGoalAsync(goal))">
+                                                Mark complete
+                                            </MudButton>
+                                        }
                                     </MudStack>
                                 </MudStack>
                             </MudPaper>
@@ -179,14 +188,17 @@
                 </MudText>
             </MudStack>
 
-            <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined" Class="mb-4">
+            <div class="certification-provider-filters mb-4" role="group" aria-label="Filter certification catalog by provider">
                 @foreach (var provider in CatalogProviders)
                 {
-                    <MudButton Variant="@(selectedProvider == provider ? Variant.Filled : Variant.Outlined)" OnClick="@(() => selectedProvider = provider)">
+                    <MudButton Color="Color.Primary"
+                               Variant="@(selectedProvider == provider ? Variant.Filled : Variant.Outlined)"
+                               aria-pressed="@(selectedProvider == provider ? "true" : "false")"
+                               OnClick="@(() => selectedProvider = provider)">
                         @provider
                     </MudButton>
                 }
-            </MudButtonGroup>
+            </div>
 
             <MudGrid Spacing="3">
                 @foreach (var certification in FilteredCatalog)
@@ -360,6 +372,24 @@
         }
     }
 
+    private async Task CompleteGoalAsync(UpskillTracker.Models.TrainingItem goal)
+    {
+        var completedGoal = goal.Clone();
+        completedGoal.ProgressPercent = 100;
+        completedGoal.Status = UpskillTracker.Models.TrackerStatus.Completed;
+
+        try
+        {
+            await TrackerService.SaveTrainingItemAsync(completedGoal);
+            Snackbar.Add($"{goal.Title} marked complete.", Severity.Success);
+            await LoadAsync();
+        }
+        catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+    }
+
     private async Task DeleteGoalAsync()
     {
         if (editingGoal is null || editingGoal.Id == 0)
@@ -403,5 +433,12 @@
         UpskillTracker.Models.TrackerStatus.InProgress => Color.Info,
         UpskillTracker.Models.TrackerStatus.Blocked => Color.Error,
         _ => Color.Default
+    };
+
+    private static string FormatStatus(UpskillTracker.Models.TrackerStatus status) => status switch
+    {
+        UpskillTracker.Models.TrackerStatus.NotStarted => "Not started",
+        UpskillTracker.Models.TrackerStatus.InProgress => "In progress",
+        _ => status.ToString()
     };
 }

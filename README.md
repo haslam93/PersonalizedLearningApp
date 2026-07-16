@@ -67,7 +67,7 @@ It is designed to help you:
 * Dynamic home and dashboard summary cards that react to live tracker data instead of fixed promotional copy
 * Dual announcement streams with Microsoft updates and thought-leader or industry posts, paged for faster scanning with actions to open and save useful updates
 * Planner tab with focus filters for at-risk, core, active, optional, and certification work, plus direct task links suggested from the shared resource library
-* Certifications tab for tracking target dates, progress, status, preparation notes, and evidence
+* Certifications tab for tracking target dates, progress, status, preparation notes, and evidence, with a direct Mark complete action
 * Curated certification import catalog for Microsoft, GitHub, and Databricks credentials
 * Timeline tab grouped by month
 * Learning History tab with an accessible one-year activity calendar, active-day and milestone metrics, day details, filters, and a month/year narrative
@@ -90,7 +90,8 @@ The current shell avoids fixed labels where tracker data is already available.
 * Core completion excludes nice-to-have work so optional topics do not hide whether committed work is on schedule
 * At-risk, due-soon, core, optional, and individual-item actions navigate directly to the matching Plan view
 * The forward Timeline excludes completed work, highlights recovery items, and shows planned hours by month
-* The learning heatmap uses labeled, keyboard-navigable day cells and treats breaks as neutral rather than punishing a lost streak
+* The learning heatmap uses labeled, keyboard-navigable day cells, opens on recent activity on narrow screens, and treats breaks as neutral rather than punishing a lost streak
+* Overview metrics use stacked labels, values, and actions so completion and urgency counts stay readable at desktop and mobile widths
 * Dashboard cards use soft semantic color surfaces so sections are easier to scan without sacrificing contrast
 * The dashboard includes a dedicated video watch tracker with queue, seen count, and completion progress
 * The announcement section uses a stream switcher so Microsoft updates and curated industry posts stay separate

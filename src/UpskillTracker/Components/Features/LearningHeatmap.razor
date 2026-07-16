@@ -18,7 +18,10 @@
         </MudStack>
     </MudStack>
 
-    <div class="learning-heatmap-scroll" role="region" aria-label="@($"{Title}. Use arrow keys to move between dates.")">
+    <MudText Typo="Typo.caption" Class="learning-heatmap-scroll-hint mud-secondary-text">
+        Recent days are shown first. Scroll horizontally to revisit earlier activity.
+    </MudText>
+    <div id="@scrollContainerId" class="learning-heatmap-scroll" role="region" aria-label="@($"{Title}. Use arrow keys to move between dates.")">
         <div class="learning-heatmap-grid" aria-label="Learning activity by day">
             @foreach (var day in CalendarDays)
             {
@@ -26,13 +29,12 @@
                 <button id="@GetCellId(day)"
                         type="button"
                         tabindex="@(day == focusedDate ? 0 : -1)"
-                        aria-pressed="@(SelectedDate?.Date == day)"
+                        aria-pressed="@(SelectedDate?.Date == day ? "true" : "false")"
                         aria-label="@GetDayLabel(day, count)"
                         title="@GetDayLabel(day, count)"
                         class="learning-day-cell learning-day-button learning-day-level-@GetIntensityLevel(count) @(SelectedDate?.Date == day ? "learning-day-selected" : string.Empty)"
                         @onclick="@(() => SelectDayAsync(day))"
                         @onkeydown="@((KeyboardEventArgs args) => HandleKeyDownAsync(day, args))">
-                    <span class="sr-only">@GetDayLabel(day, count)</span>
                 </button>
             }
         </div>
@@ -62,6 +64,7 @@
     public EventCallback<DateTime> OnDaySelected { get; set; }
 
     private DateTime focusedDate;
+    private readonly string scrollContainerId = $"learning-heatmap-scroll-{Guid.NewGuid():N}";
 
     private DateTime EndDate => ToDisplayTime(DateTime.UtcNow).Date;
 
@@ -92,6 +95,15 @@
             focusedDate = SelectedDate?.Date is { } selected && selected >= StartDate && selected <= EndDate
                 ? selected
                 : EndDate;
+        }
+
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("upskillTracker.scrollElementToEnd", scrollContainerId);
         }
     }
 

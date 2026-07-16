@@ -44,24 +44,24 @@ else if (snapshot is not null)
 			<MudItem xs="12" md="5">
 				<div class="overview-stats-grid">
 					<button type="button" class="overview-stat overview-stat-button" @onclick="NavigateToHistory" aria-label="Open learning history">
-						<MudText Typo="Typo.caption" Class="mud-secondary-text">Core completion</MudText>
-						<MudText Typo="Typo.h4">@snapshot.CommitmentCompletionRate%</MudText>
-						<MudText Typo="Typo.caption" Class="overview-stat-action">View history</MudText>
+						<span class="overview-stat-label">Core completion</span>
+						<strong class="overview-stat-value">@snapshot.CommitmentCompletionRate%</strong>
+						<span class="overview-stat-action">View history</span>
 					</button>
 					<button type="button" class="overview-stat overview-stat-button" @onclick="@(() => NavigateToPlanAsync(new UpskillTracker.Models.PlanNavigationRequest("Due soon")))" aria-label="Open items due in the next 14 days">
-						<MudText Typo="Typo.caption" Class="mud-secondary-text">Due in 14 days</MudText>
-						<MudText Typo="Typo.h4">@snapshot.DueNext14Days</MudText>
-						<MudText Typo="Typo.caption" Class="overview-stat-action">Review due work</MudText>
+						<span class="overview-stat-label">Due in 14 days</span>
+						<strong class="overview-stat-value">@snapshot.DueNext14Days</strong>
+						<span class="overview-stat-action">Review due work</span>
 					</button>
 					<button type="button" class="overview-stat overview-stat-button" @onclick="@(() => NavigateToPlanAsync(new UpskillTracker.Models.PlanNavigationRequest("At risk")))" aria-label="Open at-risk items">
-						<MudText Typo="Typo.caption" Class="mud-secondary-text">At risk</MudText>
-						<MudText Typo="Typo.h4">@snapshot.AtRiskItems</MudText>
-						<MudText Typo="Typo.caption" Class="overview-stat-action">Recover plan</MudText>
+						<span class="overview-stat-label">At risk</span>
+						<strong class="overview-stat-value">@snapshot.AtRiskItems</strong>
+						<span class="overview-stat-action">Recover plan</span>
 					</button>
 					<button type="button" class="overview-stat overview-stat-button" @onclick="@(() => NavigateToPlanAsync(new UpskillTracker.Models.PlanNavigationRequest("Nice to have")))" aria-label="Open nice-to-have items">
-						<MudText Typo="Typo.caption" Class="mud-secondary-text">Nice to have</MudText>
-						<MudText Typo="Typo.h4">@snapshot.NiceToHaveItems</MudText>
-						<MudText Typo="Typo.caption" Class="overview-stat-action">Review optional work</MudText>
+						<span class="overview-stat-label">Nice to have</span>
+						<strong class="overview-stat-value">@snapshot.NiceToHaveItems</strong>
+						<span class="overview-stat-action">Review optional work</span>
 					</button>
 				</div>
 			</MudItem>

@@ -141,7 +141,9 @@ a,
     background: rgba(255, 255, 255, 0.14);
     border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 18px;
-    min-width: 140px;
+    min-height: 92px;
+    min-width: 0;
+    overflow: hidden;
     padding: 0.9rem 1rem;
 }
 
@@ -322,7 +324,19 @@ a,
     display: flex;
     flex-direction: column;
     justify-content: center;
+    min-width: 0;
+    overflow: hidden;
     width: 100%;
+}
+
+.certification-provider-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.certification-provider-filters .mud-button-root {
+    border-radius: 999px !important;
 }
 
 .dashboard-summary-card,
@@ -976,6 +990,10 @@ a,
 }
 
 .overview-stat-button {
+    align-items: flex-start;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
 
@@ -987,9 +1005,30 @@ a,
     transform: translateY(-2px);
 }
 
+.overview-stat-label {
+    color: rgba(239, 246, 255, 0.86);
+    display: block;
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.25;
+}
+
+.overview-stat-value {
+    color: #ffffff;
+    display: block;
+    font-size: clamp(1.65rem, 2vw, 2.15rem);
+    font-weight: 700;
+    line-height: 1;
+    margin-top: 0.35rem;
+}
+
 .overview-stat-action {
     color: rgba(219, 234, 254, 0.92) !important;
     display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.25;
     margin-top: 0.25rem;
 }
 
@@ -1101,6 +1140,8 @@ a,
 .history-heatmap-card,
 .history-timeline-card,
 .history-empty-card {
+    min-width: 0;
+    overflow: hidden;
     width: 100%;
 }
 
@@ -1120,8 +1161,13 @@ a,
 }
 
 .learning-heatmap-scroll {
+    max-width: 100%;
+    min-width: 0;
     overflow-x: auto;
+    overscroll-behavior-inline: contain;
     padding: 0.25rem 0.15rem 0.65rem;
+    scrollbar-color: rgba(79, 124, 255, 0.55) rgba(226, 232, 240, 0.7);
+    width: 100%;
 }
 
 .learning-heatmap-grid {
@@ -1144,6 +1190,8 @@ a,
 .learning-day-button {
     appearance: none;
     cursor: pointer;
+    font-size: 0;
+    line-height: 0;
     margin: 0;
     padding: 0;
 }
@@ -1191,6 +1239,22 @@ a,
     gap: 0.3rem !important;
 }
 
+.learning-heatmap-scroll-hint {
+    display: none;
+}
+
+.history-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    justify-content: flex-end;
+    min-width: 0;
+}
+
+.history-filter-button {
+    border-radius: 999px !important;
+}
+
 .history-day-detail {
     background: rgba(241, 245, 249, 0.7);
     border: 1px solid rgba(148, 163, 184, 0.2);
@@ -1202,6 +1266,8 @@ a,
     background: rgba(255, 255, 255, 0.88);
     border: 1px solid rgba(148, 163, 184, 0.18);
     border-radius: 18px;
+    min-width: 0;
+    overflow-wrap: anywhere;
     padding: 1rem;
 }
 
@@ -1281,6 +1347,66 @@ a,
 
     .history-pride-callout {
         margin-top: 1rem;
+    }
+
+    .history-filter-bar {
+        justify-content: flex-start;
+        width: 100%;
+    }
+}
+
+@media (max-width: 600px) {
+    .workspace-overview {
+        padding: 1.4rem 1rem;
+    }
+
+    .workspace-overview .mud-typography-h3 {
+        font-size: clamp(2rem, 12vw, 3rem);
+        line-height: 1.05;
+    }
+
+    .overview-stat {
+        min-height: 88px;
+    }
+
+    .overview-stat-value {
+        font-size: 1.85rem;
+    }
+
+    .history-heatmap-card {
+        padding-inline: 1rem;
+    }
+
+    .history-filter-bar,
+    .certification-provider-filters {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100%;
+    }
+
+    .history-filter-bar .mud-button-root,
+    .certification-provider-filters .mud-button-root {
+        min-width: 0;
+        padding-inline: 0.55rem;
+        width: 100%;
+    }
+
+    .learning-heatmap-scroll-hint {
+        display: block;
+        margin: 0.25rem 0 0.4rem;
+    }
+
+    .history-day-detail {
+        padding: 0.85rem;
+    }
+
+    .history-activity-row {
+        padding: 0.85rem;
+    }
+
+    .certification-goal-card,
+    .certification-catalog-entry {
+        padding: 1rem;
     }
 }
 

@@ -15,6 +15,12 @@ estimated_reading_time: 6
 
 ## 2026-07-16
 
+### Repaired responsive status and history UI
+
+* Rebuilt the workspace overview metrics with stacked semantic text so completion, urgency, and action labels no longer run together
+* Made Learning History filters wrap within the viewport, removed redundant hidden day text, and automatically scrolled the heatmap to recent dates on narrow screens
+* Added a one-click Mark complete action to certification goals and made status labels human-readable
+
 ### Turned status summaries into direct navigation
 
 * Made overview, reminder, Dashboard, and Plan summary controls open the relevant at-risk, due-soon, core, in-progress, optional, certification, or individual-item Plan view

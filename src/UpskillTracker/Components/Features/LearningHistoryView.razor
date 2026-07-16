@@ -77,12 +77,18 @@
                     <MudText Typo="Typo.h6">Your learning rhythm</MudText>
                     <MudText Typo="Typo.body2" Class="mud-secondary-text">Select a day to revisit what moved forward.</MudText>
                 </div>
-                <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined">
+                <div class="history-filter-bar" role="group" aria-label="Filter learning history">
                     @foreach (var filter in FilterOptions)
                     {
-                        <MudButton Variant="@(selectedFilter == filter ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SelectFilter(filter))">@filter</MudButton>
+                        <MudButton Class="history-filter-button"
+                                   Color="Color.Primary"
+                                   Variant="@(selectedFilter == filter ? Variant.Filled : Variant.Outlined)"
+                                   aria-pressed="@(selectedFilter == filter ? "true" : "false")"
+                                   OnClick="@(() => SelectFilter(filter))">
+                            @filter
+                        </MudButton>
                     }
-                </MudButtonGroup>
+                </div>
             </MudStack>
 
             <LearningHeatmap Activities="@FilteredActivities"

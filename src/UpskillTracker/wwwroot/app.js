@@ -47,3 +47,10 @@ window.upskillTracker.focusElement = function (elementId) {
 window.upskillTracker.getTimeZoneId = function () {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 };
+
+window.upskillTracker.scrollElementToEnd = function (elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.scrollLeft = element.scrollWidth;
+    }
+};
