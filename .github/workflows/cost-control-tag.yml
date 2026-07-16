@@ -2,9 +2,8 @@ name: cost-control-tag
 
 on:
   schedule:
-    # Every Monday at 06:00 UTC. Re-applying the tag weekly keeps the
-    # CostControl=Ignore exemption window from ever reaching its 2-week expiry.
-    - cron: '0 6 * * 1'
+    # Check each morning after the nightly cost-control window.
+    - cron: '0 6 * * *'
   workflow_dispatch:
 
 permissions:
@@ -17,9 +16,10 @@ env:
   COST_CONTROL_TAG_VALUE: Ignore
 
 jobs:
-  refresh-cost-control-tag:
+  restore-postgres-cost-control:
     runs-on: ubuntu-latest
     environment: production
+    timeout-minutes: 25
 
     steps:
       - name: Sign in to Azure with OIDC
@@ -29,12 +29,10 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Refresh CostControl tag to reset the exemption window
+      - name: Start stopped PostgreSQL server and restore CostControl tag
         env:
-          # Number of times to retry a tag update while a resource is still
-          # provisioning, and how long (in seconds) to wait between attempts.
-          TAG_UPDATE_MAX_ATTEMPTS: '5'
-          TAG_UPDATE_RETRY_DELAY: '30'
+          SERVER_READY_MAX_ATTEMPTS: '40'
+          SERVER_READY_RETRY_DELAY: '30'
         run: |
           set -euo pipefail
 
@@ -42,89 +40,91 @@ jobs:
           resource_group="${{ env.AZURE_RESOURCE_GROUP }}"
           tag_name="${{ env.COST_CONTROL_TAG_NAME }}"
           tag_value="${{ env.COST_CONTROL_TAG_VALUE }}"
-          max_attempts="${TAG_UPDATE_MAX_ATTEMPTS}"
-          retry_delay="${TAG_UPDATE_RETRY_DELAY}"
+          max_attempts="${SERVER_READY_MAX_ATTEMPTS}"
+          retry_delay="${SERVER_READY_RETRY_DELAY}"
 
           az account set --subscription "$subscription_id"
 
-          # Run an "az tag update" call, retrying when Azure reports that the
-          # resource is still provisioning. Such conflicts are transient: the
-          # update simply cannot proceed until the resource reaches the
-          # "Succeeded" state. We wait and retry a few times instead of letting
-          # the whole workflow fail on a temporary race condition.
-          #
-          # Arguments:
-          #   $1 - the resource id to tag
-          #   $2 - the az tag operation (Delete or Merge)
-          # Return codes:
-          #   0 - the tag update succeeded
-          #   1 - the resource was still provisioning after max_attempts (skip)
-          #   2 - a genuine, non-transient failure occurred (fatal)
-          tag_update_with_retry() {
-            local resource_id="$1"
-            local operation="$2"
-            local attempt=1
+          mapfile -t server_names < <(
+            az postgres flexible-server list \
+              --resource-group "$resource_group" \
+              --query "[].name" \
+              --output tsv
+          )
 
-            while true; do
-              local output=""
-              if output=$(az tag update --resource-id "$resource_id" --operation "$operation" --tags "${tag_name}=${tag_value}" 2>&1); then
-                return 0
-              fi
+          if [ "${#server_names[@]}" -eq 0 ]; then
+            echo "::error::No Azure PostgreSQL Flexible Server was found in resource group ${resource_group}."
+            exit 1
+          fi
 
-              # Only retry the "still provisioning" conflict. Surface any other
-              # failure so genuine problems are not silently swallowed.
-              if echo "$output" | grep -qiE "provisioning state is not Succeeded"; then
-                if [ "$attempt" -ge "$max_attempts" ]; then
-                  echo "::warning::Skipping ${operation} on ${resource_id}: still provisioning after ${max_attempts} attempt(s)."
-                  echo "$output"
-                  return 1
+          if [ "${#server_names[@]}" -ne 1 ]; then
+            echo "::error::Expected one Azure PostgreSQL Flexible Server in ${resource_group}, found ${#server_names[@]}."
+            printf 'Found server: %s\n' "${server_names[@]}"
+            exit 1
+          fi
+
+          server_name="${server_names[0]}"
+          started_by_workflow=false
+          start_requested=false
+          server_state=""
+
+          for ((attempt = 1; attempt <= max_attempts; attempt++)); do
+            server_state=$(az postgres flexible-server show \
+              --resource-group "$resource_group" \
+              --name "$server_name" \
+              --query state \
+              --output tsv)
+
+            echo "PostgreSQL server ${server_name} state: ${server_state}"
+
+            case "${server_state,,}" in
+              ready)
+                if [ "$started_by_workflow" = false ]; then
+                  echo "PostgreSQL is already running; no action is required."
+                  exit 0
                 fi
-                echo "Resource is still provisioning; attempt ${attempt}/${max_attempts} failed, waiting ${retry_delay}s before retrying."
-                attempt=$((attempt + 1))
-                sleep "$retry_delay"
-                continue
-              fi
-
-              echo "::error::Failed to ${operation} tag on ${resource_id}."
-              echo "$output"
-              return 2
-            done
-          }
-
-          # Target the resource group itself plus every resource inside it so the
-          # exemption applies broadly. Removing the tag and re-adding it updates
-          # its last-modified timestamp, which restarts the 2-week cost-control timer.
-          resource_group_id=$(az group show --name "$resource_group" --query id -o tsv)
-
-          mapfile -t resource_ids < <(az resource list --resource-group "$resource_group" --query "[].id" -o tsv)
-
-          target_ids=("$resource_group_id" ${resource_ids[@]+"${resource_ids[@]}"})
-
-          refreshed=0
-          skipped=0
-          for resource_id in "${target_ids[@]}"; do
-            echo "Refreshing ${tag_name}=${tag_value} on ${resource_id}"
-
-            status=0
-            tag_update_with_retry "$resource_id" Delete || status=$?
-            if [ "$status" -eq 0 ]; then
-              tag_update_with_retry "$resource_id" Merge || status=$?
-            fi
-
-            case "$status" in
-              0)
-                refreshed=$((refreshed + 1))
+                break
                 ;;
-              1)
-                # Transient provisioning conflict that outlasted our retries.
-                # Skip this resource so a single busy resource does not fail the run.
-                skipped=$((skipped + 1))
+              stopped)
+                if [ "$start_requested" = false ]; then
+                  echo "PostgreSQL is stopped; starting ${server_name}."
+                  az postgres flexible-server start \
+                    --resource-group "$resource_group" \
+                    --name "$server_name"
+                  start_requested=true
+                  started_by_workflow=true
+                fi
+                ;;
+              starting|stopping|updating)
+                echo "PostgreSQL is transitioning; waiting for a stable state."
+                ;;
+              disabled|dropping)
+                echo "::error::PostgreSQL cannot be started from state ${server_state}."
+                exit 1
                 ;;
               *)
-                echo "::error::Unexpected error refreshing ${resource_id}."
+                echo "::error::Unexpected PostgreSQL state: ${server_state}."
                 exit 1
                 ;;
             esac
+
+            if [ "$attempt" -eq "$max_attempts" ]; then
+              echo "::error::PostgreSQL did not reach Ready within $((max_attempts * retry_delay / 60)) minutes."
+              exit 1
+            fi
+
+            sleep "$retry_delay"
           done
 
-          echo "CostControl tag refreshed on ${refreshed} resource(s); ${skipped} skipped while provisioning."
+          server_id=$(az postgres flexible-server show \
+            --resource-group "$resource_group" \
+            --name "$server_name" \
+            --query id \
+            --output tsv)
+
+          az tag update \
+            --resource-id "$server_id" \
+            --operation Merge \
+            --tags "${tag_name}=${tag_value}"
+
+          echo "PostgreSQL is ready and ${tag_name}=${tag_value} has been applied to ${server_name}."

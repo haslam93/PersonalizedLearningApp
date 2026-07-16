@@ -2,7 +2,7 @@
 title: Changelog
 description: Chronological record of major product, infrastructure, deployment, authentication, and documentation changes for Hammad's Learning Portal
 author: Microsoft
-ms.date: 2026-03-17
+ms.date: 2026-07-16
 ms.topic: reference
 keywords:
   - changelog
@@ -12,6 +12,19 @@ keywords:
   - deployment
 estimated_reading_time: 6
 ---
+
+## 2026-07-16
+
+### Repaired the README and PostgreSQL recovery workflow
+
+* Fixed the malformed README front matter, restored a visible page title, and updated the architecture and deployment documentation for the production PostgreSQL, managed identity, private networking, storage, and `P0v3` configuration
+* Reworked [.github/workflows/cost-control-tag.yml](.github/workflows/cost-control-tag.yml) to run daily, leave an already-running PostgreSQL server unchanged, start it when stopped, wait until it is ready, and then apply `CostControl=Ignore` to that server only
+* Added explicit failures when the workflow cannot find exactly one PostgreSQL Flexible Server or encounters a terminal or unexpected server state
+
+### Improved the live dashboard on desktop and mobile
+
+* Corrected the workspace summary grammar for a single in-progress learning item
+* Limited the initial announcement feed to six items and added show-more/show-fewer controls so the mobile dashboard no longer renders every unread announcement in one extremely long page
 
 ## 2026-07-06
 

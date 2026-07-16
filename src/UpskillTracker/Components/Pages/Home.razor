@@ -107,9 +107,12 @@ else if (snapshot is not null)
 
 		if (snapshot.OverdueItems > 0)
 		{
-			return $"{snapshot.OverdueItems} item{(snapshot.OverdueItems == 1 ? string.Empty : "s")} need attention, {snapshot.InProgressItems} are already in progress, and {snapshot.DueThisMonth} are due this month.";
+			return $"{snapshot.OverdueItems} item{(snapshot.OverdueItems == 1 ? string.Empty : "s")} need attention, {FormatInProgressItems(snapshot.InProgressItems)}, and {snapshot.DueThisMonth} are due this month.";
 		}
 
-		return $"No overdue items right now. {snapshot.InProgressItems} item{(snapshot.InProgressItems == 1 ? string.Empty : "s")} are in progress, and {snapshot.DueThisMonth} are due this month.";
+		return $"No overdue items right now. {FormatInProgressItems(snapshot.InProgressItems)}, and {snapshot.DueThisMonth} are due this month.";
 	}
+
+	private static string FormatInProgressItems(int count)
+		=> $"{count} item{(count == 1 ? string.Empty : "s")} {(count == 1 ? "is" : "are")} in progress";
 }

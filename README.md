@@ -2,16 +2,18 @@
 title: Hammad's Learning Portal
 description: Personal learning tracker with dual announcement streams, GitHub Copilot chat, notes, resources, timelines, and Azure deployment automation
 author: Microsoft
-ms.date: 2026-03-17
+ms.date: 2026-07-16
 ms.topic: overview
 keywords:
-   - learning portal
+  - learning portal
   - training tracker
   - blazor
   - app service
   - github actions
 estimated_reading_time: 6
 ---
+
+# Hammad's Learning Portal
 
 ## Overview
 
@@ -32,7 +34,8 @@ Azure App Service.
   curated thought-leader or industry posts for the dashboard feed.
 * `CopilotAuthService` and `CopilotChatService` manage in-app GitHub OAuth and
   grounded Copilot chat sessions.
-* EF Core writes training data, resources, and notes into a SQLite database.
+* EF Core writes training data, resources, and notes to SQLite locally and Azure
+  Database for PostgreSQL Flexible Server in production.
 * GitHub Actions builds the app and deploys `main` to the Azure web app.
 
 For the Mermaid version of the architecture, see [arch.md](arch.md).
@@ -57,7 +60,7 @@ It is designed to help you:
 * Dashboard with completion and focus metrics
 * Dashboard cards with readable semantic color accents for progress, videos, resources, notes, and announcements
 * Dynamic home and dashboard summary cards that react to live tracker data instead of fixed promotional copy
-* Dual announcement streams with Microsoft updates and thought-leader or industry posts, plus actions to open and save useful updates
+* Dual announcement streams with Microsoft updates and thought-leader or industry posts, paged for faster scanning with actions to open and save useful updates
 * Planner tab for adding and editing training items, with direct task links suggested from the shared resource library
 * Timeline tab grouped by month
 * Resources tab with editable sections and links that power task-level suggestions across the app
@@ -76,6 +79,7 @@ The current shell avoids fixed labels where tracker data is already available.
 * Dashboard cards use soft semantic color surfaces so sections are easier to scan without sacrificing contrast
 * The dashboard includes a dedicated video watch tracker with queue, seen count, and completion progress
 * The announcement section uses a stream switcher so Microsoft updates and curated industry posts stay separate
+* The announcement feed starts with six items and offers show-more and show-fewer controls instead of creating an excessively long mobile page
 * Reminder copy stays short and action-oriented so it remains useful as the plan changes
 
 ## Local development
@@ -95,6 +99,7 @@ The current shell avoids fixed labels where tracker data is already available.
 3. Open the local URL shown in the terminal.
 
 The app stores its SQLite database in the local `Data` folder by default.
+Production uses Azure Database for PostgreSQL with the web app's managed identity.
 
 Local development uses the configured `AccessPin` value if present. In Azure,
 the PIN is stored as an app setting and supplied through deployment secrets, not
@@ -241,6 +246,9 @@ This deployment provisions:
 
 * Azure App Service plan
 * Linux App Service web app
+* Azure Database for PostgreSQL Flexible Server and the `upskilltracker` database
+* Virtual networks, private DNS, and peering for private PostgreSQL connectivity
+* Azure Storage for shared ASP.NET Core data-protection keys
 * Log Analytics workspace
 * Application Insights
 
@@ -273,8 +281,10 @@ It also configures these app settings:
 
 * `APPLICATIONINSIGHTS_CONNECTION_STRING`
 * `ASPNETCORE_ENVIRONMENT=Production`
-* `Storage__ConnectionString=Data Source=/home/data/upskilltracker.db`
-* `WEBSITES_ENABLE_APP_SERVICE_STORAGE=true`
+* `Storage__Provider=Postgres`
+* `Storage__ConnectionString` with the private PostgreSQL host and database
+* `Storage__UseManagedIdentity=true`
+* `Storage__KeyBlobUri` for shared data-protection keys
 
 ### Direct deployment script
 
@@ -303,6 +313,8 @@ After the first Azure deployment:
    * `APP_ACCESS_PIN`
    * `APP_GH_OAUTH_CLIENT_ID`
    * `APP_GH_OAUTH_CLIENT_SECRET`
+   * `APP_POSTGRES_ADMIN_PASSWORD`
+   * `APP_YOUTUBE_API_KEY`
 
 4. Add these repository variables:
 
@@ -319,11 +331,13 @@ The CD workflow also:
 * publishes the app for `linux-x64` so the bundled Copilot CLI matches App Service
 * deploys infrastructure through Bicep on each run so secure app settings stay in sync
 * applies the secure `AccessPin`, GitHub OAuth, and Copilot model settings through Azure deployment parameters
-* targets App Service plan SKU `B2` by default
+* targets App Service plan SKU `P0v3` by default for private networking
+* provisions PostgreSQL and configures the web app identity as its Microsoft Entra administrator
 
 ## Repository automation
 
 * CI workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml)
 * CD workflow: [.github/workflows/cd.yml](.github/workflows/cd.yml)
+* PostgreSQL recovery workflow: [.github/workflows/cost-control-tag.yml](.github/workflows/cost-control-tag.yml)
 * Azure deployment script: [scripts/deploy-azure.ps1](scripts/deploy-azure.ps1)
 * Publish profile helper: [scripts/get-publish-profile.ps1](scripts/get-publish-profile.ps1)

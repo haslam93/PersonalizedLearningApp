@@ -290,7 +290,7 @@ else if (snapshot is not null)
                     else
                     {
                         <MudStack Spacing="2" Class="announcement-feed-list">
-                            @foreach (var announcement in AnnouncementFeed)
+                            @foreach (var announcement in VisibleAnnouncementFeed)
                             {
                                 var announcementState = GetAnnouncementState(announcement);
                                 var isSeen = IsAnnouncementSeen(announcement);
@@ -360,6 +360,27 @@ else if (snapshot is not null)
                                 </MudPaper>
                             }
                         </MudStack>
+
+                        @if (RemainingAnnouncementCount > 0 || visibleAnnouncementCount > AnnouncementPageSize)
+                        {
+                            <MudStack Row="true" Wrap="Wrap.Wrap" Justify="Justify.Center" AlignItems="AlignItems.Center" Spacing="1" Class="mt-4">
+                                <MudText Typo="Typo.caption" Class="dashboard-muted-text">
+                                    Showing @VisibleAnnouncementFeed.Count of @AnnouncementFeed.Count
+                                </MudText>
+                                @if (RemainingAnnouncementCount > 0)
+                                {
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ShowMoreAnnouncements">
+                                        Show more (@RemainingAnnouncementCount remaining)
+                                    </MudButton>
+                                }
+                                @if (visibleAnnouncementCount > AnnouncementPageSize)
+                                {
+                                    <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="ShowFewerAnnouncements">
+                                        Show fewer
+                                    </MudButton>
+                                }
+                            </MudStack>
+                        }
                     }
                 }
             </MudPaper>
@@ -368,6 +389,7 @@ else if (snapshot is not null)
 }
 
 @code {
+    private const int AnnouncementPageSize = 6;
     private bool isLoading = true;
     private bool isLoadingAnnouncements = true;
     private UpskillTracker.Models.DashboardSnapshot? snapshot;
@@ -385,6 +407,7 @@ else if (snapshot is not null)
     private string selectedAnnouncementSource = "All sources";
     private UpskillTracker.Models.AnnouncementStream selectedAnnouncementStream = UpskillTracker.Models.AnnouncementStream.MicrosoftOfficial;
     private bool showSeenAnnouncements;
+    private int visibleAnnouncementCount = AnnouncementPageSize;
     private string? announcementError;
     private double completionRate;
     private double videoWatchCompletionRate;
@@ -431,6 +454,12 @@ else if (snapshot is not null)
         .ThenByDescending(item => item.PublishedUtc)
         .ToList();
 
+    private IReadOnlyList<UpskillTracker.Models.AnnouncementItem> VisibleAnnouncementFeed => AnnouncementFeed
+        .Take(visibleAnnouncementCount)
+        .ToList();
+
+    private int RemainingAnnouncementCount => Math.Max(0, AnnouncementFeed.Count - VisibleAnnouncementFeed.Count);
+
     private IReadOnlyList<UpskillTracker.Models.ResourceEntry> GetSuggestedResources(UpskillTracker.Models.TrainingItem item)
         => TaskResourceMatcher.GetMatches(item, resources, 2);
 
@@ -461,12 +490,14 @@ else if (snapshot is not null)
     private Task OnAnnouncementTopicChanged(string value)
     {
         selectedAnnouncementTopic = value;
+        ResetAnnouncementPage();
         return Task.CompletedTask;
     }
 
     private Task OnAnnouncementSourceChanged(string value)
     {
         selectedAnnouncementSource = value;
+        ResetAnnouncementPage();
         return Task.CompletedTask;
     }
 
@@ -540,7 +571,19 @@ else if (snapshot is not null)
         => GetAnnouncementState(announcement)?.IsSeen == true;
 
     private void ToggleSeenAnnouncements()
-        => showSeenAnnouncements = !showSeenAnnouncements;
+    {
+        showSeenAnnouncements = !showSeenAnnouncements;
+        ResetAnnouncementPage();
+    }
+
+    private void ShowMoreAnnouncements()
+        => visibleAnnouncementCount = Math.Min(visibleAnnouncementCount + AnnouncementPageSize, AnnouncementFeed.Count);
+
+    private void ShowFewerAnnouncements()
+        => ResetAnnouncementPage();
+
+    private void ResetAnnouncementPage()
+        => visibleAnnouncementCount = AnnouncementPageSize;
 
     private async Task SetAnnouncementSeenAsync(UpskillTracker.Models.AnnouncementItem announcement, bool isSeen)
     {
@@ -740,6 +783,8 @@ else if (snapshot is not null)
         {
             selectedAnnouncementSource = "All sources";
         }
+
+        ResetAnnouncementPage();
     }
 
     private string GetAnnouncementSectionSummary()
