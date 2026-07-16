@@ -1,0 +1,70 @@
+<MudPaper Class="history-activity-row" Elevation="0">
+    <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="2">
+        <MudAvatar Color="@GetActivityColor(Activity.Type)" Variant="Variant.Filled" Size="Size.Medium">
+            <MudIcon Icon="@GetActivityIcon(Activity.Type)" />
+        </MudAvatar>
+        <div class="flex-1">
+            <MudStack Row="true" Wrap="Wrap.Wrap" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start" Spacing="1">
+                <div>
+                    <MudText Typo="Typo.subtitle2">@Activity.Title</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-secondary-text">@GetActivityLabel(Activity.Type) • @Activity.Area</MudText>
+                </div>
+                <MudText Typo="Typo.caption" Class="mud-secondary-text">@OccurredAt.ToString("MMM d, h:mm tt")</MudText>
+            </MudStack>
+            @if (!string.IsNullOrWhiteSpace(Activity.Detail))
+            {
+                <MudText Typo="Typo.body2" Class="mt-2">@Activity.Detail</MudText>
+            }
+            @if (Activity.ProgressPercent.HasValue)
+            {
+                <MudProgressLinear Class="mt-2" Value="@Activity.ProgressPercent.Value" Rounded="true" Color="@GetActivityColor(Activity.Type)" />
+            }
+        </div>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired]
+    public UpskillTracker.Models.LearningActivity Activity { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public DateTime OccurredAt { get; set; }
+
+    private static string GetActivityLabel(UpskillTracker.Models.LearningActivityType type) => type switch
+    {
+        UpskillTracker.Models.LearningActivityType.ItemStarted => "Started",
+        UpskillTracker.Models.LearningActivityType.ProgressUpdated => "Progressed",
+        UpskillTracker.Models.LearningActivityType.ItemCompleted => "Completed",
+        UpskillTracker.Models.LearningActivityType.CertificationEarned => "Certification",
+        UpskillTracker.Models.LearningActivityType.ResourceRead => "Read",
+        UpskillTracker.Models.LearningActivityType.VideoWatched => "Watched",
+        UpskillTracker.Models.LearningActivityType.AnnouncementRead => "Update read",
+        UpskillTracker.Models.LearningActivityType.ReflectionAdded => "Reflected",
+        UpskillTracker.Models.LearningActivityType.ToolUsed => "Tool used",
+        _ => "Learning"
+    };
+
+    private static string GetActivityIcon(UpskillTracker.Models.LearningActivityType type) => type switch
+    {
+        UpskillTracker.Models.LearningActivityType.ItemStarted => Icons.Material.Filled.PlayArrow,
+        UpskillTracker.Models.LearningActivityType.ProgressUpdated => Icons.Material.Filled.TrendingUp,
+        UpskillTracker.Models.LearningActivityType.ItemCompleted => Icons.Material.Filled.CheckCircle,
+        UpskillTracker.Models.LearningActivityType.CertificationEarned => Icons.Material.Filled.WorkspacePremium,
+        UpskillTracker.Models.LearningActivityType.ResourceRead => Icons.Material.Filled.MenuBook,
+        UpskillTracker.Models.LearningActivityType.VideoWatched => Icons.Material.Filled.SmartDisplay,
+        UpskillTracker.Models.LearningActivityType.AnnouncementRead => Icons.Material.Filled.Campaign,
+        UpskillTracker.Models.LearningActivityType.ReflectionAdded => Icons.Material.Filled.EditNote,
+        UpskillTracker.Models.LearningActivityType.ToolUsed => Icons.Material.Filled.BuildCircle,
+        _ => Icons.Material.Filled.AutoAwesome
+    };
+
+    private static Color GetActivityColor(UpskillTracker.Models.LearningActivityType type) => type switch
+    {
+        UpskillTracker.Models.LearningActivityType.ItemCompleted or UpskillTracker.Models.LearningActivityType.CertificationEarned => Color.Success,
+        UpskillTracker.Models.LearningActivityType.ItemStarted or UpskillTracker.Models.LearningActivityType.ProgressUpdated => Color.Primary,
+        UpskillTracker.Models.LearningActivityType.ReflectionAdded => Color.Secondary,
+        UpskillTracker.Models.LearningActivityType.VideoWatched => Color.Warning,
+        UpskillTracker.Models.LearningActivityType.ToolUsed => Color.Info,
+        _ => Color.Default
+    };
+}

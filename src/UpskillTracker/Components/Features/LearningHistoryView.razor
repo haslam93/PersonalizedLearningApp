@@ -1,0 +1,304 @@
+@inject UpskillTracker.Services.TrackerService TrackerService
+@inject UpskillTracker.Services.BrowserTimeZoneService BrowserTimeZone
+
+<div class="section-shell">
+    <MudPaper Class="surface-card section-intro-card history-intro-card mb-4" Elevation="0">
+        <MudGrid Style="align-items:center;">
+            <MudItem xs="12" md="8">
+                <MudText Typo="Typo.overline" Class="text-uppercase section-kicker">Learning history</MudText>
+                <MudText Typo="Typo.h5">See the proof of how far you have come</MudText>
+                <MudText Typo="Typo.body2" Class="section-summary">
+                    Every milestone, useful read, watched lesson, reflection, and tool session becomes part of a durable learning trail. Empty days are neutral; the goal is a sustainable rhythm, not a perfect streak.
+                </MudText>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudPaper Class="history-pride-callout" Elevation="0">
+                    <MudIcon Icon="@Icons.Material.Filled.EmojiEvents" Color="Color.Warning" Size="Size.Large" />
+                    <div>
+                        <MudText Typo="Typo.subtitle2">@GetPrideHeadline()</MudText>
+                        <MudText Typo="Typo.caption" Class="mud-secondary-text">@GetPrideSummary()</MudText>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (isLoading)
+    {
+        <MudSkeleton Height="220px" Class="mb-4" />
+        <MudSkeleton Height="420px" />
+    }
+    else if (history.TotalActivities == 0)
+    {
+        <MudPaper Class="surface-card content-card history-empty-card" Elevation="0">
+            <MudIcon Icon="@Icons.Material.Filled.AutoGraph" Color="Color.Primary" Size="Size.Large" />
+            <MudText Typo="Typo.h6">Your learning trail starts with the next action</MudText>
+            <MudText Typo="Typo.body2" Class="mud-secondary-text">
+                Start or complete a plan item, open a saved resource, watch a queued video, write a reflection, or use one of your tools. It will appear here automatically.
+            </MudText>
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid Spacing="2" Class="history-summary-grid mb-4">
+            <MudItem xs="6" md="3">
+                <MudPaper Class="history-summary-card history-summary-blue" Elevation="0">
+                    <MudText Typo="Typo.h4">@ActiveDayCount</MudText>
+                    <MudText Typo="Typo.body2">Active learning days</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-secondary-text">@ActiveDaysLast30 in the last 30 days</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudPaper Class="history-summary-card history-summary-green" Elevation="0">
+                    <MudText Typo="Typo.h4">@history.CompletedMilestones</MudText>
+                    <MudText Typo="Typo.body2">Milestones completed</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-secondary-text">@history.CompletedHours.ToString("0.#") planned hours represented</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudPaper Class="history-summary-card history-summary-violet" Elevation="0">
+                    <MudText Typo="Typo.h4">@history.ThingsExplored</MudText>
+                    <MudText Typo="Typo.body2">Things explored</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-secondary-text">Resources, videos, updates, and tools</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudPaper Class="history-summary-card history-summary-amber" Elevation="0">
+                    <MudText Typo="Typo.h4">@CurrentMonthActivities</MudText>
+                    <MudText Typo="Typo.body2">Actions this month</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-secondary-text">Best: @BestMonthLabel (@BestMonthActivities)</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <MudPaper Class="surface-card content-card history-heatmap-card mb-4" Elevation="0">
+            <MudStack Row="true" Wrap="Wrap.Wrap" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4">
+                <div>
+                    <MudText Typo="Typo.h6">Your learning rhythm</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-secondary-text">Select a day to revisit what moved forward.</MudText>
+                </div>
+                <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined">
+                    @foreach (var filter in FilterOptions)
+                    {
+                        <MudButton Variant="@(selectedFilter == filter ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SelectFilter(filter))">@filter</MudButton>
+                    }
+                </MudButtonGroup>
+            </MudStack>
+
+            <LearningHeatmap Activities="@FilteredActivities"
+                             Days="365"
+                             SelectedDate="@selectedDate"
+                             DisplayTimeZone="@BrowserTimeZone.TimeZone"
+                             OnDaySelected="SelectDay"
+                             Title="@($"{selectedFilter} over the last year")" />
+
+            <MudPaper Class="history-day-detail mt-4" Elevation="0">
+                <MudStack Row="true" Wrap="Wrap.Wrap" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                    <div>
+                        <MudText Typo="Typo.subtitle1">@selectedDate.ToString("dddd, MMMM d, yyyy")</MudText>
+                        <MudText Typo="Typo.caption" Class="mud-secondary-text">@SelectedDayActivities.Count activit@(SelectedDayActivities.Count == 1 ? "y" : "ies")</MudText>
+                    </div>
+                    @if (history.FirstActivityUtc.HasValue)
+                    {
+                        <MudText Typo="Typo.caption" Class="mud-secondary-text">Learning trail since @ToLocalTime(history.FirstActivityUtc.Value).ToString("MMMM yyyy")</MudText>
+                    }
+                </MudStack>
+
+                @if (SelectedDayActivities.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Class="mud-secondary-text">No tracked activity on this day. Breaks are part of a sustainable learning plan.</MudText>
+                }
+                else
+                {
+                    <MudStack Spacing="2">
+                        @foreach (var activity in SelectedDayActivities)
+                        {
+                            <LearningActivityRow Activity="@activity" OccurredAt="@ToLocalTime(activity.OccurredUtc)" />
+                        }
+                    </MudStack>
+                }
+            </MudPaper>
+        </MudPaper>
+
+        <MudPaper Class="surface-card content-card history-timeline-card" Elevation="0">
+            <MudText Typo="Typo.h6">Month-by-month story</MudText>
+            <MudText Typo="Typo.body2" Class="mud-secondary-text mb-4">A chronological record of what you started, finished, explored, and reflected on.</MudText>
+
+            @foreach (var month in MonthlyGroups)
+            {
+                <section class="history-month-section">
+                    <MudStack Row="true" Wrap="Wrap.Wrap" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="history-month-header">
+                        <MudText Typo="Typo.h6">@month.Key.ToString("MMMM yyyy")</MudText>
+                        <MudChip T="string" Variant="Variant.Outlined" Color="Color.Primary">@month.Count() activities</MudChip>
+                    </MudStack>
+                    <MudStack Spacing="2">
+                        @foreach (var activity in month.OrderByDescending(item => item.OccurredUtc))
+                        {
+                            <LearningActivityRow Activity="@activity" OccurredAt="@ToLocalTime(activity.OccurredUtc)" />
+                        }
+                    </MudStack>
+                </section>
+            }
+        </MudPaper>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public DateTime? RequestedDate { get; set; }
+
+    [Parameter]
+    public int NavigationRequestId { get; set; }
+
+    private static readonly string[] FilterOptions = ["All activity", "Achievements", "Reading", "Videos", "Reflections", "Tools"];
+    private UpskillTracker.Models.LearningHistorySnapshot history = new();
+    private bool isLoading = true;
+    private string selectedFilter = "All activity";
+    private DateTime selectedDate = DateTime.UtcNow.Date;
+    private int appliedNavigationRequestId = -1;
+
+    private IReadOnlyList<UpskillTracker.Models.LearningActivity> FilteredActivities => history.Activities
+        .Where(MatchesFilter)
+        .ToList();
+
+    private IReadOnlyList<UpskillTracker.Models.LearningActivity> SelectedDayActivities => FilteredActivities
+        .Where(activity => ToLocalTime(activity.OccurredUtc).Date == selectedDate.Date)
+        .OrderByDescending(activity => activity.OccurredUtc)
+        .ToList();
+
+    private IEnumerable<IGrouping<DateTime, UpskillTracker.Models.LearningActivity>> MonthlyGroups => FilteredActivities
+        .GroupBy(activity =>
+        {
+            var localTime = ToLocalTime(activity.OccurredUtc);
+            return new DateTime(localTime.Year, localTime.Month, 1);
+        })
+        .OrderByDescending(group => group.Key);
+
+    private int ActiveDayCount => history.Activities
+        .Select(activity => ToLocalTime(activity.OccurredUtc).Date)
+        .Distinct()
+        .Count();
+
+    private int ActiveDaysLast30 => history.Activities
+        .Select(activity => ToLocalTime(activity.OccurredUtc).Date)
+        .Where(date => date >= BrowserTimeZone.Today.AddDays(-29) && date <= BrowserTimeZone.Today)
+        .Distinct()
+        .Count();
+
+    private int CurrentMonthActivities => history.Activities.Count(activity =>
+    {
+        var localTime = ToLocalTime(activity.OccurredUtc);
+        return localTime.Year == BrowserTimeZone.Today.Year &&
+               localTime.Month == BrowserTimeZone.Today.Month;
+    });
+
+    private IGrouping<DateTime, UpskillTracker.Models.LearningActivity>? BestMonth => history.Activities
+        .GroupBy(activity =>
+        {
+            var localTime = ToLocalTime(activity.OccurredUtc);
+            return new DateTime(localTime.Year, localTime.Month, 1);
+        })
+        .OrderByDescending(group => group.Count())
+        .ThenByDescending(group => group.Key)
+        .FirstOrDefault();
+
+    private string BestMonthLabel => BestMonth?.Key.ToString("MMMM yyyy") ?? "No activity yet";
+
+    private int BestMonthActivities => BestMonth?.Count() ?? 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        history = await TrackerService.GetLearningHistoryAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        await BrowserTimeZone.InitializeAsync();
+        selectedDate = history.LastActivityUtc.HasValue
+            ? ToLocalTime(history.LastActivityUtc.Value).Date
+            : BrowserTimeZone.Today;
+        ApplyRequestedDate();
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!isLoading)
+        {
+            ApplyRequestedDate();
+        }
+    }
+
+    private void SelectFilter(string filter)
+    {
+        selectedFilter = filter;
+        selectedDate = FilteredActivities.FirstOrDefault() is { } activity
+            ? ToLocalTime(activity.OccurredUtc).Date
+            : BrowserTimeZone.Today;
+    }
+
+    private void SelectDay(DateTime day)
+        => selectedDate = day.Date;
+
+    private void ApplyRequestedDate()
+    {
+        if (appliedNavigationRequestId == NavigationRequestId)
+        {
+            return;
+        }
+
+        appliedNavigationRequestId = NavigationRequestId;
+        selectedFilter = "All activity";
+        selectedDate = RequestedDate?.Date ??
+            (history.LastActivityUtc.HasValue
+                ? ToLocalTime(history.LastActivityUtc.Value).Date
+                : BrowserTimeZone.Today);
+    }
+
+    private bool MatchesFilter(UpskillTracker.Models.LearningActivity activity) => selectedFilter switch
+    {
+        "Achievements" => activity.Type is UpskillTracker.Models.LearningActivityType.ItemCompleted or UpskillTracker.Models.LearningActivityType.CertificationEarned,
+        "Reading" => activity.Type is UpskillTracker.Models.LearningActivityType.ResourceRead or UpskillTracker.Models.LearningActivityType.AnnouncementRead,
+        "Videos" => activity.Type == UpskillTracker.Models.LearningActivityType.VideoWatched,
+        "Reflections" => activity.Type == UpskillTracker.Models.LearningActivityType.ReflectionAdded,
+        "Tools" => activity.Type == UpskillTracker.Models.LearningActivityType.ToolUsed,
+        _ => true
+    };
+
+    private string GetPrideHeadline()
+    {
+        var latestAchievement = history.Activities.FirstOrDefault(activity =>
+            activity.Type is UpskillTracker.Models.LearningActivityType.ItemCompleted or UpskillTracker.Models.LearningActivityType.CertificationEarned);
+
+        return latestAchievement is null
+            ? $"{ActiveDayCount} learning days recorded"
+            : $"Latest win: {latestAchievement.Title}";
+    }
+
+    private string GetPrideSummary()
+        => history.LastActivityUtc.HasValue
+            ? $"Your most recent learning activity was {FormatRelativeDate(ToLocalTime(history.LastActivityUtc.Value))}."
+            : "Your first recorded learning action will appear here.";
+
+    private string FormatRelativeDate(DateTime date)
+    {
+        var days = (BrowserTimeZone.Today - date.Date).Days;
+        return days switch
+        {
+            0 => "today",
+            1 => "yesterday",
+            < 7 => $"{days} days ago",
+            _ => date.ToString("MMM d, yyyy")
+        };
+    }
+
+    private DateTime ToLocalTime(DateTime utc)
+        => BrowserTimeZone.ToLocal(utc);
+
+}

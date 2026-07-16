@@ -34,6 +34,19 @@ public enum PlanAttentionLevel
     Completed
 }
 
+public enum LearningActivityType
+{
+    ItemStarted,
+    ProgressUpdated,
+    ItemCompleted,
+    CertificationEarned,
+    ResourceRead,
+    VideoWatched,
+    AnnouncementRead,
+    ReflectionAdded,
+    ToolUsed
+}
+
 public enum ResourceKind
 {
     Learn,

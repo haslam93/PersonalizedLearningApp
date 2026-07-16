@@ -21,10 +21,15 @@ else if (overdueItems.Count > 0)
         <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2">
             @foreach (var item in overdueItems.Take(3))
             {
-                <MudChip T="string" Color="Color.Warning" Variant="Variant.Outlined" Label="true">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Warning"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.OpenInNew"
+                           OnClick="@(() => OpenItemAsync(item.Id))">
                     @item.Title (@item.TargetDate.ToString("MMM d"))
-                </MudChip>
+                </MudButton>
             }
+            <MudButton Variant="Variant.Filled" Color="Color.Error" Size="Size.Small" OnClick="@(() => OpenFilterAsync("At risk"))">Review all at-risk work</MudButton>
         </MudStack>
     </MudAlert>
 }
@@ -33,6 +38,7 @@ else if (optionalOverdueCount > 0)
     <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-6 reminder-alert">
         <MudText Typo="Typo.subtitle1">Core plan is on schedule</MudText>
         <MudText Typo="Typo.body2">@optionalOverdueCount nice-to-have item@(optionalOverdueCount == 1 ? " is" : "s are") past its target date. Reschedule it when you intentionally bring it back into focus.</MudText>
+        <MudButton Class="mt-2" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => OpenFilterAsync("Nice to have"))">Review optional backlog</MudButton>
     </MudAlert>
 }
 else
@@ -40,10 +46,14 @@ else
     <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Dense="true" Class="mb-6 reminder-alert reminder-alert-success">
         <MudText Typo="Typo.subtitle1">On Track</MudText>
         <MudText Typo="Typo.body2">No overdue items right now. Use the dashboard, plan, or Copilot tab to pick the next move.</MudText>
+        <MudButton Class="mt-2" Variant="Variant.Text" Color="Color.Success" OnClick="@(() => OpenFilterAsync("Do next"))">Choose the next commitment</MudButton>
     </MudAlert>
 }
 
 @code {
+    [Parameter]
+    public EventCallback<UpskillTracker.Models.PlanNavigationRequest> OnOpenPlan { get; set; }
+
     private bool isLoading = true;
     private List<UpskillTracker.Models.TrainingItem> overdueItems = [];
     private int optionalOverdueCount;
@@ -57,4 +67,10 @@ else
         optionalOverdueCount = allOverdueItems.Count(TrainingPlanPrioritizer.IsNiceToHave);
         isLoading = false;
     }
+
+    private Task OpenFilterAsync(string filter)
+        => OnOpenPlan.InvokeAsync(new UpskillTracker.Models.PlanNavigationRequest(filter));
+
+    private Task OpenItemAsync(int itemId)
+        => OnOpenPlan.InvokeAsync(new UpskillTracker.Models.PlanNavigationRequest("All work", itemId));
 }

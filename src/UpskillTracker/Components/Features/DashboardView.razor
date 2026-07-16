@@ -1,5 +1,6 @@
 @inject UpskillTracker.Services.TrackerService TrackerService
 @inject UpskillTracker.Services.AnnouncementFeedService AnnouncementFeedService
+@inject UpskillTracker.Services.BrowserTimeZoneService BrowserTimeZone
 @inject ISnackbar Snackbar
 @inject IJSRuntime JSRuntime
 
@@ -27,10 +28,10 @@ else if (snapshot is not null)
                         <MudText Typo="Typo.body1" Class="overview-summary">@GetDashboardSummary()</MudText>
                     </div>
                     <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
-                        <MudChip T="string" Color="@(snapshot.AtRiskItems > 0 ? Color.Error : Color.Success)" Variant="Variant.Filled" Icon="@Icons.Material.Filled.PriorityHigh">@snapshot.AtRiskItems at risk</MudChip>
-                        <MudChip T="string" Color="Color.Warning" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Event">@snapshot.DueNext14Days due in 14 days</MudChip>
-                        <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Checklist">@snapshot.CoreRemainingItems core commitments</MudChip>
-                        <MudChip T="string" Color="Color.Secondary" Variant="Variant.Filled" Icon="@Icons.Material.Filled.WorkspacePremium">@snapshot.CertificationGoals certification goals</MudChip>
+                        <MudButton Class="dashboard-action-pill" Color="@(snapshot.AtRiskItems > 0 ? Color.Error : Color.Success)" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.PriorityHigh" OnClick="@(() => OpenPlanFilterAsync("At risk"))">@snapshot.AtRiskItems at risk</MudButton>
+                        <MudButton Class="dashboard-action-pill" Color="Color.Warning" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Event" OnClick="@(() => OpenPlanFilterAsync("Due soon"))">@snapshot.DueNext14Days due in 14 days</MudButton>
+                        <MudButton Class="dashboard-action-pill" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Checklist" OnClick="@(() => OpenPlanFilterAsync("Core commitments"))">@snapshot.CoreRemainingItems core commitments</MudButton>
+                        <MudButton Class="dashboard-action-pill" Color="Color.Secondary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.AutoGraph" OnClick="OpenHistoryAsync">@LearningActiveDays learning days</MudButton>
                     </MudStack>
                 </MudStack>
             </MudPaper>
@@ -54,15 +55,25 @@ else if (snapshot is not null)
                                 <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.AtRiskItems item@(snapshot.AtRiskItems == 1 ? string.Empty : "s") at risk</MudText>
                                 <MudText Typo="Typo.body2" Class="dashboard-muted-text">Overdue work and near-term commitments below 50% progress count as at risk.</MudText>
                             </div>
-                            <MudChip T="string" Color="@(snapshot.AtRiskItems > 0 ? Color.Error : Color.Success)" Variant="Variant.Filled">
+                            <MudButton Color="@(snapshot.AtRiskItems > 0 ? Color.Error : Color.Success)"
+                                       Variant="Variant.Filled"
+                                       Size="Size.Small"
+                                       StartIcon="@(snapshot.AtRiskItems > 0 ? Icons.Material.Filled.PriorityHigh : Icons.Material.Filled.CheckCircle)"
+                                       OnClick="@(() => OpenPlanFilterAsync(snapshot.AtRiskItems > 0 ? "At risk" : "Do next"))">
                                 @(snapshot.AtRiskItems > 0 ? "Recover" : "On track")
-                            </MudChip>
+                            </MudButton>
                         </MudStack>
                         <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
                             <MudChip T="string" Color="Color.Error" Variant="Variant.Outlined">@snapshot.OverdueItems overdue</MudChip>
                             <MudChip T="string" Color="Color.Warning" Variant="Variant.Outlined">@snapshot.DueNext14Days due soon</MudChip>
                             <MudChip T="string" Color="Color.Default" Variant="Variant.Outlined">@snapshot.NiceToHaveItems optional</MudChip>
                         </MudStack>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="@(snapshot.AtRiskItems > 0 ? Color.Error : Color.Primary)"
+                                   StartIcon="@Icons.Material.Filled.FactCheck"
+                                   OnClick="@(() => OpenPlanFilterAsync(snapshot.AtRiskItems > 0 ? "At risk" : "Do next"))">
+                            @(snapshot.AtRiskItems > 0 ? "Review recovery list" : "Open next actions")
+                        </MudButton>
                     </MudStack>
                 </MudPaper>
             </MudStack>
@@ -71,34 +82,82 @@ else if (snapshot is not null)
 
     <MudGrid Class="mb-4 dashboard-metrics-grid">
         <MudItem xs="6" md="3">
-            <MudPaper Class="surface-card metric-card dashboard-metric-card dashboard-accent-rose" Elevation="0">
+            <button type="button" class="surface-card metric-card dashboard-metric-card dashboard-metric-button dashboard-accent-rose" @onclick="@(() => OpenPlanFilterAsync("At risk"))" aria-label="Open at-risk plan items">
                 <MudIcon Icon="@Icons.Material.Filled.PriorityHigh" Color="Color.Error" Size="Size.Large" />
                 <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.AtRiskItems</MudText>
                 <MudText Typo="Typo.body2" Class="dashboard-muted-text">At risk</MudText>
-            </MudPaper>
+                <MudText Typo="Typo.caption" Class="dashboard-card-action">Review items</MudText>
+            </button>
         </MudItem>
         <MudItem xs="6" md="3">
-            <MudPaper Class="surface-card metric-card dashboard-metric-card dashboard-accent-sky" Elevation="0">
+            <button type="button" class="surface-card metric-card dashboard-metric-card dashboard-metric-button dashboard-accent-sky" @onclick="@(() => OpenPlanFilterAsync("Due soon"))" aria-label="Open items due in the next 14 days">
                 <MudIcon Icon="@Icons.Material.Filled.Event" Color="Color.Warning" Size="Size.Large" />
                 <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.DueNext14Days</MudText>
                 <MudText Typo="Typo.body2" Class="dashboard-muted-text">Due in 14 days</MudText>
-            </MudPaper>
+                <MudText Typo="Typo.caption" Class="dashboard-card-action">Review schedule</MudText>
+            </button>
         </MudItem>
         <MudItem xs="6" md="3">
-            <MudPaper Class="surface-card metric-card dashboard-metric-card dashboard-accent-blue" Elevation="0">
+            <button type="button" class="surface-card metric-card dashboard-metric-card dashboard-metric-button dashboard-accent-blue" @onclick="@(() => OpenPlanFilterAsync("Core commitments"))" aria-label="Open core commitments">
                 <MudIcon Icon="@Icons.Material.Filled.Checklist" Color="Color.Primary" Size="Size.Large" />
                 <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.CoreRemainingItems</MudText>
                 <MudText Typo="Typo.body2" Class="dashboard-muted-text">Core remaining</MudText>
-            </MudPaper>
+                <MudText Typo="Typo.caption" Class="dashboard-card-action">Open commitments</MudText>
+            </button>
         </MudItem>
         <MudItem xs="6" md="3">
-            <MudPaper Class="surface-card metric-card dashboard-metric-card dashboard-accent-violet" Elevation="0">
+            <button type="button" class="surface-card metric-card dashboard-metric-card dashboard-metric-button dashboard-accent-violet" @onclick="@(() => OpenPlanFilterAsync("Nice to have"))" aria-label="Open nice-to-have items">
                 <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Color="Color.Secondary" Size="Size.Large" />
                 <MudText Typo="Typo.h5" Class="dashboard-card-value">@snapshot.NiceToHaveItems</MudText>
                 <MudText Typo="Typo.body2" Class="dashboard-muted-text">Nice to have</MudText>
-            </MudPaper>
+                <MudText Typo="Typo.caption" Class="dashboard-card-action">Review optional work</MudText>
+            </button>
         </MudItem>
     </MudGrid>
+
+    <MudPaper Class="surface-card mb-4 dashboard-history-preview dashboard-accent-green" Elevation="0">
+        <MudGrid Style="align-items:center;">
+            <MudItem xs="12" md="8">
+                <MudStack Row="true" Wrap="Wrap.Wrap" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+                    <div>
+                        <MudText Typo="Typo.h6">Your learning trail</MudText>
+                        <MudText Typo="Typo.body2" Class="dashboard-muted-text">
+                            @learningHistory.TotalActivities tracked actions across @LearningActiveDays active day@(LearningActiveDays == 1 ? string.Empty : "s").
+                        </MudText>
+                    </div>
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.AutoGraph" OnClick="OpenHistoryAsync">Open learning history</MudButton>
+                </MudStack>
+                <LearningHeatmap Activities="@learningHistory.Activities"
+                                 Days="91"
+                                 Compact="true"
+                                 DisplayTimeZone="@BrowserTimeZone.TimeZone"
+                                 OnDaySelected="OpenHistoryFromDayAsync"
+                                 Title="Last 12 weeks" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudPaper Class="dashboard-history-recent" Elevation="0">
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Recent proof</MudText>
+                    @if (learningHistory.RecentActivities.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Class="dashboard-muted-text">Your next completed task, useful read, or reflection will appear here.</MudText>
+                    }
+                    else
+                    {
+                        @foreach (var activity in learningHistory.RecentActivities.Take(3))
+                        {
+                            <div class="dashboard-history-event">
+                                <MudIcon Icon="@GetHistoryIcon(activity.Type)" Color="@GetHistoryColor(activity.Type)" Size="Size.Small" />
+                                <div>
+                                    <MudText Typo="Typo.body2">@activity.Title</MudText>
+                                    <MudText Typo="Typo.caption" Class="dashboard-muted-text">@GetHistoryLabel(activity.Type) • @BrowserTimeZone.ToLocal(activity.OccurredUtc).ToString("MMM d")</MudText>
+                                </div>
+                            </div>
+                        }
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
 
     <MudGrid Class="dashboard-content-grid">
         <MudItem xs="12" md="6">
@@ -133,7 +192,7 @@ else if (snapshot is not null)
                                         <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-2">
                                             @foreach (var resource in suggestedResources)
                                             {
-                                                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" Href="@resource.Url" Target="_blank" EndIcon="@Icons.Material.Filled.OpenInNew">
+                                                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenResourceAsync(resource))" EndIcon="@Icons.Material.Filled.OpenInNew">
                                                     @resource.Title
                                                 </MudButton>
                                             }
@@ -145,6 +204,9 @@ else if (snapshot is not null)
                                             Start now
                                         </MudButton>
                                     }
+                                    <MudButton Class="mt-2" Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.OpenInNew" OnClick="@(() => OpenPlanItemAsync(item.Id))">
+                                        Open in plan
+                                    </MudButton>
                                 </div>
                                 <MudChip T="string" Variant="Variant.Filled" Color="@GetStatusColor(item.Status)">@item.Status</MudChip>
                             </MudStack>
@@ -408,6 +470,15 @@ else if (snapshot is not null)
 }
 
 @code {
+    [Parameter]
+    public EventCallback<UpskillTracker.Models.PlanNavigationRequest> OnOpenPlan { get; set; }
+
+    [Parameter]
+    public EventCallback OnOpenHistory { get; set; }
+
+    [Parameter]
+    public EventCallback<DateTime> OnOpenHistoryDate { get; set; }
+
     private const int AnnouncementPageSize = 6;
     private bool isLoading = true;
     private bool isLoadingAnnouncements = true;
@@ -429,19 +500,37 @@ else if (snapshot is not null)
     private int visibleAnnouncementCount = AnnouncementPageSize;
     private string? announcementError;
     private double completionRate;
+    private UpskillTracker.Models.LearningHistorySnapshot learningHistory = new();
+    private int LearningActiveDays => learningHistory.Activities
+        .Select(activity => BrowserTimeZone.ToLocal(activity.OccurredUtc).Date)
+        .Distinct()
+        .Count();
 
     protected override async Task OnInitializedAsync()
     {
         var snapshotTask = TrackerService.GetDashboardSnapshotAsync();
         var resourcesTask = TrackerService.GetResourcesAsync();
+        var historyTask = TrackerService.GetLearningHistoryAsync();
         var announcementsTask = LoadAnnouncementsAsync();
 
         snapshot = await snapshotTask;
         resources = await resourcesTask;
+        learningHistory = await historyTask;
         await announcementsTask;
 
         completionRate = snapshot is null ? 0 : (double)snapshot.CommitmentCompletionRate;
         isLoading = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        await BrowserTimeZone.InitializeAsync();
+        StateHasChanged();
     }
 
     private IReadOnlyList<UpskillTracker.Models.AnnouncementItem> ActiveAnnouncements => announcements
@@ -541,6 +630,7 @@ else if (snapshot is not null)
         {
             await TrackerService.UpdateVideoWatchStateAsync(id, UpskillTracker.Models.VideoWatchState.Seen);
             snapshot = await TrackerService.GetDashboardSnapshotAsync();
+            learningHistory = await TrackerService.GetLearningHistoryAsync();
             completionRate = snapshot is null ? 0 : (double)snapshot.CommitmentCompletionRate;
             Snackbar.Add("Video marked as seen.", Severity.Success);
         }
@@ -679,6 +769,7 @@ else if (snapshot is not null)
         try
         {
             await TrackerService.TouchResourceOpenedAsync(resource.Id);
+            learningHistory = await TrackerService.GetLearningHistoryAsync();
         }
         catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
         {
@@ -694,6 +785,7 @@ else if (snapshot is not null)
         {
             await TrackerService.MarkVideoOpenedAsync(id);
             snapshot = await TrackerService.GetDashboardSnapshotAsync();
+            learningHistory = await TrackerService.GetLearningHistoryAsync();
             completionRate = snapshot is null ? 0 : (double)snapshot.CommitmentCompletionRate;
         }
         catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
@@ -704,10 +796,8 @@ else if (snapshot is not null)
         await JSRuntime.InvokeVoidAsync("open", url, "_blank", "noopener,noreferrer");
     }
 
-    private static string FormatStateTimestamp(DateTime timestamp)
-    {
-        return timestamp.ToLocalTime().ToString("MMM d, yyyy h:mm tt");
-    }
+    private string FormatStateTimestamp(DateTime timestamp)
+        => BrowserTimeZone.ToLocal(timestamp).ToString("MMM d, yyyy h:mm tt");
 
     private static Color GetStatusColor(UpskillTracker.Models.TrackerStatus status) => status switch
     {
@@ -735,6 +825,51 @@ else if (snapshot is not null)
         _ => Color.Primary
     };
 
+    private Task OpenPlanFilterAsync(string filter)
+        => OnOpenPlan.InvokeAsync(new UpskillTracker.Models.PlanNavigationRequest(filter));
+
+    private Task OpenPlanItemAsync(int itemId)
+        => OnOpenPlan.InvokeAsync(new UpskillTracker.Models.PlanNavigationRequest("All work", itemId));
+
+    private Task OpenHistoryAsync()
+        => OnOpenHistory.InvokeAsync();
+
+    private Task OpenHistoryFromDayAsync(DateTime day)
+        => OnOpenHistoryDate.InvokeAsync(day);
+
+    private static string GetHistoryLabel(UpskillTracker.Models.LearningActivityType type) => type switch
+    {
+        UpskillTracker.Models.LearningActivityType.ItemStarted => "Started",
+        UpskillTracker.Models.LearningActivityType.ProgressUpdated => "Progressed",
+        UpskillTracker.Models.LearningActivityType.ItemCompleted => "Completed",
+        UpskillTracker.Models.LearningActivityType.CertificationEarned => "Certification",
+        UpskillTracker.Models.LearningActivityType.ResourceRead => "Read",
+        UpskillTracker.Models.LearningActivityType.VideoWatched => "Watched",
+        UpskillTracker.Models.LearningActivityType.AnnouncementRead => "Update read",
+        UpskillTracker.Models.LearningActivityType.ReflectionAdded => "Reflected",
+        UpskillTracker.Models.LearningActivityType.ToolUsed => "Tool used",
+        _ => "Learning"
+    };
+
+    private static string GetHistoryIcon(UpskillTracker.Models.LearningActivityType type) => type switch
+    {
+        UpskillTracker.Models.LearningActivityType.ItemCompleted or UpskillTracker.Models.LearningActivityType.CertificationEarned => Icons.Material.Filled.EmojiEvents,
+        UpskillTracker.Models.LearningActivityType.ResourceRead or UpskillTracker.Models.LearningActivityType.AnnouncementRead => Icons.Material.Filled.MenuBook,
+        UpskillTracker.Models.LearningActivityType.VideoWatched => Icons.Material.Filled.SmartDisplay,
+        UpskillTracker.Models.LearningActivityType.ReflectionAdded => Icons.Material.Filled.EditNote,
+        UpskillTracker.Models.LearningActivityType.ToolUsed => Icons.Material.Filled.BuildCircle,
+        _ => Icons.Material.Filled.TrendingUp
+    };
+
+    private static Color GetHistoryColor(UpskillTracker.Models.LearningActivityType type) => type switch
+    {
+        UpskillTracker.Models.LearningActivityType.ItemCompleted or UpskillTracker.Models.LearningActivityType.CertificationEarned => Color.Success,
+        UpskillTracker.Models.LearningActivityType.VideoWatched => Color.Warning,
+        UpskillTracker.Models.LearningActivityType.ReflectionAdded => Color.Secondary,
+        UpskillTracker.Models.LearningActivityType.ToolUsed => Color.Info,
+        _ => Color.Primary
+    };
+
     private async Task StartItemAsync(UpskillTracker.Models.TrainingItem item)
     {
         var updatedItem = item.Clone();
@@ -745,6 +880,7 @@ else if (snapshot is not null)
         {
             await TrackerService.SaveTrainingItemAsync(updatedItem);
             snapshot = await TrackerService.GetDashboardSnapshotAsync();
+            learningHistory = await TrackerService.GetLearningHistoryAsync();
             completionRate = snapshot is null ? 0 : (double)snapshot.CommitmentCompletionRate;
             Snackbar.Add($"Started \"{updatedItem.Title}\".", Severity.Success);
         }
@@ -778,7 +914,7 @@ else if (snapshot is not null)
         _ => Color.Success
     };
 
-    private static string FormatAnnouncementDate(DateTime publishedUtc)
+    private string FormatAnnouncementDate(DateTime publishedUtc)
     {
         var now = DateTime.UtcNow;
         var age = now - publishedUtc;
@@ -795,7 +931,7 @@ else if (snapshot is not null)
             return $"{Math.Max(1, (int)age.TotalDays)}d ago";
         }
 
-        return publishedUtc.ToLocalTime().ToString("MMM d");
+        return BrowserTimeZone.ToLocal(publishedUtc).ToString("MMM d");
     }
 
     private string GetDashboardHeadline()

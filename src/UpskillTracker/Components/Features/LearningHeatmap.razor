@@ -1,0 +1,154 @@
+@inject IJSRuntime JSRuntime
+
+<div class="learning-heatmap-shell @(Compact ? "learning-heatmap-compact" : string.Empty)">
+    <MudStack Row="true" Wrap="Wrap.Wrap" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+        <div>
+            <MudText Typo="Typo.subtitle2">@Title</MudText>
+            <MudText Typo="Typo.caption" Class="mud-secondary-text">
+                @ActiveDayCount active day@(ActiveDayCount == 1 ? string.Empty : "s") from @StartDate.ToString("MMM d, yyyy") to @EndDate.ToString("MMM d, yyyy")
+            </MudText>
+        </div>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="learning-heatmap-legend" aria-label="Activity intensity legend">
+            <MudText Typo="Typo.caption" Class="mud-secondary-text">Less</MudText>
+            @for (var level = 0; level <= 4; level++)
+            {
+                <span class="learning-day-cell learning-day-level-@level" aria-hidden="true"></span>
+            }
+            <MudText Typo="Typo.caption" Class="mud-secondary-text">More</MudText>
+        </MudStack>
+    </MudStack>
+
+    <div class="learning-heatmap-scroll" role="region" aria-label="@($"{Title}. Use arrow keys to move between dates.")">
+        <div class="learning-heatmap-grid" aria-label="Learning activity by day">
+            @foreach (var day in CalendarDays)
+            {
+                var count = GetActivityCount(day);
+                <button id="@GetCellId(day)"
+                        type="button"
+                        tabindex="@(day == focusedDate ? 0 : -1)"
+                        aria-pressed="@(SelectedDate?.Date == day)"
+                        aria-label="@GetDayLabel(day, count)"
+                        title="@GetDayLabel(day, count)"
+                        class="learning-day-cell learning-day-button learning-day-level-@GetIntensityLevel(count) @(SelectedDate?.Date == day ? "learning-day-selected" : string.Empty)"
+                        @onclick="@(() => SelectDayAsync(day))"
+                        @onkeydown="@((KeyboardEventArgs args) => HandleKeyDownAsync(day, args))">
+                    <span class="sr-only">@GetDayLabel(day, count)</span>
+                </button>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<UpskillTracker.Models.LearningActivity> Activities { get; set; } = [];
+
+    [Parameter]
+    public int Days { get; set; } = 365;
+
+    [Parameter]
+    public string Title { get; set; } = "Learning rhythm";
+
+    [Parameter]
+    public bool Compact { get; set; }
+
+    [Parameter]
+    public DateTime? SelectedDate { get; set; }
+
+    [Parameter]
+    public TimeZoneInfo DisplayTimeZone { get; set; } = TimeZoneInfo.Utc;
+
+    [Parameter]
+    public EventCallback<DateTime> OnDaySelected { get; set; }
+
+    private DateTime focusedDate;
+
+    private DateTime EndDate => ToDisplayTime(DateTime.UtcNow).Date;
+
+    private DateTime StartDate
+    {
+        get
+        {
+            var requestedStart = EndDate.AddDays(-Math.Max(6, Days - 1));
+            return requestedStart.AddDays(-(int)requestedStart.DayOfWeek);
+        }
+    }
+
+    private IReadOnlyList<DateTime> CalendarDays => Enumerable
+        .Range(0, (EndDate - StartDate).Days + 1)
+        .Select(offset => StartDate.AddDays(offset))
+        .ToList();
+
+    private int ActiveDayCount => Activities
+        .Select(activity => ToDisplayTime(activity.OccurredUtc).Date)
+        .Where(date => date >= StartDate && date <= EndDate)
+        .Distinct()
+        .Count();
+
+    protected override void OnParametersSet()
+    {
+        if (focusedDate == default || focusedDate < StartDate || focusedDate > EndDate)
+        {
+            focusedDate = SelectedDate?.Date is { } selected && selected >= StartDate && selected <= EndDate
+                ? selected
+                : EndDate;
+        }
+    }
+
+    private int GetActivityCount(DateTime day)
+        => Activities.Count(activity => ToDisplayTime(activity.OccurredUtc).Date == day);
+
+    private DateTime ToDisplayTime(DateTime utc)
+        => TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), DisplayTimeZone);
+
+    private static int GetIntensityLevel(int count) => count switch
+    {
+        <= 0 => 0,
+        1 => 1,
+        2 => 2,
+        3 => 3,
+        _ => 4
+    };
+
+    private static string GetDayLabel(DateTime day, int count)
+        => count == 0
+            ? $"No learning activity on {day:MMMM d, yyyy}"
+            : $"{count} learning activit{(count == 1 ? "y" : "ies")} on {day:MMMM d, yyyy}";
+
+    private static string GetCellId(DateTime day)
+        => $"learning-day-{day:yyyyMMdd}";
+
+    private async Task SelectDayAsync(DateTime day)
+    {
+        focusedDate = day;
+        await OnDaySelected.InvokeAsync(day);
+    }
+
+    private async Task HandleKeyDownAsync(DateTime day, KeyboardEventArgs args)
+    {
+        var offset = args.Key switch
+        {
+            "ArrowLeft" => -7,
+            "ArrowRight" => 7,
+            "ArrowUp" => -1,
+            "ArrowDown" => 1,
+            "Home" => -(int)day.DayOfWeek,
+            "End" => 6 - (int)day.DayOfWeek,
+            _ => 0
+        };
+
+        if (offset == 0)
+        {
+            return;
+        }
+
+        var target = day.AddDays(offset);
+        if (target < StartDate || target > EndDate)
+        {
+            return;
+        }
+
+        focusedDate = target;
+        await JSRuntime.InvokeVoidAsync("upskillTracker.focusElement", GetCellId(target));
+    }
+}

@@ -15,6 +15,27 @@ estimated_reading_time: 6
 
 ## 2026-07-16
 
+### Turned status summaries into direct navigation
+
+* Made overview, reminder, Dashboard, and Plan summary controls open the relevant at-risk, due-soon, core, in-progress, optional, certification, or individual-item Plan view
+* Added an explicit recovery action to the red schedule-pressure card and made the red Recover control itself actionable
+* Added a request-token handoff between the Home tabs and Plan so navigation requests apply once without overwriting later manual filters
+* Reworked Timeline as a future-facing view with an overdue recovery queue, planned hours by month, workload signals, and direct item actions
+
+### Added durable Learning History
+
+* Added a production-safe `LearningActivities` table with explicit SQLite and PostgreSQL schema creation, indexes, identity handling, a one-time historical backfill, and conflict-safe legacy SQLite history import
+* Added conflict-safe activity logging for training starts, progress, completions, certifications, resource and announcement reads, watched videos, reflections, and personal-tool launches
+* Added a Learning History tab with proud progress metrics, filters, selected-day details, a month/year story, and an accessible GitHub-style one-year activity calendar
+* Added a compact 12-week learning trail to the main Dashboard so recent effort and accomplishments stay visible alongside urgent work
+* Converted history dates and calendar groupings to the browser's time zone so activity near UTC midnight stays on the intended local day
+
+### Added a personal learning tools launchpad
+
+* Added a My Tools tab based on the current public directory at [hammadaslam.com/tools-and-demos](https://hammadaslam.com/tools-and-demos/)
+* Linked the Azure Integration Hub, Microsoft Foundry Updates Portal, GitHub Enterprise Admin Hub, and GitHub Agentic Workflows Lab
+* Records tool launches in Learning History so using self-built learning resources contributes to the activity trail
+
 ### Expanded the tracked learning plan
 
 * Added beginner Microsoft Fabric and Azure Databricks learning sequences with official Microsoft Learn, product documentation, tutorials, and hands-on lab resources

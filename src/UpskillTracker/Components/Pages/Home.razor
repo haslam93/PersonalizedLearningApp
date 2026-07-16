@@ -3,7 +3,7 @@
 
 <PageTitle>Hammad's Learning Portal</PageTitle>
 
-<ReminderBanner />
+<ReminderBanner OnOpenPlan="NavigateToPlanAsync" />
 
 @if (TrackerService.HasRecentTransientReadFailure)
 {
@@ -29,48 +29,64 @@ else if (snapshot is not null)
 					</div>
 
 					<MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
-						<MudChip T="string" Color="@(snapshot.AtRiskItems > 0 ? Color.Error : Color.Success)" Variant="Variant.Filled" Icon="@Icons.Material.Filled.PriorityHigh">@snapshot.AtRiskItems at risk</MudChip>
-						<MudChip T="string" Color="Color.Info" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Checklist">@snapshot.CoreRemainingItems core commitments</MudChip>
-						<MudChip T="string" Color="Color.Secondary" Variant="Variant.Filled" Icon="@Icons.Material.Filled.WorkspacePremium">@snapshot.CertificationGoals certification goals</MudChip>
+						<MudButton Class="overview-action-pill" Color="@(snapshot.AtRiskItems > 0 ? Color.Error : Color.Success)" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.PriorityHigh" OnClick="@(() => NavigateToPlanAsync(new UpskillTracker.Models.PlanNavigationRequest("At risk")))">
+							@snapshot.AtRiskItems at risk
+						</MudButton>
+						<MudButton Class="overview-action-pill" Color="Color.Info" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Checklist" OnClick="@(() => NavigateToPlanAsync(new UpskillTracker.Models.PlanNavigationRequest("Core commitments")))">
+							@snapshot.CoreRemainingItems core commitments
+						</MudButton>
+						<MudButton Class="overview-action-pill" Color="Color.Secondary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.WorkspacePremium" OnClick="NavigateToCertifications">
+							@snapshot.CertificationGoals certification goals
+						</MudButton>
 					</MudStack>
 				</MudStack>
 			</MudItem>
 			<MudItem xs="12" md="5">
 				<div class="overview-stats-grid">
-					<MudPaper Class="overview-stat" Elevation="0">
+					<button type="button" class="overview-stat overview-stat-button" @onclick="NavigateToHistory" aria-label="Open learning history">
 						<MudText Typo="Typo.caption" Class="mud-secondary-text">Core completion</MudText>
 						<MudText Typo="Typo.h4">@snapshot.CommitmentCompletionRate%</MudText>
-					</MudPaper>
-					<MudPaper Class="overview-stat" Elevation="0">
+						<MudText Typo="Typo.caption" Class="overview-stat-action">View history</MudText>
+					</button>
+					<button type="button" class="overview-stat overview-stat-button" @onclick="@(() => NavigateToPlanAsync(new UpskillTracker.Models.PlanNavigationRequest("Due soon")))" aria-label="Open items due in the next 14 days">
 						<MudText Typo="Typo.caption" Class="mud-secondary-text">Due in 14 days</MudText>
 						<MudText Typo="Typo.h4">@snapshot.DueNext14Days</MudText>
-					</MudPaper>
-					<MudPaper Class="overview-stat" Elevation="0">
+						<MudText Typo="Typo.caption" Class="overview-stat-action">Review due work</MudText>
+					</button>
+					<button type="button" class="overview-stat overview-stat-button" @onclick="@(() => NavigateToPlanAsync(new UpskillTracker.Models.PlanNavigationRequest("At risk")))" aria-label="Open at-risk items">
 						<MudText Typo="Typo.caption" Class="mud-secondary-text">At risk</MudText>
 						<MudText Typo="Typo.h4">@snapshot.AtRiskItems</MudText>
-					</MudPaper>
-					<MudPaper Class="overview-stat" Elevation="0">
+						<MudText Typo="Typo.caption" Class="overview-stat-action">Recover plan</MudText>
+					</button>
+					<button type="button" class="overview-stat overview-stat-button" @onclick="@(() => NavigateToPlanAsync(new UpskillTracker.Models.PlanNavigationRequest("Nice to have")))" aria-label="Open nice-to-have items">
 						<MudText Typo="Typo.caption" Class="mud-secondary-text">Nice to have</MudText>
 						<MudText Typo="Typo.h4">@snapshot.NiceToHaveItems</MudText>
-					</MudPaper>
+						<MudText Typo="Typo.caption" Class="overview-stat-action">Review optional work</MudText>
+					</button>
 				</div>
 			</MudItem>
 		</MudGrid>
 	</MudPaper>
 }
 
-<MudTabs Elevation="0" Rounded="true" PanelClass="pt-6" Class="tracker-tabs">
+<MudTabs @bind-ActivePanelIndex="activeTabIndex" Elevation="0" Rounded="true" PanelClass="pt-6" Class="tracker-tabs">
 	<MudTabPanel Text="Dashboard" Icon="@Icons.Material.Filled.Dashboard">
-		<DashboardView />
+		<DashboardView OnOpenPlan="NavigateToPlanAsync" OnOpenHistory="NavigateToHistoryAsync" OnOpenHistoryDate="NavigateToHistoryDateAsync" />
 	</MudTabPanel>
 	<MudTabPanel Text="Plan" Icon="@Icons.Material.Filled.Checklist">
-		<TrainingPlannerView />
+		<TrainingPlannerView NavigationRequest="@planNavigationRequest" NavigationRequestId="@planNavigationToken" />
 	</MudTabPanel>
 	<MudTabPanel Text="Certifications" Icon="@Icons.Material.Filled.WorkspacePremium">
 		<CertificationsView />
 	</MudTabPanel>
 	<MudTabPanel Text="Timeline" Icon="@Icons.Material.Filled.Timeline">
-		<TimelineView />
+		<TimelineView OnOpenPlan="NavigateToPlanAsync" />
+	</MudTabPanel>
+	<MudTabPanel Text="History" Icon="@Icons.Material.Filled.AutoGraph">
+		<LearningHistoryView RequestedDate="@historyRequestedDate" NavigationRequestId="@historyNavigationToken" />
+	</MudTabPanel>
+	<MudTabPanel Text="My Tools" Icon="@Icons.Material.Filled.BuildCircle">
+		<LearningToolsView />
 	</MudTabPanel>
 	<MudTabPanel Text="Resources" Icon="@Icons.Material.Filled.LibraryBooks">
 		<ResourcesView />
@@ -89,6 +105,11 @@ else if (snapshot is not null)
 @code {
 	private UpskillTracker.Models.DashboardSnapshot? snapshot;
 	private bool isLoading = true;
+	private int activeTabIndex;
+	private int planNavigationToken;
+	private int historyNavigationToken;
+	private DateTime? historyRequestedDate;
+	private UpskillTracker.Models.PlanNavigationRequest planNavigationRequest = new("Do next");
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -124,4 +145,36 @@ else if (snapshot is not null)
 
 	private static string FormatItemCount(int count)
 		=> $"{count} item{(count == 1 ? " is" : "s are")}";
+
+	private Task NavigateToPlanAsync(UpskillTracker.Models.PlanNavigationRequest request)
+	{
+		planNavigationRequest = request;
+		planNavigationToken++;
+		activeTabIndex = 1;
+		return Task.CompletedTask;
+	}
+
+	private void NavigateToCertifications()
+		=> activeTabIndex = 2;
+
+	private void NavigateToHistory()
+	{
+		historyRequestedDate = null;
+		historyNavigationToken++;
+		activeTabIndex = 4;
+	}
+
+	private Task NavigateToHistoryAsync()
+	{
+		NavigateToHistory();
+		return Task.CompletedTask;
+	}
+
+	private Task NavigateToHistoryDateAsync(DateTime date)
+	{
+		historyRequestedDate = date.Date;
+		historyNavigationToken++;
+		activeTabIndex = 4;
+		return Task.CompletedTask;
+	}
 }

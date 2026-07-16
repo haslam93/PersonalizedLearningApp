@@ -39,6 +39,8 @@ When making meaningful changes, update this file and also update
   * Plan
   * Certifications
   * Timeline
+  * Learning History
+  * My Tools
   * Resources
   * Notes
   * Copilot
@@ -53,6 +55,22 @@ When making meaningful changes, update this file and also update
   * certifications reuse the existing `TrainingItems` table with `TrainingItemType.Certification`, avoiding a production schema migration
   * the Certifications tab tracks target date, progress, status, preparation notes, and evidence and can import curated Microsoft, GitHub, and Databricks goals
   * AI-103 is the seeded near-term certification goal with an August 31, 2026 target
+* Learning-history behavior:
+  * `LearningActivities` is an append-only event table for starts, progress, completions, certifications, resource and announcement reads, watched videos, reflections, and personal-tool launches
+  * existing production data is backfilled once behind metadata key `learning-history-backfill-v1`
+  * detailed activity from the configured legacy SQLite database uses the separate import marker `legacy-sqlite-learning-history-import-v1`
+  * live activity writes use provider-specific conflict-safe inserts so duplicate history tracking never rolls back the primary user action
+  * repeated resource, video, announcement, and tool activity is deduplicated per source and UTC day
+  * history rows keep denormalized titles and details and do not use foreign keys, so source deletion does not erase the learning record
+  * browser-local history dates and times are produced through `BrowserTimeZoneService`; do not group user-facing calendar days using the Azure host time zone
+  * the History heatmap uses a roving keyboard tab stop with arrow-key navigation and does not frame inactive days as failures
+* Navigation behavior:
+  * overview, reminder, dashboard, and planner summary controls navigate to the relevant Plan filter
+  * cross-tab Plan requests include a monotonically increasing request id so later Home renders do not overwrite a user's manual Plan filters
+  * the forward Timeline excludes completed work; historical accomplishments belong in Learning History
+* Personal tools:
+  * the My Tools tab mirrors the four current entries on `https://hammadaslam.com/tools-and-demos/`
+  * tool launches are recorded in Learning History
 * UI shell behavior:
   * the main app bar uses a minimal title and no fixed date badge
   * the Home page opens with a tracker-driven workspace overview instead of hardcoded focus-area copy
@@ -84,12 +102,17 @@ When making meaningful changes, update this file and also update
 * Dashboard: [src/UpskillTracker/Components/Features/DashboardView.razor](../src/UpskillTracker/Components/Features/DashboardView.razor)
 * Training planner: [src/UpskillTracker/Components/Features/TrainingPlannerView.razor](../src/UpskillTracker/Components/Features/TrainingPlannerView.razor)
 * Certifications: [src/UpskillTracker/Components/Features/CertificationsView.razor](../src/UpskillTracker/Components/Features/CertificationsView.razor)
+* Learning history: [src/UpskillTracker/Components/Features/LearningHistoryView.razor](../src/UpskillTracker/Components/Features/LearningHistoryView.razor)
+* Learning heatmap: [src/UpskillTracker/Components/Features/LearningHeatmap.razor](../src/UpskillTracker/Components/Features/LearningHeatmap.razor)
+* Personal tools: [src/UpskillTracker/Components/Features/LearningToolsView.razor](../src/UpskillTracker/Components/Features/LearningToolsView.razor)
 * Home page: [src/UpskillTracker/Components/Pages/Home.razor](../src/UpskillTracker/Components/Pages/Home.razor)
 * Copilot chat UI: [src/UpskillTracker/Components/Features/CopilotChatView.razor](../src/UpskillTracker/Components/Features/CopilotChatView.razor)
 * Styles: [src/UpskillTracker/wwwroot/app.css](../src/UpskillTracker/wwwroot/app.css)
 * Announcement feed service: [src/UpskillTracker/Services/AnnouncementFeedService.cs](../src/UpskillTracker/Services/AnnouncementFeedService.cs)
 * Certification catalog: [src/UpskillTracker/Services/CertificationCatalog.cs](../src/UpskillTracker/Services/CertificationCatalog.cs)
 * Plan prioritization: [src/UpskillTracker/Services/TrainingPlanPrioritizer.cs](../src/UpskillTracker/Services/TrainingPlanPrioritizer.cs)
+* Activity recorder: [src/UpskillTracker/Services/LearningActivityRecorder.cs](../src/UpskillTracker/Services/LearningActivityRecorder.cs)
+* Personal tool catalog: [src/UpskillTracker/Services/LearningToolCatalog.cs](../src/UpskillTracker/Services/LearningToolCatalog.cs)
 * Copilot chat service: [src/UpskillTracker/Services/CopilotChatService.cs](../src/UpskillTracker/Services/CopilotChatService.cs)
 * Infra entry point: [infra/main.bicep](../infra/main.bicep)
 * RG-scoped infra: [infra/resources.bicep](../infra/resources.bicep)

@@ -22,28 +22,32 @@
 
             <MudGrid Spacing="2" Class="mb-4 planner-focus-summary">
                 <MudItem xs="6" md="3">
-                    <MudPaper Class="planner-focus-stat planner-focus-stat-risk" Elevation="0">
+                    <button type="button" class="planner-focus-stat planner-focus-button planner-focus-stat-risk" @onclick="@(() => SetFocusFilter("At risk"))">
                         <MudText Typo="Typo.h5">@AtRiskCount</MudText>
                         <MudText Typo="Typo.caption">At risk</MudText>
-                    </MudPaper>
+                        <MudText Typo="Typo.caption" Class="planner-focus-action">Show items</MudText>
+                    </button>
                 </MudItem>
                 <MudItem xs="6" md="3">
-                    <MudPaper Class="planner-focus-stat planner-focus-stat-core" Elevation="0">
+                    <button type="button" class="planner-focus-stat planner-focus-button planner-focus-stat-core" @onclick="@(() => SetFocusFilter("Core commitments"))">
                         <MudText Typo="Typo.h5">@CoreCommitmentCount</MudText>
                         <MudText Typo="Typo.caption">Core remaining</MudText>
-                    </MudPaper>
+                        <MudText Typo="Typo.caption" Class="planner-focus-action">Show commitments</MudText>
+                    </button>
                 </MudItem>
                 <MudItem xs="6" md="3">
-                    <MudPaper Class="planner-focus-stat planner-focus-stat-active" Elevation="0">
+                    <button type="button" class="planner-focus-stat planner-focus-button planner-focus-stat-active" @onclick="@(() => SetFocusFilter("In progress"))">
                         <MudText Typo="Typo.h5">@InProgressCount</MudText>
                         <MudText Typo="Typo.caption">In progress</MudText>
-                    </MudPaper>
+                        <MudText Typo="Typo.caption" Class="planner-focus-action">Continue learning</MudText>
+                    </button>
                 </MudItem>
                 <MudItem xs="6" md="3">
-                    <MudPaper Class="planner-focus-stat planner-focus-stat-optional" Elevation="0">
+                    <button type="button" class="planner-focus-stat planner-focus-button planner-focus-stat-optional" @onclick="@(() => SetFocusFilter("Nice to have"))">
                         <MudText Typo="Typo.h5">@NiceToHaveCount</MudText>
                         <MudText Typo="Typo.caption">Nice to have</MudText>
-                    </MudPaper>
+                        <MudText Typo="Typo.caption" Class="planner-focus-action">Review optional work</MudText>
+                    </button>
                 </MudItem>
             </MudGrid>
 
@@ -228,6 +232,12 @@
 </div>
 
 @code {
+    [Parameter]
+    public UpskillTracker.Models.PlanNavigationRequest NavigationRequest { get; set; } = new("Do next");
+
+    [Parameter]
+    public int NavigationRequestId { get; set; }
+
     private List<UpskillTracker.Models.TrainingItem> items = [];
     private List<UpskillTracker.Models.ResourceEntry> resources = [];
     private UpskillTracker.Models.TrainingItem editingItem = CreateEmptyItem();
@@ -237,11 +247,23 @@
     private string selectedFocusFilter = "Do next";
     private DateTime? targetDate;
     private readonly DateTime today = DateTime.UtcNow.Date;
-    private static readonly string[] FocusFilterOptions = ["Do next", "All work", "At risk", "Core commitments", "Nice to have", "Certifications"];
+    private static readonly string[] FocusFilterOptions = ["Do next", "All work", "At risk", "Due soon", "In progress", "Core commitments", "Nice to have", "Certifications"];
+    private int appliedNavigationRequestId = -1;
+    private bool hasLoaded;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadAsync();
+        hasLoaded = true;
+        ApplyNavigationRequest();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (hasLoaded)
+        {
+            ApplyNavigationRequest();
+        }
     }
 
     private IEnumerable<UpskillTracker.Models.TrainingItem> FilteredItems => TrainingPlanPrioritizer.OrderForFocus(
@@ -368,11 +390,47 @@
     {
         "Do next" => item.Status != UpskillTracker.Models.TrackerStatus.Completed && !TrainingPlanPrioritizer.IsNiceToHave(item),
         "At risk" => TrainingPlanPrioritizer.IsAtRisk(item, today),
+        "Due soon" => item.Status != UpskillTracker.Models.TrackerStatus.Completed &&
+            TrainingPlanPrioritizer.GetAttentionLevel(item, today) == UpskillTracker.Models.PlanAttentionLevel.DueSoon,
+        "In progress" => item.Status == UpskillTracker.Models.TrackerStatus.InProgress,
         "Core commitments" => item.Status != UpskillTracker.Models.TrackerStatus.Completed && !TrainingPlanPrioritizer.IsNiceToHave(item),
         "Nice to have" => item.Status != UpskillTracker.Models.TrackerStatus.Completed && TrainingPlanPrioritizer.IsNiceToHave(item),
         "Certifications" => item.Type == UpskillTracker.Models.TrainingItemType.Certification,
         _ => true
     };
+
+    private void SetFocusFilter(string filter)
+    {
+        selectedFocusFilter = filter;
+        selectedStatus = null;
+        selectedLane = null;
+        searchText = string.Empty;
+    }
+
+    private void ApplyNavigationRequest()
+    {
+        if (appliedNavigationRequestId == NavigationRequestId)
+        {
+            return;
+        }
+
+        appliedNavigationRequestId = NavigationRequestId;
+        selectedStatus = null;
+        selectedLane = null;
+
+        if (NavigationRequest.TrainingItemId.HasValue)
+        {
+            var item = items.FirstOrDefault(candidate => candidate.Id == NavigationRequest.TrainingItemId.Value);
+            selectedFocusFilter = "All work";
+            searchText = item?.Title ?? string.Empty;
+            return;
+        }
+
+        selectedFocusFilter = FocusFilterOptions.Contains(NavigationRequest.FocusFilter, StringComparer.OrdinalIgnoreCase)
+            ? NavigationRequest.FocusFilter
+            : "Do next";
+        searchText = string.Empty;
+    }
 
     private string GetRowClass(UpskillTracker.Models.TrainingItem item, int _) => item.Status switch
     {

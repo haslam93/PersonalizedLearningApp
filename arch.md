@@ -1,8 +1,8 @@
 ---
 title: Hammad's Learning Portal architecture
-description: High-level architecture for the Blazor learning portal, dual announcement streams, GitHub Copilot SDK integration, and Azure hosting flow
+description: High-level architecture for the Blazor learning portal, durable learning history, personal tools, GitHub Copilot SDK integration, and Azure hosting flow
 author: Microsoft
-ms.date: 2026-03-16
+ms.date: 2026-07-16
 ms.topic: overview
 keywords:
   - architecture
@@ -22,31 +22,35 @@ the grounded GitHub Copilot chat path.
 flowchart TB
     User[User browser]
     Pin[PIN gate in MainLayout]
-  UI[Blazor components\nDashboard, Plan, Timeline, Resources, Notes, Copilot]
+  UI[Blazor components\nDashboard, Plan, Certifications, Timeline,\nHistory, My Tools, Resources, Notes, Copilot]
   Tracker[TrackerService]
+  Activity[LearningActivities\nappend-only history]
   Feed[AnnouncementFeedService]
   Auth[CopilotAuthService]
   Chat[CopilotChatService]
   GitHubOAuth[GitHub OAuth]
   CopilotSdk[GitHub Copilot SDK and bundled CLI]
     Data[EF Core DbContext]
-    Sqlite[(SQLite database)]
+    Sqlite[(SQLite local database)]
+    Postgres[(Azure Database for PostgreSQL)]
     AppInsights[Application Insights]
   MicrosoftNews[Microsoft official sources]
   IndustryNews[Thought leader and industry sources]
   AppService[Azure App Service\nLinux web app]
 
     User --> Pin --> UI
-  UI --> Tracker --> Data --> Sqlite
+  UI --> Tracker --> Data
+  Data --> Sqlite
+  Data --> Postgres
+  Tracker --> Activity --> Data
   UI --> Feed --> MicrosoftNews
   UI --> Feed --> IndustryNews
   UI --> Auth --> GitHubOAuth
   UI --> Chat --> CopilotSdk
   Chat --> Tracker
-  Chat --> Sqlite
     UI --> AppInsights
     AppService --> UI
-    AppService --> Sqlite
+    AppService --> Postgres
     AppService --> AppInsights
   AppService --> CopilotSdk
 ```
@@ -54,12 +58,14 @@ flowchart TB
 ## Runtime notes
 
 * The user opens Hammad's Learning Portal and passes through a simple client-side PIN gate.
-* Interactive Razor components render the dashboard, editable tracker tabs, and the Copilot chat workspace.
+* Interactive Razor components render the actionable dashboard, editable tracker tabs, Learning History, personal tools, and the Copilot chat workspace.
 * The home view and dashboard summary cards are driven by tracker data so the shell avoids stale fixed date ranges and static campaign copy.
 * `AnnouncementFeedService` loads and memory-caches two announcement streams: official Microsoft sources and curated thought-leader or industry sources.
-* `TrackerService` handles reads and writes for training items, resources, and notes.
+* `TrackerService` handles reads and writes for training items, resources, notes, and append-only learning activity.
+* Provider-specific conflict-safe activity inserts prevent duplicate tracking events from breaking the primary user action.
+* `DatabaseInitializer` explicitly creates and indexes `LearningActivities` for existing SQLite and PostgreSQL databases, then performs a one-time backfill from available historical timestamps.
 * `CopilotAuthService` and `CopilotChatService` manage GitHub OAuth, runtime model discovery, and grounded Copilot interactions.
-* EF Core persists data to a local SQLite database.
+* EF Core persists local data to SQLite and production data to Azure Database for PostgreSQL Flexible Server.
 * Azure App Service hosts the application, while Application Insights captures telemetry.
 
 ## Delivery and configuration flow

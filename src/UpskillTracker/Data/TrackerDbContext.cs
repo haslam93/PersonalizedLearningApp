@@ -21,6 +21,8 @@ public class TrackerDbContext(DbContextOptions<TrackerDbContext> options) : DbCo
 
     public DbSet<AppMetadataEntry> AppMetadataEntries => Set<AppMetadataEntry>();
 
+    public DbSet<LearningActivity> LearningActivities => Set<LearningActivity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<TrainingItem>()
@@ -41,6 +43,20 @@ public class TrackerDbContext(DbContextOptions<TrackerDbContext> options) : DbCo
 
         modelBuilder.Entity<TrainingItem>()
             .HasIndex(item => item.LastStatusChangedUtc);
+
+        modelBuilder.Entity<LearningActivity>()
+            .Property(activity => activity.EstimatedHours)
+            .HasPrecision(5, 1);
+
+        modelBuilder.Entity<LearningActivity>()
+            .HasIndex(activity => activity.DeduplicationKey)
+            .IsUnique();
+
+        modelBuilder.Entity<LearningActivity>()
+            .HasIndex(activity => activity.OccurredUtc);
+
+        modelBuilder.Entity<LearningActivity>()
+            .HasIndex(activity => new { activity.Type, activity.OccurredUtc });
 
         modelBuilder.Entity<VideoChannel>()
             .HasIndex(channel => channel.ChannelId)

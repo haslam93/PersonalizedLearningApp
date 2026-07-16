@@ -35,3 +35,15 @@ window.scrollToElement = function (elementId) {
         element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 };
+
+window.upskillTracker.focusElement = function (elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.focus({ preventScroll: true });
+        element.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+};
+
+window.upskillTracker.getTimeZoneId = function () {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+};

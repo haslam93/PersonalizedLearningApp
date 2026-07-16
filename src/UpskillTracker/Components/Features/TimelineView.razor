@@ -3,69 +3,165 @@
 <div class="section-shell">
     <MudPaper Class="surface-card section-intro-card timeline-intro-card mb-4" Elevation="0">
         <MudStack Spacing="1">
-            <MudText Typo="Typo.overline" Class="text-uppercase section-kicker">Timeline</MudText>
-            <MudText Typo="Typo.h5">See upcoming learning commitments by month</MudText>
+            <MudText Typo="Typo.overline" Class="text-uppercase section-kicker">Forward timeline</MudText>
+            <MudText Typo="Typo.h5">See when committed learning is expected to land</MudText>
             <MudText Typo="Typo.body2" Class="section-summary">
-                Track sequencing, watch progress move over time, and spot overloaded months before they become overdue.
+                This view is intentionally future-facing: recover overdue work first, then scan monthly workload and open any item directly in the Plan tab. Completed work now lives in Learning History.
             </MudText>
         </MudStack>
     </MudPaper>
 
-@if (items.Count == 0)
-{
-    <MudPaper Class="surface-card content-card" Elevation="0">
-        <MudText Typo="Typo.body1">No timeline items yet. Add your first learning item in the planner tab.</MudText>
-    </MudPaper>
-}
-else
-{
-    <MudGrid Class="section-grid">
-        @foreach (var monthGroup in items.GroupBy(item => new DateTime(item.TargetDate.Year, item.TargetDate.Month, 1)))
+    @if (isLoading)
+    {
+        <MudSkeleton Height="200px" Class="mb-4" />
+        <MudSkeleton Height="360px" />
+    }
+    else if (ActiveItems.Count == 0)
+    {
+        <MudPaper Class="surface-card content-card" Elevation="0">
+            <MudIcon Icon="@Icons.Material.Filled.Celebration" Color="Color.Success" Size="Size.Large" />
+            <MudText Typo="Typo.h6">No active commitments remain</MudText>
+            <MudText Typo="Typo.body2" Class="mud-secondary-text">Your finished work is preserved in Learning History.</MudText>
+        </MudPaper>
+    }
+    else
+    {
+        @if (OverdueItems.Count > 0)
         {
-            <MudItem xs="12" md="6">
-                <MudPaper Class="surface-card content-card timeline-month-card mb-4" Elevation="0">
-                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
-                        <MudText Typo="Typo.h6">@monthGroup.Key.ToString("MMMM yyyy")</MudText>
-                        <MudChip T="string" Variant="Variant.Outlined" Color="Color.Primary">@monthGroup.Count() item(s)</MudChip>
-                    </MudStack>
-
-                    @foreach (var item in monthGroup.OrderBy(entry => entry.TargetDate).ThenByDescending(entry => entry.Priority))
+            <MudPaper Class="surface-card content-card timeline-recovery-card mb-4" Elevation="0">
+                <MudStack Row="true" Wrap="Wrap.Wrap" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                    <div>
+                        <MudText Typo="Typo.h6">Recovery queue</MudText>
+                        <MudText Typo="Typo.body2" Class="mud-secondary-text">These core commitments are already past their target date.</MudText>
+                    </div>
+                    <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="@(() => OpenFilterAsync("At risk"))">Review all at-risk work</MudButton>
+                </MudStack>
+                <MudGrid Spacing="2">
+                    @foreach (var item in OverdueItems)
                     {
-                        <MudPaper Class="timeline-entry mb-3" Elevation="0">
-                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
-                                <div>
-                                    <MudText Typo="Typo.subtitle2">@item.Title</MudText>
-                                    <MudText Typo="Typo.body2" Class="mud-secondary-text">@item.Domain • @item.Category</MudText>
-                                    <MudText Typo="Typo.caption" Class="mud-secondary-text">@item.TargetDate.ToString("ddd, MMM d") • @item.Lane • @item.Type</MudText>
-                                </div>
-                                <MudChip T="string" Variant="Variant.Filled" Color="@GetStatusColor(item.Status)">@item.Status</MudChip>
-                            </MudStack>
-                            <MudProgressLinear Class="mt-3" Value="@item.ProgressPercent" Rounded="true" Color="Color.Primary" />
-                            <MudText Typo="Typo.caption" Class="mud-secondary-text mt-2 d-block">
-                                @item.ProgressPercent% complete • @item.EstimatedHours hour(s) • priority @item.Priority
-                            </MudText>
-                        </MudPaper>
+                        <MudItem xs="12" md="6">
+                            @TimelineItem(item)
+                        </MudItem>
                     }
-                </MudPaper>
-            </MudItem>
+                </MudGrid>
+            </MudPaper>
         }
-    </MudGrid>
-}
+
+        @if (OverdueOptionalItems.Count > 0)
+        {
+            <MudPaper Class="surface-card content-card timeline-optional-backlog-card mb-4" Elevation="0">
+                <MudStack Row="true" Wrap="Wrap.Wrap" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                    <div>
+                        <MudText Typo="Typo.h6">Optional backlog to reschedule</MudText>
+                        <MudText Typo="Typo.body2" Class="mud-secondary-text">These items are not urgent, but their old dates no longer communicate intent.</MudText>
+                    </div>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => OpenFilterAsync("Nice to have"))">Review nice-to-have work</MudButton>
+                </MudStack>
+                <MudGrid Spacing="2">
+                    @foreach (var item in OverdueOptionalItems)
+                    {
+                        <MudItem xs="12" md="6">
+                            @TimelineItem(item)
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudPaper>
+        }
+
+        <MudGrid Class="section-grid">
+            @foreach (var monthGroup in UpcomingItems.GroupBy(item => new DateTime(item.TargetDate.Year, item.TargetDate.Month, 1)))
+            {
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="surface-card content-card timeline-month-card mb-4" Elevation="0">
+                        <MudStack Row="true" Wrap="Wrap.Wrap" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                            <div>
+                                <MudText Typo="Typo.h6">@monthGroup.Key.ToString("MMMM yyyy")</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-secondary-text">@monthGroup.Sum(item => item.EstimatedHours).ToString("0.#") planned hours</MudText>
+                            </div>
+                            <MudChip T="string" Variant="Variant.Outlined" Color="@GetMonthLoadColor(monthGroup.Count())">@monthGroup.Count() item@(monthGroup.Count() == 1 ? string.Empty : "s")</MudChip>
+                        </MudStack>
+
+                        @foreach (var item in TrainingPlanPrioritizer.OrderForFocus(monthGroup, today))
+                        {
+                            @TimelineItem(item)
+                        }
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
 </div>
 
 @code {
+    [Parameter]
+    public EventCallback<UpskillTracker.Models.PlanNavigationRequest> OnOpenPlan { get; set; }
+
     private List<UpskillTracker.Models.TrainingItem> items = [];
+    private bool isLoading = true;
+    private readonly DateTime today = DateTime.UtcNow.Date;
+
+    private IReadOnlyList<UpskillTracker.Models.TrainingItem> ActiveItems => items
+        .Where(item => item.Status != UpskillTracker.Models.TrackerStatus.Completed)
+        .ToList();
+
+    private IReadOnlyList<UpskillTracker.Models.TrainingItem> OverdueItems => ActiveItems
+        .Where(item => TrainingPlanPrioritizer.GetAttentionLevel(item, today) == UpskillTracker.Models.PlanAttentionLevel.Overdue)
+        .OrderBy(item => item.TargetDate)
+        .ToList();
+
+    private IReadOnlyList<UpskillTracker.Models.TrainingItem> OverdueOptionalItems => ActiveItems
+        .Where(TrainingPlanPrioritizer.IsNiceToHave)
+        .Where(item => item.TargetDate.Date < today)
+        .OrderBy(item => item.TargetDate)
+        .ToList();
+
+    private IReadOnlyList<UpskillTracker.Models.TrainingItem> UpcomingItems => ActiveItems
+        .Where(item => item.TargetDate.Date >= today)
+        .OrderBy(item => item.TargetDate)
+        .ToList();
 
     protected override async Task OnInitializedAsync()
     {
         items = await TrackerService.GetTrainingItemsAsync();
+        isLoading = false;
     }
 
-    private static Color GetStatusColor(UpskillTracker.Models.TrackerStatus status) => status switch
+    private RenderFragment TimelineItem(UpskillTracker.Models.TrainingItem item) => @<MudPaper Class="timeline-entry timeline-entry-actionable mb-3" Elevation="0">
+        <MudStack Row="true" Wrap="Wrap.Wrap" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start" Spacing="2">
+            <div class="flex-1">
+                <MudText Typo="Typo.subtitle2">@item.Title</MudText>
+                <MudText Typo="Typo.body2" Class="mud-secondary-text">@item.Domain • @item.Category</MudText>
+                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-2">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@GetAttentionColor(item)">@TrainingPlanPrioritizer.GetAttentionLabel(item, today)</MudChip>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary">@TrainingPlanPrioritizer.GetCommitmentLabel(item)</MudChip>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@item.EstimatedHours hour@(item.EstimatedHours == 1 ? string.Empty : "s")</MudChip>
+                </MudStack>
+                <MudProgressLinear Class="mt-3" Value="@item.ProgressPercent" Rounded="true" Color="@GetAttentionColor(item)" />
+            </div>
+            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.OpenInNew" OnClick="@(() => OpenItemAsync(item.Id))">Open in plan</MudButton>
+        </MudStack>
+    </MudPaper>;
+
+    private Task OpenFilterAsync(string filter)
+        => OnOpenPlan.InvokeAsync(new UpskillTracker.Models.PlanNavigationRequest(filter));
+
+    private Task OpenItemAsync(int itemId)
+        => OnOpenPlan.InvokeAsync(new UpskillTracker.Models.PlanNavigationRequest("All work", itemId));
+
+    private static Color GetMonthLoadColor(int count) => count switch
     {
-        UpskillTracker.Models.TrackerStatus.Completed => Color.Success,
-        UpskillTracker.Models.TrackerStatus.InProgress => Color.Info,
-        UpskillTracker.Models.TrackerStatus.Blocked => Color.Error,
-        _ => Color.Default
+        >= 5 => Color.Error,
+        >= 3 => Color.Warning,
+        _ => Color.Success
     };
+
+    private Color GetAttentionColor(UpskillTracker.Models.TrainingItem item)
+        => TrainingPlanPrioritizer.GetAttentionLevel(item, today) switch
+        {
+            UpskillTracker.Models.PlanAttentionLevel.Overdue => Color.Error,
+            UpskillTracker.Models.PlanAttentionLevel.DueSoon => Color.Warning,
+            UpskillTracker.Models.PlanAttentionLevel.InProgress => Color.Info,
+            UpskillTracker.Models.PlanAttentionLevel.NiceToHave => Color.Default,
+            _ => Color.Primary
+        };
 }

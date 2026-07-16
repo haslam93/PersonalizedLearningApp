@@ -1,6 +1,6 @@
 ---
 title: Hammad's Learning Portal
-description: Personal learning and certification tracker with urgency-based planning, dual announcement streams, GitHub Copilot chat, and Azure deployment automation
+description: Personal learning and certification tracker with actionable planning, learning history, personal tools, GitHub Copilot chat, and Azure deployment automation
 author: Microsoft
 ms.date: 2026-07-16
 ms.topic: overview
@@ -28,13 +28,13 @@ The app is organized as a lightweight interactive Blazor experience hosted on
 Azure App Service.
 
 * The browser loads a Blazor web app with a lightweight PIN gate in the main layout.
-* Feature views for Dashboard, Plan, Certifications, Timeline, Resources, Notes, and Copilot run
+* Feature views for Dashboard, Plan, Certifications, Timeline, Learning History, My Tools, Resources, Notes, and Copilot run
    through shared application services.
 * `AnnouncementFeedService` loads and caches both official Microsoft updates and
   curated thought-leader or industry posts for the dashboard feed.
 * `CopilotAuthService` and `CopilotChatService` manage in-app GitHub OAuth and
   grounded Copilot chat sessions.
-* EF Core writes training data, resources, and notes to SQLite locally and Azure
+* EF Core writes training data, learning activity, resources, and notes to SQLite locally and Azure
   Database for PostgreSQL Flexible Server in production.
 * GitHub Actions builds the app and deploys `main` to the Azure web app.
 
@@ -49,6 +49,8 @@ It is designed to help you:
 * Track plan items, certification goals, notes, evidence, and timelines
 * Add new work as customer projects shift priorities
 * Separate overdue and core commitments from nice-to-have learning so the next action is clear
+* Revisit completed work, useful reads, watched videos, reflections, and tool sessions in a month-by-month learning history
+* Launch the Azure, Foundry, and GitHub hubs maintained at [hammadaslam.com/tools-and-demos](https://hammadaslam.com/tools-and-demos/)
 * Review a live dashboard feed that switches between Microsoft updates and curated industry posts that matter to your plan
 * Keep a reusable resource library for Microsoft Foundry, GitHub Copilot,
   App Service, Container Apps, and related topics
@@ -59,6 +61,8 @@ It is designed to help you:
 ## Main app features
 
 * Dashboard with schedule-risk, core-completion, and ranked "Do next" metrics
+* Clickable dashboard, reminder, and overview metrics that open the relevant Plan filter instead of acting as static status labels
+* Compact 12-week learning contribution calendar and recent-achievement preview on the Dashboard
 * Dashboard cards with readable semantic color accents for progress, videos, resources, notes, and announcements
 * Dynamic home and dashboard summary cards that react to live tracker data instead of fixed promotional copy
 * Dual announcement streams with Microsoft updates and thought-leader or industry posts, paged for faster scanning with actions to open and save useful updates
@@ -66,6 +70,8 @@ It is designed to help you:
 * Certifications tab for tracking target dates, progress, status, preparation notes, and evidence
 * Curated certification import catalog for Microsoft, GitHub, and Databricks credentials
 * Timeline tab grouped by month
+* Learning History tab with an accessible one-year activity calendar, active-day and milestone metrics, day details, filters, and a month/year narrative
+* My Tools tab linking to the Azure Integration Hub, Microsoft Foundry Updates Portal, GitHub Enterprise Admin Hub, and GitHub Agentic Workflows Lab
 * Resources tab with editable sections and links that power task-level suggestions across the app
 * Notes tab for reflections, architecture notes, and lab takeaways
 * Copilot tab with GitHub OAuth sign-in, runtime model discovery, and tracker-grounded chat tools
@@ -82,11 +88,25 @@ The current shell avoids fixed labels where tracker data is already available.
 * The dashboard summary card adapts to overdue, due-soon, in-progress, and completed core work with short, direct headings
 * Ranked next actions put overdue and near-term core commitments ahead of optional backlog
 * Core completion excludes nice-to-have work so optional topics do not hide whether committed work is on schedule
+* At-risk, due-soon, core, optional, and individual-item actions navigate directly to the matching Plan view
+* The forward Timeline excludes completed work, highlights recovery items, and shows planned hours by month
+* The learning heatmap uses labeled, keyboard-navigable day cells and treats breaks as neutral rather than punishing a lost streak
 * Dashboard cards use soft semantic color surfaces so sections are easier to scan without sacrificing contrast
 * The dashboard includes a dedicated video watch tracker with queue, seen count, and completion progress
 * The announcement section uses a stream switcher so Microsoft updates and curated industry posts stay separate
 * The announcement feed starts with six items and offers show-more and show-fewer controls instead of creating an excessively long mobile page
 * Reminder warnings focus on overdue core commitments and report optional backlog separately
+
+## Learning history data
+
+The app records durable `LearningActivity` events when you start or advance a plan item, complete work or a certification, open a saved resource or announcement, watch a video, save a reflection, or launch one of your personal tools.
+
+* Existing completion, in-progress, resource, video, announcement, and non-template reflection timestamps are backfilled once when the activity table is introduced.
+* Detailed activity from a legacy SQLite database is imported conflict-safely when production uses the configured SQLite-to-PostgreSQL transition path.
+* Repeated reads and tool launches are deduplicated per source and day so the calendar reflects meaningful activity rather than click volume.
+* Activity titles and details are retained even if the original plan item or resource is later deleted.
+* Calendar groupings and displayed activity times use the browser's time zone so late-night learning appears on the intended local day.
+* Startup creates the activity table and indexes explicitly for existing SQLite and PostgreSQL databases because this project does not use EF migrations.
 
 ## Local development
 
