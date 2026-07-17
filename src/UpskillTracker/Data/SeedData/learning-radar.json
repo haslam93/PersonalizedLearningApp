@@ -1,4 +1,75 @@
 {
   "$schema": "./learning-radar.schema.json",
-  "items": []
+  "items": [
+    {
+      "title": "Explore Microsoft Agent Framework Orchestration Patterns 1.0 GA",
+      "domain": "Agent Framework",
+      "category": "Agents",
+      "description": "Microsoft Agent Framework's orchestration layer has reached 1.0 across both Python and .NET. Sequential, concurrent, group chat, handoff, and magentic orchestration patterns are now stable in both SDKs — no more experimental gates. Magentic is the standout: give it a goal, a manager, and a set of specialists and it self-organises. Study the patterns, run the samples, and evaluate which fits your multi-agent architecture.",
+      "targetDate": "2026-07-31",
+      "lane": "RapidRamp",
+      "type": "Lab",
+      "estimatedHours": 3,
+      "priority": 2,
+      "link": "https://devblogs.microsoft.com/agent-framework/agent-frameworks-orchestration-patterns-reach-1-0/",
+      "source": "Microsoft Agent Framework Blog",
+      "addedOn": "2026-07-17"
+    },
+    {
+      "title": "Explore Agent Skills for Python in Microsoft Agent Framework (GA)",
+      "domain": "Agent Framework",
+      "category": "Agents",
+      "description": "Agent Skills for Python is now stable and production-ready in Microsoft Agent Framework (July 15 2026). Skills are reusable bundles of domain expertise — instructions, reference documents, and scripts — that agents load only when a task requires them. Teams can author and ship skills independently then compose them into any agent. Complements the earlier .NET Skills GA. Build a skill and attach it to a Python agent to test the full authoring flow.",
+      "targetDate": "2026-07-24",
+      "lane": "RapidRamp",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 2,
+      "link": "https://devblogs.microsoft.com/agent-framework/agent-skills-for-python-is-now-released/",
+      "source": "Microsoft Agent Framework Blog",
+      "addedOn": "2026-07-17"
+    },
+    {
+      "title": "Lab: Agentic Autofix for GitHub Code Scanning Alerts (Public Preview)",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "GitHub Copilot Agentic Autofix entered public preview on July 10 2026 for all code scanning alerts (CodeQL and third-party). It works like a developer: explores relevant files, proposes a fix, reruns the original analysis to confirm the alert is closed, then opens a pull request. Enable it on a repository with code scanning, trigger an alert, and observe the full agentic remediation loop.",
+      "targetDate": "2026-08-07",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 1,
+      "priority": 3,
+      "link": "https://github.blog/changelog/2026-07-10-agentic-autofix-for-code-scanning-alerts-in-public-preview",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-07-17"
+    },
+    {
+      "title": "Explore Microsoft Foundry Agent Service: Publish Agents to M365 Copilot and Teams",
+      "domain": "Microsoft Foundry",
+      "category": "Foundry",
+      "description": "June 2026 Foundry What's New (updated July 15) adds the ability to publish Foundry-built agents directly to Microsoft 365 Copilot and Microsoft Teams, including in virtual-network deployments. Memory in Foundry Agent Service also entered preview, and a new agent optimizer quickstart enables hosted-agent tuning. Review the new docs, build a simple Foundry agent, and publish it to a Teams channel to validate the end-to-end flow.",
+      "targetDate": "2026-08-07",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 2,
+      "priority": 3,
+      "link": "https://learn.microsoft.com/en-us/azure/ai-foundry/whats-new-azure-ai-foundry",
+      "source": "Azure AI Foundry What's New",
+      "addedOn": "2026-07-17"
+    },
+    {
+      "title": "Explore MCP Enterprise Authorization with Microsoft Entra and Azure App Service",
+      "domain": "App Innovation",
+      "category": "App Service",
+      "description": "Published July 16 2026, this App Service team deep-dive covers how to add enterprise-grade authorization to MCP servers today using Microsoft Entra ID and App Service built-in auth. Covers Entra app registrations, OAuth scopes, and App Service Easy Auth to secure MCP tool endpoints without custom middleware. Essential reading for teams exposing agentic tools inside corporate boundaries.",
+      "targetDate": "2026-07-31",
+      "lane": "RapidRamp",
+      "type": "Learning",
+      "estimatedHours": 2,
+      "priority": 2,
+      "link": "https://techcommunity.microsoft.com/blog/appsonazureblog/mcp-enterprise-authorization-is-here-%E2%80%94-what-entra-and-app-service-can-do-today/4537433",
+      "source": "Apps on Azure Blog",
+      "addedOn": "2026-07-17"
+    }
+  ]
 }
