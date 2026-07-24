@@ -1,4 +1,75 @@
 {
   "$schema": "./learning-radar.schema.json",
-  "items": []
+  "items": [
+    {
+      "title": "Explore Agent Framework Declarative Workflows 1.0",
+      "domain": "Agent Framework",
+      "category": "Agents",
+      "description": "Agent Framework Declarative Workflows 1.0 (GA, Jul 23 2026) lets you define multi-agent orchestration — step sequencing, branching, and handoffs — in YAML/config rather than application code. This decouples workflow logic from the agent runtime, making flows easier to version, test, and hand off. Critical for App Innovation engineers building production multi-agent systems on Azure.",
+      "targetDate": "2026-08-07",
+      "lane": "RapidRamp",
+      "type": "Lab",
+      "estimatedHours": 3,
+      "priority": 1,
+      "link": "https://devblogs.microsoft.com/agent-framework/move-agent-orchestration-workflows-out-of-code-with-agent-framework-declarative-workflows-1-0/",
+      "source": "Microsoft Agent Framework Blog",
+      "addedOn": "2026-07-24"
+    },
+    {
+      "title": "Explore the Microsoft Agent Framework Harness (GA)",
+      "domain": "Agent Framework",
+      "category": "Agents",
+      "description": "The Agent Framework Harness (GA, Jul 22 2026) is a batteries-included runtime for .NET and Python that collapses the full agent pipeline — function invocation, history persistence, compaction, approvals, web search, and telemetry — into a single call. Engineers supply instructions and tools; the harness handles the rest. Reduces boilerplate and makes production-grade agents dramatically faster to ship.",
+      "targetDate": "2026-08-07",
+      "lane": "RapidRamp",
+      "type": "Lab",
+      "estimatedHours": 3,
+      "priority": 1,
+      "link": "https://devblogs.microsoft.com/agent-framework/the-microsoft-agent-framework-harness-is-now-released/",
+      "source": "Microsoft Agent Framework Blog",
+      "addedOn": "2026-07-24"
+    },
+    {
+      "title": "Explore GitHub MCP Server support for the next MCP specification",
+      "domain": "GitHub Copilot",
+      "category": "MCP",
+      "description": "The MCP protocol transitions to a stateless model on July 28 2026, and the GitHub MCP Server already supports the new spec. The update includes official MCP conformance tests that AI-assisted tools can use to validate correctness. Understanding stateless MCP is essential for anyone building or integrating MCP servers and clients in Copilot Extensions or Azure AI agent toolchains.",
+      "targetDate": "2026-08-14",
+      "lane": "RapidRamp",
+      "type": "Learning",
+      "estimatedHours": 2,
+      "priority": 2,
+      "link": "https://github.blog/changelog/2026-07-23-github-mcp-server-supports-the-next-mcp-specification",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-07-24"
+    },
+    {
+      "title": "Explore Agent Automation Controls in GitHub Issues (Public Preview)",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "GitHub Issues now exposes rationale, confidence scores, and an approvals flow for agent-driven label, type, assign, and close operations (public preview, Jul 23 2026). Engineers can configure whether automations apply directly or suggest changes for human review. Understanding these governance controls is important for responsible agentic CI/CD pipelines and issue-triage workflows.",
+      "targetDate": "2026-08-14",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1.5,
+      "priority": 3,
+      "link": "https://github.blog/changelog/2026-07-23-agent-automation-controls-in-github-issues-in-public-preview",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-07-24"
+    },
+    {
+      "title": "Explore Copilot Cloud Agent for Linear — Generally Available",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "Copilot cloud agent for Linear is now GA (Jul 23 2026). Assigning a Linear issue to Copilot triggers an autonomous loop: it creates a branch, writes and tests code, and opens a PR, with controls to pause, redirect, or restrict the agent from within Linear. Studying this end-to-end agentic coding workflow illustrates patterns applicable to any Copilot cloud agent integration with project management tooling.",
+      "targetDate": "2026-08-21",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1.5,
+      "priority": 3,
+      "link": "https://github.blog/changelog/2026-07-23-copilot-cloud-agent-for-linear-is-now-generally-available",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-07-24"
+    }
+  ]
 }
