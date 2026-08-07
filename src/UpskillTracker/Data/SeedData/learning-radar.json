@@ -1,4 +1,75 @@
 {
   "$schema": "./learning-radar.schema.json",
-  "items": []
+  "items": [
+    {
+      "title": "Trigger Copilot cloud agent automations with issue and PR comments",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "GitHub Copilot cloud agent now supports automations triggered by issue or pull request comments. Engineers can set up workflows that auto-generate documentation, triage bugs, or run custom tasks simply by posting a comment. This unlocks comment-driven AI pipelines directly in GitHub, reducing context-switching and enabling richer agentic patterns in everyday developer workflows.",
+      "targetDate": "2026-08-21",
+      "lane": "RapidRamp",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 2,
+      "link": "https://github.blog/changelog/2026-08-03-trigger-copilot-automations-with-comments",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-08-07"
+    },
+    {
+      "title": "Customize reasoning level for GitHub Copilot cloud agent tasks",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "When delegating tasks to the Copilot cloud agent, engineers can now select the reasoning level for models that support it. Higher reasoning levels improve quality on complex refactors and architecture tasks; lower levels speed up simpler changes. Understanding how to tune this setting is key to getting the best cost-to-quality ratio from agentic coding workflows.",
+      "targetDate": "2026-08-28",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1,
+      "priority": 3,
+      "link": "https://github.blog/changelog/2026-08-03-customize-the-reasoning-level-for-copilot-cloud-agent",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-08-07"
+    },
+    {
+      "title": "Explore Markdown for Agents in Azure App Service (public preview)",
+      "domain": "App Innovation",
+      "category": "App Service",
+      "description": "Azure App Service now supports a Markdown-for-Agents capability in public preview, letting hosted AI agents render structured Markdown responses directly through the platform runtime. This simplifies surfacing rich agent output in web and Teams surfaces without custom rendering logic. Lab the preview to understand how it integrates with existing App Service-hosted agent endpoints.",
+      "targetDate": "2026-08-21",
+      "lane": "RapidRamp",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 2,
+      "link": "https://techcommunity.microsoft.com/blog/appsonazureblog/announcing-public-preview-markdown-for-agents-in-azure-app-service",
+      "source": "Apps on Azure Blog",
+      "addedOn": "2026-08-07"
+    },
+    {
+      "title": "Built-in observability for serverless AI agents on Azure Functions",
+      "domain": "App Innovation",
+      "category": "Azure Functions",
+      "description": "Azure Functions now ships built-in observability tooling for serverless AI agents, providing traces, logs, and metrics without requiring manual instrumentation. For App Innovation engineers building event-driven agent handlers, this removes a significant operational gap and aligns Functions-based agents with the observability story in Container Apps and App Service.",
+      "targetDate": "2026-08-28",
+      "lane": "RapidRamp",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 2,
+      "link": "https://techcommunity.microsoft.com/blog/appsonazureblog/built-in-observability-for-serverless-ai-agents-on-azure-functions",
+      "source": "Apps on Azure Blog",
+      "addedOn": "2026-08-07"
+    },
+    {
+      "title": "Use connectors with Managed Identity in Logic Apps Standard extension",
+      "domain": "Integration Services",
+      "category": "Logic Apps",
+      "description": "Logic Apps Standard now supports authenticating built-in connectors with Managed Identity directly from the VS Code extension, eliminating the need to store connection strings or client secrets in app settings. This is a significant security improvement for enterprise integration workflows and aligns with zero-trust best practices for secret-free deployments.",
+      "targetDate": "2026-09-04",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1.5,
+      "priority": 3,
+      "link": "https://techcommunity.microsoft.com/blog/integrationsonazureblog/use-connectors-with-managed-identity-in-the-logic-apps-standard-extension",
+      "source": "Integrations on Azure Blog",
+      "addedOn": "2026-08-07"
+    }
+  ]
 }
