@@ -1,4 +1,75 @@
 {
   "$schema": "./learning-radar.schema.json",
-  "items": []
+  "items": [
+    {
+      "title": "Explore GitHub Copilot Agent Plugins 1.0",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "Agent Plugins 1.0 reached GA across VS Code, the Copilot CLI, and the Copilot app on 2026-08-12. Build a plugin once and deploy it to any compatible agent client. This is a fundamental extensibility milestone for teams authoring custom Copilot behaviours and agentic workflows. Study the plugin manifest schema, tool declarations, and distribution model.",
+      "targetDate": "2026-08-28",
+      "lane": "RapidRamp",
+      "type": "Lab",
+      "estimatedHours": 3,
+      "priority": 2,
+      "link": "https://github.blog/changelog/2026-08-12-agent-plugins-1-0-in-vs-code-copilot-cli-and-the-copilot-app",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-08-14"
+    },
+    {
+      "title": "Explore Azure Container Apps Sandboxes (Preview)",
+      "domain": "App Innovation",
+      "category": "Container Apps",
+      "description": "Azure Container Apps Sandboxes entered public preview on 2026-08-11. Sandboxes provide isolated, ephemeral execution environments for AI agent workloads, preventing cross-tenant contamination and reducing blast radius for untrusted code execution. Key for building secure multi-tenant AI apps. Study the sandbox lifecycle, resource limits, and integration with Dapr and KEDA.",
+      "targetDate": "2026-08-28",
+      "lane": "RapidRamp",
+      "type": "Lab",
+      "estimatedHours": 3,
+      "priority": 2,
+      "link": "https://techcommunity.microsoft.com/t5/apps-on-azure-blog/azure-container-apps-sandboxes-preview-giving-ai-agents-a-safe/ba-p/4545975",
+      "source": "Apps on Azure Blog",
+      "addedOn": "2026-08-14"
+    },
+    {
+      "title": "Explore Microsoft.Extensions.AI Routing and Failover",
+      "domain": "App Innovation",
+      "category": "AI SDK",
+      "description": "The .NET blog announced experimental routing and failover primitives for Microsoft.Extensions.AI on 2026-08-13. These allow apps to route requests across multiple AI providers and fall back automatically on errors or latency thresholds — critical for building resilient, cost-optimised AI apps. Lab against a multi-model scenario using the new IChatClient routing middleware.",
+      "targetDate": "2026-09-04",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 3,
+      "link": "https://devblogs.microsoft.com/dotnet/routing-and-failover-for-microsoft-extensions-ai/",
+      "source": ".NET Blog",
+      "addedOn": "2026-08-14"
+    },
+    {
+      "title": "Explore APIM AI Gateway Tier for App Service-Hosted Agents",
+      "domain": "App Innovation",
+      "category": "APIM",
+      "description": "A 2026-08-11 Apps on Azure blog post details how the new API Management AI Gateway tier changes the architecture for App Service-hosted agents, including governed model access, MCP pass-through, token quota policies, and semantic caching. Key reading for anyone designing a governed AI API layer in front of hosted agent workloads.",
+      "targetDate": "2026-08-28",
+      "lane": "RapidRamp",
+      "type": "Learning",
+      "estimatedHours": 2,
+      "priority": 2,
+      "link": "https://techcommunity.microsoft.com/t5/apps-on-azure-blog/what-the-new-api-management-ai-gateway-tier-changes-for-app/ba-p/4543974",
+      "source": "Apps on Azure Blog",
+      "addedOn": "2026-08-14"
+    },
+    {
+      "title": "Explore Serverless Agents in Azure Functions",
+      "domain": "App Innovation",
+      "category": "Azure Functions",
+      "description": "A 2026-08-12 Apps on Azure blog post shows how to embed AI agent behaviour into existing Azure Functions-based event-driven workflows using the new Serverless Agents feature. Enables incremental AI adoption without re-platforming. Learn the trigger bindings, durable orchestration patterns, and how to wire in tool calls from a function app.",
+      "targetDate": "2026-09-04",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 3,
+      "priority": 3,
+      "link": "https://techcommunity.microsoft.com/t5/apps-on-azure-blog/add-ai-to-the-workflows-you-already-have-using-serverless-agents/ba-p/4544824",
+      "source": "Apps on Azure Blog",
+      "addedOn": "2026-08-14"
+    }
+  ]
 }
