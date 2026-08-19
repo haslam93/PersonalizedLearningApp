@@ -40,6 +40,7 @@ builder.Services.AddSingleton<TokenCredential>(tokenCredential);
 ConfigureDataProtection(builder.Services, storageOptions, tokenCredential);
 ConfigureDbContext(builder.Services, storageOptions, tokenCredential, builder.Environment);
 builder.Services.AddScoped<TrackerService>();
+builder.Services.AddScoped<BrowserTimeZoneService>();
 builder.Services.AddScoped<CopilotAuthService>();
 builder.Services.AddSingleton<GitHubTokenStore>();
 builder.Services.AddSingleton<CopilotChatService>();

@@ -2,7 +2,7 @@
 title: Changelog
 description: Chronological record of major product, infrastructure, deployment, authentication, and documentation changes for Hammad's Learning Portal
 author: Microsoft
-ms.date: 2026-03-17
+ms.date: 2026-07-16
 ms.topic: reference
 keywords:
   - changelog
@@ -12,6 +12,67 @@ keywords:
   - deployment
 estimated_reading_time: 6
 ---
+
+## 2026-07-16
+
+### Repaired responsive status and history UI
+
+* Rebuilt the workspace overview metrics with stacked semantic text so completion, urgency, and action labels no longer run together
+* Made Learning History filters wrap within the viewport, removed redundant hidden day text, and automatically scrolled the heatmap to recent dates on narrow screens
+* Added a one-click Mark complete action to certification goals and made status labels human-readable
+* Added a Blazor reconnect overlay that automatically reloads tabs whose server circuit was replaced by an Azure deployment
+
+### Turned status summaries into direct navigation
+
+* Made overview, reminder, Dashboard, and Plan summary controls open the relevant at-risk, due-soon, core, in-progress, optional, certification, or individual-item Plan view
+* Added an explicit recovery action to the red schedule-pressure card and made the red Recover control itself actionable
+* Added a request-token handoff between the Home tabs and Plan so navigation requests apply once without overwriting later manual filters
+* Reworked Timeline as a future-facing view with an overdue recovery queue, planned hours by month, workload signals, and direct item actions
+
+### Added durable Learning History
+
+* Added a production-safe `LearningActivities` table with explicit SQLite and PostgreSQL schema creation, indexes, identity handling, a one-time historical backfill, and conflict-safe legacy SQLite history import
+* Added conflict-safe activity logging for training starts, progress, completions, certifications, resource and announcement reads, watched videos, reflections, and personal-tool launches
+* Added a Learning History tab with proud progress metrics, filters, selected-day details, a month/year story, and an accessible GitHub-style one-year activity calendar
+* Added a compact 12-week learning trail to the main Dashboard so recent effort and accomplishments stay visible alongside urgent work
+* Converted history dates and calendar groupings to the browser's time zone so activity near UTC midnight stays on the intended local day
+
+### Added a personal learning tools launchpad
+
+* Added a My Tools tab based on the current public directory at [hammadaslam.com/tools-and-demos](https://hammadaslam.com/tools-and-demos/)
+* Linked the Azure Integration Hub, Microsoft Foundry Updates Portal, GitHub Enterprise Admin Hub, and GitHub Agentic Workflows Lab
+* Records tool launches in Learning History so using self-built learning resources contributes to the activity trail
+
+### Expanded the tracked learning plan
+
+* Added beginner Microsoft Fabric and Azure Databricks learning sequences with official Microsoft Learn, product documentation, tutorials, and hands-on lab resources
+* Added practical Fabric lakehouse and Databricks Delta Lake project milestones so the new topics progress from fundamentals into applied work
+* Added an AI-103 Azure AI Apps and Agents Developer Associate goal targeting August 31, 2026, including official credential and study-guide links
+* Added deduplicating startup inserts so the new plan items and resources reach an existing production PostgreSQL database without overwriting user-managed records
+
+### Added persistent certification planning
+
+* Added a Certifications tab that tracks target dates, progress, status, study notes, and evidence using the existing training-item data model
+* Added a curated import catalog for Microsoft AI, Microsoft Fabric, Azure Databricks, Databricks, and GitHub credentials
+* Added custom certification-goal creation so credentials outside the curated catalog can be tracked without a code or schema change
+
+### Made deadlines and priorities actionable
+
+* Added shared plan-prioritization rules for overdue, due-soon, active, core, and nice-to-have work
+* Updated the Dashboard with schedule-pressure metrics, a core completion rate, and a ranked "Do next" list with direct resource links
+* Updated the Plan tab with at-risk, core, active, optional, and certification focus filters plus commitment and attention labels
+* Changed reminder warnings so overdue optional backlog no longer obscures urgent core commitments
+
+### Repaired the README and PostgreSQL recovery workflow
+
+* Fixed the malformed README front matter, restored a visible page title, and updated the architecture and deployment documentation for the production PostgreSQL, managed identity, private networking, storage, and `P0v3` configuration
+* Reworked [.github/workflows/cost-control-tag.yml](.github/workflows/cost-control-tag.yml) to run daily, leave an already-running PostgreSQL server unchanged, start it when stopped, wait until it is ready, and then apply `CostControl=Ignore` to that server only
+* Added explicit failures when the workflow cannot find exactly one PostgreSQL Flexible Server or encounters a terminal or unexpected server state
+
+### Improved the live dashboard on desktop and mobile
+
+* Corrected the workspace summary grammar for a single in-progress learning item
+* Limited the initial announcement feed to six items and added show-more/show-fewer controls so the mobile dashboard no longer renders every unread announcement in one extremely long page
 
 ## 2026-07-06
 

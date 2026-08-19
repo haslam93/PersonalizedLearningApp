@@ -60,12 +60,24 @@ public class TrackerService(
             var queuedVideos = trackedVideos.Count(video => video.WatchState == VideoWatchState.NeedToWatch);
             var seenVideos = trackedVideos.Count(video => video.WatchState == VideoWatchState.Seen);
             var totalTrackedVideos = trackedVideos.Count;
-            var upcomingItems = trainingItems.Where(item => item.TargetDate >= today).Take(6).ToList();
-            var focusItems = trainingItems
+            var activeItems = trainingItems
                 .Where(item => item.Status != TrackerStatus.Completed)
-                .OrderByDescending(item => item.ProjectDriven)
-                .ThenBy(item => item.TargetDate)
+                .ToList();
+            var committedItems = trainingItems
+                .Where(item => !TrainingPlanPrioritizer.IsNiceToHave(item))
+                .ToList();
+            var activeCommittedItems = activeItems
+                .Where(item => !TrainingPlanPrioritizer.IsNiceToHave(item))
+                .ToList();
+            var completedCommittedItems = committedItems.Count(item => item.Status == TrackerStatus.Completed);
+            var upcomingItems = activeItems
+                .Where(item => item.TargetDate >= today)
+                .OrderBy(item => item.TargetDate)
                 .ThenByDescending(item => item.Priority)
+                .Take(6)
+                .ToList();
+            var focusItems = TrainingPlanPrioritizer
+                .OrderForFocus(activeItems, today)
                 .Take(5)
                 .ToList();
 
@@ -74,10 +86,16 @@ public class TrackerService(
                 TotalItems = trainingItems.Count,
                 CompletedItems = completedItems,
                 InProgressItems = trainingItems.Count(item => item.Status == TrackerStatus.InProgress),
-                OverdueItems = trainingItems.Count(item => item.Status != TrackerStatus.Completed && item.TargetDate < today),
-                DueThisMonth = trainingItems.Count(item => item.TargetDate >= today && item.TargetDate <= endOfMonth && item.Status != TrackerStatus.Completed),
+                OverdueItems = activeCommittedItems.Count(item => item.TargetDate < today),
+                DueThisMonth = activeCommittedItems.Count(item => item.TargetDate >= today && item.TargetDate <= endOfMonth),
+                DueNext14Days = activeCommittedItems.Count(item => item.TargetDate >= today && item.TargetDate <= today.AddDays(14)),
+                AtRiskItems = activeItems.Count(item => TrainingPlanPrioritizer.IsAtRisk(item, today)),
+                CoreRemainingItems = activeItems.Count(item => !TrainingPlanPrioritizer.IsNiceToHave(item)),
+                NiceToHaveItems = activeItems.Count(TrainingPlanPrioritizer.IsNiceToHave),
+                CertificationGoals = activeItems.Count(item => item.Type == TrainingItemType.Certification),
                 RapidRampItems = trainingItems.Count(item => item.Lane == LearningLane.RapidRamp && item.Status != TrackerStatus.Completed),
                 CompletionRate = trainingItems.Count == 0 ? 0 : Math.Round((decimal)completedItems / trainingItems.Count * 100, 1),
+                CommitmentCompletionRate = committedItems.Count == 0 ? 0 : Math.Round((decimal)completedCommittedItems / committedItems.Count * 100, 1),
                 TotalTrackedVideos = totalTrackedVideos,
                 InboxVideos = inboxVideos,
                 NeedToWatchCount = queuedVideos,
@@ -99,6 +117,87 @@ public class TrackerService(
             .OrderBy(item => item.TargetDate)
             .ThenByDescending(item => item.Priority)
             .ToListAsync(), new List<TrainingItem>(), "training items");
+    }
+
+    public async Task<LearningHistorySnapshot> GetLearningHistoryAsync()
+    {
+        return await ExecuteReadAsync(async db =>
+        {
+            var activities = await db.LearningActivities
+                .AsNoTracking()
+                .OrderByDescending(activity => activity.OccurredUtc)
+                .ToListAsync();
+
+            var today = GetUtcToday();
+            var currentMonthStart = new DateTime(today.Year, today.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var explorationTypes = new[]
+            {
+                LearningActivityType.ResourceRead,
+                LearningActivityType.VideoWatched,
+                LearningActivityType.AnnouncementRead,
+                LearningActivityType.ToolUsed
+            };
+            var completionTypes = new[]
+            {
+                LearningActivityType.ItemCompleted,
+                LearningActivityType.CertificationEarned
+            };
+            var bestMonth = activities
+                .GroupBy(activity => new DateTime(activity.OccurredUtc.Year, activity.OccurredUtc.Month, 1))
+                .OrderByDescending(group => group.Count())
+                .ThenByDescending(group => group.Key)
+                .FirstOrDefault();
+
+            return new LearningHistorySnapshot
+            {
+                TotalActivities = activities.Count,
+                ActiveDays = activities.Select(activity => activity.OccurredUtc.Date).Distinct().Count(),
+                ActiveDaysLast30 = activities
+                    .Where(activity => activity.OccurredUtc >= today.AddDays(-29))
+                    .Select(activity => activity.OccurredUtc.Date)
+                    .Distinct()
+                    .Count(),
+                CompletedMilestones = activities.Count(activity => completionTypes.Contains(activity.Type)),
+                ThingsExplored = activities.Count(activity => explorationTypes.Contains(activity.Type)),
+                Reflections = activities.Count(activity => activity.Type == LearningActivityType.ReflectionAdded),
+                CompletedHours = activities
+                    .Where(activity => completionTypes.Contains(activity.Type))
+                    .Sum(activity => activity.EstimatedHours ?? 0),
+                CurrentMonthActivities = activities.Count(activity => activity.OccurredUtc >= currentMonthStart),
+                BestMonthLabel = bestMonth?.Key.ToString("MMMM yyyy") ?? "No activity yet",
+                BestMonthActivities = bestMonth?.Count() ?? 0,
+                FirstActivityUtc = activities.LastOrDefault()?.OccurredUtc,
+                LastActivityUtc = activities.FirstOrDefault()?.OccurredUtc,
+                Activities = activities,
+                RecentActivities = activities.Take(8).ToList()
+            };
+        }, new LearningHistorySnapshot(), "learning history");
+    }
+
+    public async Task<bool> ImportCertificationAsync(CertificationCatalogItem certification)
+    {
+        return await ExecuteWriteAsync(async db =>
+        {
+            var alreadyImported = await db.TrainingItems.AnyAsync(item =>
+                item.Type == TrainingItemType.Certification &&
+                (item.Title == certification.Title || item.Category == certification.Code));
+
+            if (alreadyImported)
+            {
+                return false;
+            }
+
+            db.TrainingItems.Add(certification.CreateTrainingItem());
+
+            var resourceExists = await db.Resources.AnyAsync(resource => resource.Url == certification.CredentialUrl);
+            if (!resourceExists)
+            {
+                db.Resources.Add(certification.CreateResource());
+            }
+
+            await db.SaveChangesAsync();
+            return true;
+        }, "import certification");
     }
 
     public async Task<List<ResourceEntry>> GetResourcesAsync()
@@ -199,6 +298,19 @@ public class TrackerService(
             state.UpdatedUtc = now;
 
             await db.SaveChangesAsync();
+            await LearningActivityRecorder.TryRecordAsync(db, new LearningActivity
+            {
+                Type = LearningActivityType.AnnouncementRead,
+                Title = announcement.Title,
+                Area = announcement.Topic,
+                Detail = announcement.Summary,
+                SourceKind = "Announcement",
+                OccurredUtc = now,
+                DeduplicationKey = LearningActivityRecorder.BuildDailyKey(
+                    "announcement",
+                    LearningActivityRecorder.BuildStableSourceKey(announcement.Url),
+                    now)
+            }, logger);
             return state;
         }, "mark announcement opened");
     }
@@ -261,20 +373,38 @@ public class TrackerService(
         {
             var now = DateTime.UtcNow;
             var normalizedTargetDate = NormalizeUtcDate(item.TargetDate);
+            LearningActivity? activity = null;
 
             if (item.Id == 0)
             {
                 item.TargetDate = normalizedTargetDate;
+                item.ProgressPercent = item.Status == TrackerStatus.Completed ? 100 : item.ProgressPercent;
                 item.CreatedUtc = now;
                 item.UpdatedUtc = now;
                 item.LastStatusChangedUtc = now;
                 item.CompletedUtc = item.Status == TrackerStatus.Completed ? now : null;
                 db.TrainingItems.Add(item);
+                await db.SaveChangesAsync();
+
+                activity = item.Status switch
+                {
+                    TrackerStatus.Completed => BuildTrainingActivity(
+                        item,
+                        item.Type == TrainingItemType.Certification
+                            ? LearningActivityType.CertificationEarned
+                            : LearningActivityType.ItemCompleted,
+                        now),
+                    TrackerStatus.InProgress => BuildTrainingActivity(item, LearningActivityType.ItemStarted, now),
+                    _ => null
+                };
             }
             else
             {
                 var existing = await db.TrainingItems.FirstAsync(existingItem => existingItem.Id == item.Id);
                 var statusChanged = existing.Status != item.Status;
+                var previousStatus = existing.Status;
+                var previousProgress = existing.ProgressPercent;
+                var normalizedProgress = item.Status == TrackerStatus.Completed ? 100 : item.ProgressPercent;
                 existing.Title = item.Title;
                 existing.Domain = item.Domain;
                 existing.Category = item.Category;
@@ -283,7 +413,7 @@ public class TrackerService(
                 existing.Status = item.Status;
                 existing.Lane = item.Lane;
                 existing.Type = item.Type;
-                existing.ProgressPercent = item.ProgressPercent;
+                existing.ProgressPercent = normalizedProgress;
                 existing.EstimatedHours = item.EstimatedHours;
                 existing.Priority = item.Priority;
                 existing.ProjectDriven = item.ProjectDriven;
@@ -304,9 +434,32 @@ public class TrackerService(
                 {
                     existing.CompletedUtc = null;
                 }
+
+                await db.SaveChangesAsync();
+
+                if (item.Status == TrackerStatus.Completed && previousStatus != TrackerStatus.Completed)
+                {
+                    activity = BuildTrainingActivity(
+                        existing,
+                        existing.Type == TrainingItemType.Certification
+                            ? LearningActivityType.CertificationEarned
+                            : LearningActivityType.ItemCompleted,
+                        now);
+                }
+                else if (item.Status == TrackerStatus.InProgress && previousStatus != TrackerStatus.InProgress)
+                {
+                    activity = BuildTrainingActivity(existing, LearningActivityType.ItemStarted, now);
+                }
+                else if (normalizedProgress > previousProgress)
+                {
+                    activity = BuildTrainingActivity(existing, LearningActivityType.ProgressUpdated, now);
+                }
             }
 
-            await db.SaveChangesAsync();
+            if (activity is not null)
+            {
+                await LearningActivityRecorder.TryRecordAsync(db, activity, logger);
+            }
         }, "save training item");
     }
 
@@ -367,8 +520,20 @@ public class TrackerService(
                 return;
             }
 
-            resource.LastOpenedUtc = DateTime.UtcNow;
+            var now = DateTime.UtcNow;
+            resource.LastOpenedUtc = now;
             await db.SaveChangesAsync();
+            await LearningActivityRecorder.TryRecordAsync(db, new LearningActivity
+            {
+                Type = LearningActivityType.ResourceRead,
+                Title = resource.Title,
+                Area = resource.Section,
+                Detail = resource.Summary,
+                SourceKind = "Resource",
+                SourceId = resource.Id,
+                OccurredUtc = now,
+                DeduplicationKey = LearningActivityRecorder.BuildDailyKey("resource", resource.Id.ToString(), now)
+            }, logger);
         }, "touch resource opened");
     }
 
@@ -472,6 +637,11 @@ public class TrackerService(
             video.LastViewedUtc = watchState == VideoWatchState.Seen ? now : video.LastViewedUtc;
             video.RemovedUtc = watchState == VideoWatchState.Removed ? now : null;
             await db.SaveChangesAsync();
+
+            if (watchState == VideoWatchState.Seen)
+            {
+                await RecordVideoActivityAsync(db, video, now);
+            }
         }, "update video watch state");
     }
 
@@ -491,6 +661,7 @@ public class TrackerService(
             video.RemovedUtc = null;
             video.UpdatedUtc = now;
             await db.SaveChangesAsync();
+            await RecordVideoActivityAsync(db, video, now);
         }, "mark video opened");
     }
 
@@ -531,6 +702,7 @@ public class TrackerService(
         await ExecuteWriteAsync(async db =>
         {
             var now = DateTime.UtcNow;
+            var contentChanged = true;
 
             if (note.Id == 0)
             {
@@ -541,6 +713,7 @@ public class TrackerService(
             else
             {
                 var existing = await db.Notes.FirstAsync(existingNote => existingNote.Id == note.Id);
+                contentChanged = !existing.Content.Equals(note.Content, StringComparison.Ordinal);
                 existing.Title = note.Title;
                 existing.Category = note.Category;
                 existing.RelatedArea = note.RelatedArea;
@@ -551,7 +724,58 @@ public class TrackerService(
             }
 
             await db.SaveChangesAsync();
+
+            if (contentChanged)
+            {
+                await LearningActivityRecorder.TryRecordAsync(db, new LearningActivity
+                {
+                    Type = LearningActivityType.ReflectionAdded,
+                    Title = note.Title,
+                    Area = string.IsNullOrWhiteSpace(note.RelatedArea) ? note.Category : note.RelatedArea,
+                    Detail = note.Content,
+                    SourceKind = "Note",
+                    SourceId = note.Id,
+                    OccurredUtc = now,
+                    DeduplicationKey = LearningActivityRecorder.BuildReflectionKey(note.Id, note.Content, now)
+                }, logger);
+            }
         }, "save note");
+    }
+
+    public async Task<bool> RecordToolOpenedAsync(LearningTool tool)
+    {
+        try
+        {
+            await using var db = await dbFactory.CreateDbContextAsync();
+            var now = DateTime.UtcNow;
+            var recorded = await LearningActivityRecorder.TryRecordAsync(db, new LearningActivity
+            {
+                Type = LearningActivityType.ToolUsed,
+                Title = tool.Title,
+                Area = tool.Category,
+                Detail = tool.BestFor,
+                SourceKind = "Tool",
+                OccurredUtc = now,
+                DeduplicationKey = LearningActivityRecorder.BuildDailyKey("tool", tool.Key, now)
+            }, logger);
+
+            if (recorded)
+            {
+                databaseAvailabilityState.MarkAvailable();
+            }
+            else
+            {
+                databaseAvailabilityState.MarkUnavailable();
+            }
+
+            return recorded;
+        }
+        catch (Exception ex) when (IsTransientReadException(ex))
+        {
+            databaseAvailabilityState.MarkUnavailable();
+            logger.LogWarning(ex, "Tool launch history could not be recorded because the database is unavailable.");
+            return false;
+        }
     }
 
     public async Task DeleteNoteAsync(int id)
@@ -567,6 +791,50 @@ public class TrackerService(
             db.Notes.Remove(note);
             await db.SaveChangesAsync();
         }, "delete note");
+    }
+
+    private static LearningActivity BuildTrainingActivity(TrainingItem item, LearningActivityType type, DateTime occurredUtc)
+    {
+        var detail = type switch
+        {
+            LearningActivityType.ItemStarted => $"Started {TrainingPlanPrioritizer.GetCommitmentLabel(item).ToLowerInvariant()} work in {item.Domain}.",
+            LearningActivityType.ProgressUpdated => $"Moved preparation forward to {item.ProgressPercent}% complete.",
+            LearningActivityType.CertificationEarned => string.IsNullOrWhiteSpace(item.Evidence)
+                ? $"Earned or completed the {item.Title} certification goal."
+                : item.Evidence,
+            _ => string.IsNullOrWhiteSpace(item.Evidence)
+                ? $"Completed {item.Type.ToString().ToLowerInvariant()} work in {item.Domain}."
+                : item.Evidence
+        };
+
+        return new LearningActivity
+        {
+            Type = type,
+            Title = item.Title,
+            Area = item.Domain,
+            Detail = detail,
+            SourceKind = "TrainingItem",
+            SourceId = item.Id,
+            ProgressPercent = item.ProgressPercent,
+            EstimatedHours = item.EstimatedHours,
+            OccurredUtc = occurredUtc,
+            DeduplicationKey = LearningActivityRecorder.BuildTrainingKey(item.Id, type, occurredUtc, item.ProgressPercent)
+        };
+    }
+
+    private async Task RecordVideoActivityAsync(TrackerDbContext db, VideoEntry video, DateTime occurredUtc)
+    {
+        await LearningActivityRecorder.TryRecordAsync(db, new LearningActivity
+        {
+            Type = LearningActivityType.VideoWatched,
+            Title = video.Title,
+            Area = video.ChannelTitle,
+            Detail = video.Summary,
+            SourceKind = "Video",
+            SourceId = video.Id,
+            OccurredUtc = occurredUtc,
+            DeduplicationKey = LearningActivityRecorder.BuildDailyKey("video", video.Id.ToString(), occurredUtc)
+        }, logger);
     }
 
     private static string NormalizeHandle(string handle)

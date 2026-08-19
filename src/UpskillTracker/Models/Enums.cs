@@ -20,7 +20,31 @@ public enum TrainingItemType
     Learning,
     Lab,
     Project,
-    Capstone
+    Capstone,
+    Certification
+}
+
+public enum PlanAttentionLevel
+{
+    Overdue,
+    DueSoon,
+    InProgress,
+    Planned,
+    NiceToHave,
+    Completed
+}
+
+public enum LearningActivityType
+{
+    ItemStarted,
+    ProgressUpdated,
+    ItemCompleted,
+    CertificationEarned,
+    ResourceRead,
+    VideoWatched,
+    AnnouncementRead,
+    ReflectionAdded,
+    ToolUsed
 }
 
 public enum ResourceKind

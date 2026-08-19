@@ -2,7 +2,7 @@
 title: Copilot project memory
 description: Persistent summary of the Azure AI Upskilling Hub application, GitHub configuration, deployment model, and maintenance instructions for future coding sessions
 author: Microsoft
-ms.date: 2026-03-12
+ms.date: 2026-07-16
 ms.topic: reference
 keywords:
   - copilot
@@ -22,7 +22,7 @@ When making meaningful changes, update this file and also update
 ## App identity
 
 * App name: `UpskillTracker`
-* User-facing title: `Azure AI Upskilling Hub`
+* User-facing title: `Hammad's Learning Portal`
 * Repository: `haslam93/PersonalizedLearningApp`
 * Primary production URL: <https://halearningapp.azurewebsites.net>
 * Custom domain: <https://skilling.hammadaslam.com>
@@ -32,12 +32,15 @@ When making meaningful changes, update this file and also update
 
 * Framework: .NET 8 Blazor Web App
 * UI library: MudBlazor
-* Data layer: EF Core with SQLite
+* Data layer: EF Core with SQLite locally and Azure Database for PostgreSQL Flexible Server in production
 * Main functional areas:
   * Dashboard
   * Live announcements
   * Plan
+  * Certifications
   * Timeline
+  * Learning History
+  * My Tools
   * Resources
   * Notes
   * Copilot
@@ -45,14 +48,43 @@ When making meaningful changes, update this file and also update
   * the Plan tab shows task-level matching links from the shared Resources library
   * the Dashboard focus list also surfaces matching links for active items
   * the Resources tab remains the single place where users add or edit links that power those suggestions
+* Learning-plan behavior:
+  * `TrainingPlanPrioritizer` ranks overdue, due-soon, active, core, and nice-to-have items consistently across the Dashboard and Plan tabs
+  * core completion excludes `LearningLane.Stretch` items unless they are project-driven
+  * Microsoft Fabric and Azure Databricks beginner tasks are inserted into existing databases by title without overwriting user changes
+  * certifications reuse the existing `TrainingItems` table with `TrainingItemType.Certification`, avoiding a production schema migration
+  * the Certifications tab tracks target date, progress, status, preparation notes, and evidence and can import curated Microsoft, GitHub, and Databricks goals
+  * AI-103 is the seeded near-term certification goal with an August 31, 2026 target
+* Learning-history behavior:
+  * `LearningActivities` is an append-only event table for starts, progress, completions, certifications, resource and announcement reads, watched videos, reflections, and personal-tool launches
+  * existing production data is backfilled once behind metadata key `learning-history-backfill-v1`
+  * detailed activity from the configured legacy SQLite database uses the separate import marker `legacy-sqlite-learning-history-import-v1`
+  * live activity writes use provider-specific conflict-safe inserts so duplicate history tracking never rolls back the primary user action
+  * repeated resource, video, announcement, and tool activity is deduplicated per source and UTC day
+  * history rows keep denormalized titles and details and do not use foreign keys, so source deletion does not erase the learning record
+  * browser-local history dates and times are produced through `BrowserTimeZoneService`; do not group user-facing calendar days using the Azure host time zone
+  * the History heatmap uses a roving keyboard tab stop with arrow-key navigation, scrolls to recent days on first render, and does not frame inactive days as failures
+* Navigation behavior:
+  * overview, reminder, dashboard, and planner summary controls navigate to the relevant Plan filter
+  * cross-tab Plan requests include a monotonically increasing request id so later Home renders do not overwrite a user's manual Plan filters
+  * the forward Timeline excludes completed work; historical accomplishments belong in Learning History
+* Personal tools:
+  * the My Tools tab mirrors the four current entries on `https://hammadaslam.com/tools-and-demos/`
+  * tool launches are recorded in Learning History
 * UI shell behavior:
   * the main app bar uses a minimal title and no fixed date badge
+  * `components-reconnect-modal` must remain available so an open tab recovers cleanly when an Azure deployment replaces its Blazor Server circuit
   * the Home page opens with a tracker-driven workspace overview instead of hardcoded focus-area copy
   * the Dashboard summary card adapts to live completion, in-progress, and overdue counts
+  * the Dashboard emphasizes schedule pressure, core-plan completion, and a ranked "Do next" list
+  * overview metric buttons keep their label, value, and action as separate stacked elements; do not place heading components inline inside native buttons
+  * overdue optional work does not trigger the main reminder warning
+  * the Dashboard announcement feed initially renders six items and uses show-more/show-fewer controls to avoid excessively long mobile pages
   * data tables inside surface cards keep `overflow-x: auto` so wide rows stay horizontally scrollable and the trailing action column (for example the Plan tab Edit button) stays reachable
   * the Plan tab uses a single-column layout: a full-width training items table on top and the "Add/Edit training item" form below it, and the per-row Edit button scrolls to that form via the `scrollToElement` helper in `wwwroot/app.js`
 * Live feed behavior:
   * the Dashboard shows a server-side cached feed of official Microsoft announcements
+  * each filtered feed initially displays six announcements and can be expanded in six-item increments
   * users can open an announcement directly or save it into the shared Resources library
 * Main services:
   * `TrackerService`
@@ -60,8 +92,9 @@ When making meaningful changes, update this file and also update
   * `CopilotAuthService`
   * `CopilotChatService`
 * Database storage:
-  * local development uses the project data path
-  * Azure uses `Data Source=/home/data/upskilltracker.db`
+  * local development uses SQLite in the project data path
+  * Azure uses a privately networked PostgreSQL Flexible Server
+  * the web app authenticates to PostgreSQL with its managed identity
 
 ## Important source files
 
@@ -69,10 +102,19 @@ When making meaningful changes, update this file and also update
 * Main layout: [src/UpskillTracker/Components/Layout/MainLayout.razor](../src/UpskillTracker/Components/Layout/MainLayout.razor)
 * PIN gate: [src/UpskillTracker/Components/Features/PinGate.razor](../src/UpskillTracker/Components/Features/PinGate.razor)
 * Dashboard: [src/UpskillTracker/Components/Features/DashboardView.razor](../src/UpskillTracker/Components/Features/DashboardView.razor)
+* Training planner: [src/UpskillTracker/Components/Features/TrainingPlannerView.razor](../src/UpskillTracker/Components/Features/TrainingPlannerView.razor)
+* Certifications: [src/UpskillTracker/Components/Features/CertificationsView.razor](../src/UpskillTracker/Components/Features/CertificationsView.razor)
+* Learning history: [src/UpskillTracker/Components/Features/LearningHistoryView.razor](../src/UpskillTracker/Components/Features/LearningHistoryView.razor)
+* Learning heatmap: [src/UpskillTracker/Components/Features/LearningHeatmap.razor](../src/UpskillTracker/Components/Features/LearningHeatmap.razor)
+* Personal tools: [src/UpskillTracker/Components/Features/LearningToolsView.razor](../src/UpskillTracker/Components/Features/LearningToolsView.razor)
 * Home page: [src/UpskillTracker/Components/Pages/Home.razor](../src/UpskillTracker/Components/Pages/Home.razor)
 * Copilot chat UI: [src/UpskillTracker/Components/Features/CopilotChatView.razor](../src/UpskillTracker/Components/Features/CopilotChatView.razor)
 * Styles: [src/UpskillTracker/wwwroot/app.css](../src/UpskillTracker/wwwroot/app.css)
 * Announcement feed service: [src/UpskillTracker/Services/AnnouncementFeedService.cs](../src/UpskillTracker/Services/AnnouncementFeedService.cs)
+* Certification catalog: [src/UpskillTracker/Services/CertificationCatalog.cs](../src/UpskillTracker/Services/CertificationCatalog.cs)
+* Plan prioritization: [src/UpskillTracker/Services/TrainingPlanPrioritizer.cs](../src/UpskillTracker/Services/TrainingPlanPrioritizer.cs)
+* Activity recorder: [src/UpskillTracker/Services/LearningActivityRecorder.cs](../src/UpskillTracker/Services/LearningActivityRecorder.cs)
+* Personal tool catalog: [src/UpskillTracker/Services/LearningToolCatalog.cs](../src/UpskillTracker/Services/LearningToolCatalog.cs)
 * Copilot chat service: [src/UpskillTracker/Services/CopilotChatService.cs](../src/UpskillTracker/Services/CopilotChatService.cs)
 * Infra entry point: [infra/main.bicep](../infra/main.bicep)
 * RG-scoped infra: [infra/resources.bicep](../infra/resources.bicep)
@@ -88,7 +130,7 @@ When making meaningful changes, update this file and also update
 * Resource group: `hammadlearningapp`
 * Web app: `halearningapp`
 * App Service plan: `plan-personal-learning-tn33sb`
-* App Service plan SKU target: `B2`
+* App Service plan SKU target: `P0v3`
 * App Insights: `appi-personal-learning-tn33sb`
 * Log Analytics workspace: `log-personal-learning-tn33sb`
 * Hosting model: Linux App Service
@@ -114,6 +156,8 @@ Record secret names and purpose only. Do not store secret values in this file.
 * `APP_ACCESS_PIN` - access PIN injected into Azure app setting `AccessPin`
 * `APP_GH_OAUTH_CLIENT_ID` - GitHub OAuth app client ID injected into Azure app setting `GitHubOAuth__ClientId`
 * `APP_GH_OAUTH_CLIENT_SECRET` - GitHub OAuth app client secret injected into Azure app setting `GitHubOAuth__ClientSecret`
+* `APP_POSTGRES_ADMIN_PASSWORD` - bootstrap PostgreSQL administrator password used during infrastructure deployment
+* `APP_YOUTUBE_API_KEY` - YouTube Data API key injected into Azure app setting `YouTube__ApiKey`
 * `AZURE_CLIENT_ID` - OIDC app/client ID used by GitHub Actions for Azure login
 * `AZURE_SUBSCRIPTION_ID` - Azure subscription used by deployment workflow
 * `AZURE_TENANT_ID` - Azure tenant used by deployment workflow
@@ -153,16 +197,18 @@ File: [workflows/cd.yml](workflows/cd.yml)
 * Deploys app package with `az webapp deploy`
 * Passes `APP_ACCESS_PIN` into Bicep as secure parameter `accessPin`
 * Passes `APP_GH_OAUTH_CLIENT_ID` and `APP_GH_OAUTH_CLIENT_SECRET` into Bicep for the in-app Copilot sign-in flow
-* Targets App Service plan SKU `B2`
+* Targets App Service plan SKU `P0v3`
+* Provisions PostgreSQL and configures the web app identity as its Microsoft Entra administrator
 
 ### Cost control tag workflow
 
 File: [workflows/cost-control-tag.yml](workflows/cost-control-tag.yml)
 
-* Runs on a weekly schedule (Mondays at 06:00 UTC) and can also run manually with `workflow_dispatch`
+* Runs daily at 06:00 UTC and can also run manually with `workflow_dispatch`
 * Uses GitHub OIDC with `azure/login@v2`
-* Removes and re-adds the `CostControl=Ignore` tag on the resource group and every resource inside `hammadlearningapp`
-* Re-applying the tag updates its timestamp, which resets the company 2-week cost-control exemption window so the PostgreSQL server is not shut down nightly
+* Finds the single PostgreSQL Flexible Server in `hammadlearningapp` and checks its runtime state
+* Exits without changing anything when PostgreSQL is already `Ready`
+* Starts PostgreSQL when it is `Stopped`, waits until it is `Ready`, and then applies `CostControl=Ignore` to that server
 * The `CostControl=Ignore` tag is also defined in [../infra/main.bicep](../infra/main.bicep) so it is applied on every infrastructure deployment
 
 ## Known platform notes

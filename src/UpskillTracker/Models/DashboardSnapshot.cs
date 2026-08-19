@@ -12,9 +12,21 @@ public class DashboardSnapshot
 
     public int DueThisMonth { get; init; }
 
+    public int DueNext14Days { get; init; }
+
+    public int AtRiskItems { get; init; }
+
+    public int CoreRemainingItems { get; init; }
+
+    public int NiceToHaveItems { get; init; }
+
+    public int CertificationGoals { get; init; }
+
     public int RapidRampItems { get; init; }
 
     public decimal CompletionRate { get; init; }
+
+    public decimal CommitmentCompletionRate { get; init; }
 
     public int TotalTrackedVideos { get; init; }
 

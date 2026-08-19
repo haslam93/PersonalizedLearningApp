@@ -1,17 +1,19 @@
 ---
 title: Hammad's Learning Portal
-description: Personal learning tracker with dual announcement streams, GitHub Copilot chat, notes, resources, timelines, and Azure deployment automation
+description: Personal learning and certification tracker with actionable planning, learning history, personal tools, GitHub Copilot chat, and Azure deployment automation
 author: Microsoft
-ms.date: 2026-03-17
+ms.date: 2026-07-16
 ms.topic: overview
 keywords:
-   - learning portal
+  - learning portal
   - training tracker
   - blazor
   - app service
   - github actions
 estimated_reading_time: 6
 ---
+
+# Hammad's Learning Portal
 
 ## Overview
 
@@ -26,13 +28,14 @@ The app is organized as a lightweight interactive Blazor experience hosted on
 Azure App Service.
 
 * The browser loads a Blazor web app with a lightweight PIN gate in the main layout.
-* Feature views for Dashboard, Plan, Timeline, Resources, Notes, and Copilot run
+* Feature views for Dashboard, Plan, Certifications, Timeline, Learning History, My Tools, Resources, Notes, and Copilot run
    through shared application services.
 * `AnnouncementFeedService` loads and caches both official Microsoft updates and
   curated thought-leader or industry posts for the dashboard feed.
 * `CopilotAuthService` and `CopilotChatService` manage in-app GitHub OAuth and
   grounded Copilot chat sessions.
-* EF Core writes training data, resources, and notes into a SQLite database.
+* EF Core writes training data, learning activity, resources, and notes to SQLite locally and Azure
+  Database for PostgreSQL Flexible Server in production.
 * GitHub Actions builds the app and deploys `main` to the Azure web app.
 
 For the Mermaid version of the architecture, see [arch.md](arch.md).
@@ -43,8 +46,11 @@ For the Mermaid version of the architecture, see [arch.md](arch.md).
 
 It is designed to help you:
 
-* Track plan items, notes, evidence, and timelines
+* Track plan items, certification goals, notes, evidence, and timelines
 * Add new work as customer projects shift priorities
+* Separate overdue and core commitments from nice-to-have learning so the next action is clear
+* Revisit completed work, useful reads, watched videos, reflections, and tool sessions in a month-by-month learning history
+* Launch the Azure, Foundry, and GitHub hubs maintained at [hammadaslam.com/tools-and-demos](https://hammadaslam.com/tools-and-demos/)
 * Review a live dashboard feed that switches between Microsoft updates and curated industry posts that matter to your plan
 * Keep a reusable resource library for Microsoft Foundry, GitHub Copilot,
   App Service, Container Apps, and related topics
@@ -54,17 +60,24 @@ It is designed to help you:
 
 ## Main app features
 
-* Dashboard with completion and focus metrics
+* Dashboard with schedule-risk, core-completion, and ranked "Do next" metrics
+* Clickable dashboard, reminder, and overview metrics that open the relevant Plan filter instead of acting as static status labels
+* Compact 12-week learning contribution calendar and recent-achievement preview on the Dashboard
 * Dashboard cards with readable semantic color accents for progress, videos, resources, notes, and announcements
 * Dynamic home and dashboard summary cards that react to live tracker data instead of fixed promotional copy
-* Dual announcement streams with Microsoft updates and thought-leader or industry posts, plus actions to open and save useful updates
-* Planner tab for adding and editing training items, with direct task links suggested from the shared resource library
+* Dual announcement streams with Microsoft updates and thought-leader or industry posts, paged for faster scanning with actions to open and save useful updates
+* Planner tab with focus filters for at-risk, core, active, optional, and certification work, plus direct task links suggested from the shared resource library
+* Certifications tab for tracking target dates, progress, status, preparation notes, and evidence, with a direct Mark complete action
+* Curated certification import catalog for Microsoft, GitHub, and Databricks credentials
 * Timeline tab grouped by month
+* Learning History tab with an accessible one-year activity calendar, active-day and milestone metrics, day details, filters, and a month/year narrative
+* My Tools tab linking to the Azure Integration Hub, Microsoft Foundry Updates Portal, GitHub Enterprise Admin Hub, and GitHub Agentic Workflows Lab
 * Resources tab with editable sections and links that power task-level suggestions across the app
 * Notes tab for reflections, architecture notes, and lab takeaways
 * Copilot tab with GitHub OAuth sign-in, runtime model discovery, and tracker-grounded chat tools
 * PIN login backed by a secure Azure app setting and GitHub Actions secret
-* Seeded content for the March to September 2026 plan, including Azure SRE Agent
+* Seeded beginner tracks for Microsoft Fabric and Azure Databricks, including a Fabric lakehouse and Databricks Delta Lake project
+* Seeded AI-103 certification goal targeting August 31, 2026, with official credential and study-guide links
 
 ## UI notes
 
@@ -72,11 +85,30 @@ The current shell avoids fixed labels where tracker data is already available.
 
 * The top app bar uses the product name Hammad's Learning Portal and no hardcoded date badge
 * The home view opens with a tracker-driven overview card instead of a commentary-style hero title
-* The dashboard summary card adapts to overdue, in-progress, and completed work with short, direct headings
+* The dashboard summary card adapts to overdue, due-soon, in-progress, and completed core work with short, direct headings
+* Ranked next actions put overdue and near-term core commitments ahead of optional backlog
+* Core completion excludes nice-to-have work so optional topics do not hide whether committed work is on schedule
+* At-risk, due-soon, core, optional, and individual-item actions navigate directly to the matching Plan view
+* The forward Timeline excludes completed work, highlights recovery items, and shows planned hours by month
+* The learning heatmap uses labeled, keyboard-navigable day cells, opens on recent activity on narrow screens, and treats breaks as neutral rather than punishing a lost streak
+* Overview metrics use stacked labels, values, and actions so completion and urgency counts stay readable at desktop and mobile widths
+* If an Azure deployment replaces an open Blazor Server circuit, the shell shows a reconnect overlay and reloads automatically when the old circuit is rejected
 * Dashboard cards use soft semantic color surfaces so sections are easier to scan without sacrificing contrast
 * The dashboard includes a dedicated video watch tracker with queue, seen count, and completion progress
 * The announcement section uses a stream switcher so Microsoft updates and curated industry posts stay separate
-* Reminder copy stays short and action-oriented so it remains useful as the plan changes
+* The announcement feed starts with six items and offers show-more and show-fewer controls instead of creating an excessively long mobile page
+* Reminder warnings focus on overdue core commitments and report optional backlog separately
+
+## Learning history data
+
+The app records durable `LearningActivity` events when you start or advance a plan item, complete work or a certification, open a saved resource or announcement, watch a video, save a reflection, or launch one of your personal tools.
+
+* Existing completion, in-progress, resource, video, announcement, and non-template reflection timestamps are backfilled once when the activity table is introduced.
+* Detailed activity from a legacy SQLite database is imported conflict-safely when production uses the configured SQLite-to-PostgreSQL transition path.
+* Repeated reads and tool launches are deduplicated per source and day so the calendar reflects meaningful activity rather than click volume.
+* Activity titles and details are retained even if the original plan item or resource is later deleted.
+* Calendar groupings and displayed activity times use the browser's time zone so late-night learning appears on the intended local day.
+* Startup creates the activity table and indexes explicitly for existing SQLite and PostgreSQL databases because this project does not use EF migrations.
 
 ## Local development
 
@@ -95,6 +127,7 @@ The current shell avoids fixed labels where tracker data is already available.
 3. Open the local URL shown in the terminal.
 
 The app stores its SQLite database in the local `Data` folder by default.
+Production uses Azure Database for PostgreSQL with the web app's managed identity.
 
 Local development uses the configured `AccessPin` value if present. In Azure,
 the PIN is stored as an app setting and supplied through deployment secrets, not
@@ -241,6 +274,9 @@ This deployment provisions:
 
 * Azure App Service plan
 * Linux App Service web app
+* Azure Database for PostgreSQL Flexible Server and the `upskilltracker` database
+* Virtual networks, private DNS, and peering for private PostgreSQL connectivity
+* Azure Storage for shared ASP.NET Core data-protection keys
 * Log Analytics workspace
 * Application Insights
 
@@ -273,8 +309,10 @@ It also configures these app settings:
 
 * `APPLICATIONINSIGHTS_CONNECTION_STRING`
 * `ASPNETCORE_ENVIRONMENT=Production`
-* `Storage__ConnectionString=Data Source=/home/data/upskilltracker.db`
-* `WEBSITES_ENABLE_APP_SERVICE_STORAGE=true`
+* `Storage__Provider=Postgres`
+* `Storage__ConnectionString` with the private PostgreSQL host and database
+* `Storage__UseManagedIdentity=true`
+* `Storage__KeyBlobUri` for shared data-protection keys
 
 ### Direct deployment script
 
@@ -303,6 +341,8 @@ After the first Azure deployment:
    * `APP_ACCESS_PIN`
    * `APP_GH_OAUTH_CLIENT_ID`
    * `APP_GH_OAUTH_CLIENT_SECRET`
+   * `APP_POSTGRES_ADMIN_PASSWORD`
+   * `APP_YOUTUBE_API_KEY`
 
 4. Add these repository variables:
 
@@ -319,11 +359,13 @@ The CD workflow also:
 * publishes the app for `linux-x64` so the bundled Copilot CLI matches App Service
 * deploys infrastructure through Bicep on each run so secure app settings stay in sync
 * applies the secure `AccessPin`, GitHub OAuth, and Copilot model settings through Azure deployment parameters
-* targets App Service plan SKU `B2` by default
+* targets App Service plan SKU `P0v3` by default for private networking
+* provisions PostgreSQL and configures the web app identity as its Microsoft Entra administrator
 
 ## Repository automation
 
 * CI workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml)
 * CD workflow: [.github/workflows/cd.yml](.github/workflows/cd.yml)
+* PostgreSQL recovery workflow: [.github/workflows/cost-control-tag.yml](.github/workflows/cost-control-tag.yml)
 * Azure deployment script: [scripts/deploy-azure.ps1](scripts/deploy-azure.ps1)
 * Publish profile helper: [scripts/get-publish-profile.ps1](scripts/get-publish-profile.ps1)
