@@ -15,11 +15,11 @@ public static class CertificationCatalog
             Description = "Build Azure AI applications and agentic solutions with Microsoft Foundry, generative AI, vision, language, and information extraction services.",
             CredentialUrl = "https://learn.microsoft.com/en-us/credentials/certifications/azure-ai-apps-and-agents-developer-associate/",
             StudyGuideUrl = "https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/ai-103",
-            RecommendedTargetDate = new DateTime(2026, 8, 31),
+            RecommendedTargetDate = new DateTime(2026, 10, 16),
             EstimatedHours = 30,
             Priority = 5,
             IsRecommended = true,
-            PreparationNotes = "Primary near-term certification. Complete the AI-103 study guide, training course, hands-on Foundry practice, and exam readiness review before scheduling."
+            PreparationNotes = "Resume after the urgent Fabric sprint. Complete the AI-103 study guide, hands-on Foundry practice, and exam readiness review before scheduling."
         },
         new()
         {
@@ -45,10 +45,11 @@ public static class CertificationCatalog
             Description = "Prepare, model, analyze, and secure enterprise data with Microsoft Fabric lakehouses, warehouses, semantic models, SQL, DAX, and Power BI.",
             CredentialUrl = "https://learn.microsoft.com/en-us/credentials/certifications/fabric-analytics-engineer-associate/",
             StudyGuideUrl = "https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/dp-600",
-            RecommendedTargetDate = new DateTime(2026, 11, 30),
+            RecommendedTargetDate = new DateTime(2026, 12, 18),
             EstimatedHours = 35,
-            Priority = 3,
-            PreparationNotes = "Import after completing the Fabric beginner path and lakehouse project."
+            Priority = 4,
+            IsRecommended = true,
+            PreparationNotes = "Use the pre-India Fabric capstone and October gap assessment as the practical foundation, then close objective-level gaps from the current study guide."
         },
         new()
         {
@@ -103,6 +104,20 @@ public static class CertificationCatalog
             EstimatedHours = 10,
             Priority = 3,
             PreparationNotes = "A short confidence-building certification that can fit between the two Azure AI credentials."
+        },
+        new()
+        {
+            Key = "github-agentic-ai-developer",
+            Provider = "GitHub",
+            Code = "GH-600",
+            Title = "GitHub Certified: Agentic AI Developer",
+            Description = "Validate the ability to build, deploy, operate, integrate, and govern agentic AI systems with GitHub as the software-development control plane.",
+            CredentialUrl = "https://learn.microsoft.com/en-us/credentials/certifications/agentic-ai-developer/",
+            StudyGuideUrl = "https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/gh-600",
+            RecommendedTargetDate = new DateTime(2026, 8, 19),
+            EstimatedHours = 24,
+            Priority = 5,
+            PreparationNotes = "Completed. Keep the study guide available as a reference for customer-facing agentic development and governance conversations."
         },
         new()
         {

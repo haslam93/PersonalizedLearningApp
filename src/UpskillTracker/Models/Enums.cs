@@ -21,7 +21,8 @@ public enum TrainingItemType
     Lab,
     Project,
     Capstone,
-    Certification
+    Certification,
+    Event
 }
 
 public enum PlanAttentionLevel

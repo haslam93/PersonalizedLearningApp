@@ -24,6 +24,8 @@ public class DashboardSnapshot
 
     public int RapidRampItems { get; init; }
 
+    public int EventCount { get; init; }
+
     public decimal CompletionRate { get; init; }
 
     public decimal CommitmentCompletionRate { get; init; }

@@ -67,20 +67,102 @@ public static partial class TaskResourceMatcher
             "Azure API Management documentation",
             "Service Bus documentation"
         ],
-        ["Learn Microsoft Fabric fundamentals"] =
+        ["Fabric sprint 1: Map workloads and start the trial"] =
         [
+            "Start a Microsoft Fabric trial",
             "Introduction to Microsoft Fabric",
-            "Microsoft Fabric documentation"
+            "Microsoft Fabric training hub"
         ],
-        ["Complete the Microsoft Fabric beginner path"] =
+        ["Fabric sprint 2: Ingest NYC Taxi data with Data Factory"] =
+        [
+            "NYC Taxi Azure Open Dataset",
+            "NYC TLC trip record data",
+            "Fabric Data Factory documentation"
+        ],
+        ["Fabric sprint 3: Build Bronze and Silver Delta tables in OneLake"] =
+        [
+            "OneLake overview",
+            "Fabric medallion architecture module",
+            "Microsoft Fabric lakehouse tutorial"
+        ],
+        ["Fabric sprint 4: Transform data with PySpark and quality checks"] =
+        [
+            "Transform data with Fabric notebooks",
+            "Fabric medallion architecture module",
+            "NYC Taxi Azure Open Dataset"
+        ],
+        ["Fabric sprint 5: Build a Gold star schema and Fabric warehouse"] =
+        [
+            "Fabric warehouse learning path",
+            "Microsoft Fabric end-to-end tutorials",
+            "NYC Taxi Azure Open Dataset"
+        ],
+        ["Fabric sprint 6: Build a Direct Lake semantic model and Power BI report"] =
         [
             "Get started with Microsoft Fabric learning path",
+            "Microsoft Fabric end-to-end tutorials",
+            "DP-600 study guide"
+        ],
+        ["Fabric sprint 7: Replay taxi events with Eventstream and KQL"] =
+        [
+            "Fabric Real-Time Intelligence module",
+            "Microsoft Fabric end-to-end tutorials",
+            "NYC Taxi Azure Open Dataset"
+        ],
+        ["Fabric sprint 8: Apply governance, lineage, and row-level security"] =
+        [
+            "Govern analytics data in Fabric",
+            "DP-600 study guide",
             "Microsoft Fabric documentation"
         ],
-        ["Build a Microsoft Fabric lakehouse end to end"] =
+        ["Fabric sprint 9: Add monitoring, Git, and deployment pipelines"] =
         [
-            "Microsoft Fabric lakehouse tutorial",
-            "Microsoft Fabric end-to-end tutorials"
+            "Fabric Git integration",
+            "Fabric deployment pipelines",
+            "Fabric Data Factory documentation"
+        ],
+        ["Fabric sprint 10: Deliver the OpenText-ready NYC Taxi capstone"] =
+        [
+            "NYC Taxi Azure Open Dataset",
+            "Microsoft Fabric end-to-end tutorials",
+            "DP-600 study guide"
+        ],
+        ["Fabric follow-up: Run the DP-600 gap assessment"] =
+        [
+            "DP-600 certification page",
+            "DP-600 study guide",
+            "Microsoft Fabric training hub"
+        ],
+        ["Fabric Analytics Engineer Associate"] =
+        [
+            "DP-600 certification page",
+            "DP-600 study guide",
+            "Microsoft Fabric training hub"
+        ],
+        ["GitHub Certified: Agentic AI Developer"] =
+        [
+            "GH-600 certification page",
+            "GH-600 study guide"
+        ],
+        ["Catch up on Microsoft Build 2026 announcements"] =
+        [
+            "Microsoft Build 2026"
+        ],
+        ["Track GitHub Universe 2026"] =
+        [
+            "GitHub Universe 2026"
+        ],
+        ["Review GitHub Universe 2026 announcements"] =
+        [
+            "GitHub Universe 2026"
+        ],
+        ["Track Microsoft Ignite 2026"] =
+        [
+            "Microsoft Ignite 2026"
+        ],
+        ["Review Microsoft Ignite 2026 announcements"] =
+        [
+            "Microsoft Ignite 2026"
         ],
         ["Explore Azure Databricks fundamentals"] =
         [

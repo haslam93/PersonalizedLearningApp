@@ -26,6 +26,27 @@
     }
     else
     {
+        @if (EventItems.Count > 0)
+        {
+            <MudPaper Class="surface-card content-card timeline-event-runway-card mb-4" Elevation="0">
+                <MudStack Row="true" Wrap="Wrap.Wrap" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                    <div>
+                        <MudText Typo="Typo.h6">Announcement runway</MudText>
+                        <MudText Typo="Typo.body2" Class="mud-secondary-text">Build, GitHub Universe, and Ignite have explicit review windows so product news turns into a small set of useful labs.</MudText>
+                    </div>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Event" OnClick="@(() => OpenFilterAsync("Events"))">Open event plan</MudButton>
+                </MudStack>
+                <MudGrid Spacing="2">
+                    @foreach (var eventItem in EventItems)
+                    {
+                        <MudItem xs="12" md="4">
+                            @TimelineEvent(eventItem)
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudPaper>
+        }
+
         @if (OverdueItems.Count > 0)
         {
             <MudPaper Class="surface-card content-card timeline-recovery-card mb-4" Elevation="0">
@@ -105,7 +126,8 @@
         .ToList();
 
     private IReadOnlyList<UpskillTracker.Models.TrainingItem> OverdueItems => ActiveItems
-        .Where(item => TrainingPlanPrioritizer.GetAttentionLevel(item, today) == UpskillTracker.Models.PlanAttentionLevel.Overdue)
+        .Where(item => item.Type != UpskillTracker.Models.TrainingItemType.Event &&
+            TrainingPlanPrioritizer.GetAttentionLevel(item, today) == UpskillTracker.Models.PlanAttentionLevel.Overdue)
         .OrderBy(item => item.TargetDate)
         .ToList();
 
@@ -115,8 +137,14 @@
         .OrderBy(item => item.TargetDate)
         .ToList();
 
+    private IReadOnlyList<UpskillTracker.Models.TrainingItem> EventItems => ActiveItems
+        .Where(item => item.Type == UpskillTracker.Models.TrainingItemType.Event)
+        .OrderBy(item => item.TargetDate)
+        .ToList();
+
     private IReadOnlyList<UpskillTracker.Models.TrainingItem> UpcomingItems => ActiveItems
-        .Where(item => item.TargetDate.Date >= today)
+        .Where(item => item.Type != UpskillTracker.Models.TrainingItemType.Event &&
+            item.TargetDate.Date >= today)
         .OrderBy(item => item.TargetDate)
         .ToList();
 
@@ -139,6 +167,20 @@
                 <MudProgressLinear Class="mt-3" Value="@item.ProgressPercent" Rounded="true" Color="@GetAttentionColor(item)" />
             </div>
             <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.OpenInNew" OnClick="@(() => OpenItemAsync(item.Id))">Open in plan</MudButton>
+        </MudStack>
+    </MudPaper>;
+
+    private RenderFragment TimelineEvent(UpskillTracker.Models.TrainingItem item) => @<MudPaper Class="timeline-event-card h-100" Elevation="0">
+        <MudStack Spacing="2" Class="h-100">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start" Spacing="1">
+                <div>
+                    <MudText Typo="Typo.overline">@item.TargetDate.ToString("MMM d, yyyy")</MudText>
+                    <MudText Typo="Typo.subtitle1">@item.Title</MudText>
+                </div>
+                <MudIcon Icon="@Icons.Material.Filled.EventAvailable" Color="Color.Info" />
+            </MudStack>
+            <MudText Typo="Typo.body2" Class="mud-secondary-text">@item.Description</MudText>
+            <MudButton Class="mt-auto" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.OpenInNew" OnClick="@(() => OpenItemAsync(item.Id))">Open event</MudButton>
         </MudStack>
     </MudPaper>;
 

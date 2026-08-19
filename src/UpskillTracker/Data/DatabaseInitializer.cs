@@ -15,6 +15,7 @@ public static class DatabaseInitializer
     private const string LegacySqliteImportMetadataKey = "legacy-sqlite-import-v1";
     private const string LegacySqliteLearningHistoryImportMetadataKey = "legacy-sqlite-learning-history-import-v1";
     private const string PlanExpansionMetadataKey = "fabric-databricks-certifications-plan-v1";
+    private const string LearningPlanRefreshMetadataKey = "fabric-opentext-events-priorities-v2";
     private const string LearningHistoryBackfillMetadataKey = "learning-history-backfill-v1";
     private static readonly HashSet<string> SeedNoteTitles = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -54,6 +55,7 @@ public static class DatabaseInitializer
 
             await EnsurePlanExpansionTrainingItemsAsync(db);
             await ImportLearningRadarItemsAsync(db, environment, logger);
+            await EnsureLearningPlanRefreshAsync(db);
 
             await EnsureSeedResourcesAsync(db);
             await EnsureSeedVideoChannelsAsync(db);
@@ -138,6 +140,470 @@ public static class DatabaseInitializer
             Value = $"Applied:{DateTime.UtcNow:O}",
             UpdatedUtc = DateTime.UtcNow
         });
+    }
+
+    private static async Task EnsureLearningPlanRefreshAsync(TrackerDbContext db)
+    {
+        var refreshAlreadyApplied = await db.AppMetadataEntries
+            .AsNoTracking()
+            .AnyAsync(entry => entry.Key == LearningPlanRefreshMetadataKey);
+
+        if (refreshAlreadyApplied ||
+            db.AppMetadataEntries.Local.Any(entry => entry.Key == LearningPlanRefreshMetadataKey))
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        await db.TrainingItems.LoadAsync();
+        var items = db.TrainingItems.Local.ToList();
+
+        foreach (var refresh in GetFabricAndEventPlanRefreshes())
+        {
+            var legacyTitles = refresh.MatchTitles.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var existing = items.FirstOrDefault(item =>
+                item.Title.Equals(refresh.Item.Title, StringComparison.OrdinalIgnoreCase) ||
+                (item.Status != TrackerStatus.Completed && legacyTitles.Contains(item.Title)) ||
+                (refresh.Item.Type == TrainingItemType.Certification &&
+                    item.Type == TrainingItemType.Certification &&
+                    !string.IsNullOrWhiteSpace(refresh.Item.Category) &&
+                    item.Category.Equals(refresh.Item.Category, StringComparison.OrdinalIgnoreCase)));
+
+            if (existing is null)
+            {
+                refresh.Item.CreatedUtc = now;
+                refresh.Item.UpdatedUtc = now;
+                db.TrainingItems.Add(refresh.Item);
+                items.Add(refresh.Item);
+                continue;
+            }
+
+            ApplyPlanItemRefresh(existing, refresh.Item, now);
+        }
+
+        ApplyExistingPlanSchedule(items, now);
+        RescheduleLearningRadar(items, now);
+        EnsureGh600Completed(db, items, now);
+
+        db.AppMetadataEntries.Add(new AppMetadataEntry
+        {
+            Key = LearningPlanRefreshMetadataKey,
+            Value = $"Applied:{now:O}",
+            UpdatedUtc = now
+        });
+    }
+
+    private static void ApplyPlanItemRefresh(TrainingItem existing, TrainingItem desired, DateTime now)
+    {
+        existing.Title = desired.Title;
+        existing.Domain = desired.Domain;
+        existing.Category = desired.Category;
+        existing.Description = desired.Description;
+        existing.TargetDate = desired.TargetDate;
+        existing.Lane = desired.Lane;
+        existing.Type = desired.Type;
+        existing.EstimatedHours = desired.EstimatedHours;
+        existing.Priority = desired.Priority;
+        existing.ProjectDriven = desired.ProjectDriven;
+        existing.Notes = AppendPlanText(existing.Notes, desired.Notes, 4000);
+        existing.UpdatedUtc = now;
+    }
+
+    private static void ApplyExistingPlanSchedule(IEnumerable<TrainingItem> items, DateTime now)
+    {
+        var schedule = new Dictionary<string, PlanScheduleUpdate>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Azure AI Apps and Agents Developer Associate"] = new(UtcDate(2026, 10, 16), LearningLane.Core, 4, true),
+            ["Continue C# beginner series through arrays, lists, and beyond"] = new(UtcDate(2027, 1, 22), LearningLane.Stretch, 2, false),
+            ["Build Python muscle memory for AI app workflows"] = new(UtcDate(2026, 9, 18), LearningLane.Core, 4, true),
+            ["Rapid-ramp Microsoft Foundry and the 2.x SDK"] = new(UtcDate(2026, 9, 25), LearningLane.Core, 4, true),
+            ["Ground a RAG app with Azure AI Search"] = new(UtcDate(2026, 10, 9), LearningLane.Core, 4, false),
+            ["Adopt Microsoft Agent Framework patterns"] = new(UtcDate(2026, 10, 23), LearningLane.Core, 4, false),
+            ["Deep dive APIM, App Service, and Container Apps for AI apps"] = new(UtcDate(2026, 11, 6), LearningLane.Core, 4, false),
+            ["Cover Service Bus, Logic Apps, and Redis integration patterns"] = new(UtcDate(2026, 11, 27), LearningLane.Stretch, 3, false),
+            ["Run the Azure SRE Agent lab end to end"] = new(UtcDate(2026, 12, 11), LearningLane.Stretch, 3, false),
+            ["Productionize an AI app architecture"] = new(UtcDate(2027, 1, 15), LearningLane.Core, 4, false),
+            ["Capstone 1: Foundry + Azure AI Search + App Service"] = new(UtcDate(2027, 1, 29), LearningLane.Core, 5, true),
+            ["Capstone 2: Agentic integration app with APIM and Service Bus"] = new(UtcDate(2027, 2, 26), LearningLane.Stretch, 3, false),
+            ["Explore Azure Databricks fundamentals"] = new(UtcDate(2027, 2, 5), LearningLane.Stretch, 2, false),
+            ["Run a first Azure Databricks notebook"] = new(UtcDate(2027, 2, 19), LearningLane.Stretch, 2, false),
+            ["Complete the Azure Databricks data engineering path"] = new(UtcDate(2027, 3, 19), LearningLane.Stretch, 2, false),
+            ["Build a Delta Lake ETL pipeline in Azure Databricks"] = new(UtcDate(2027, 4, 16), LearningLane.Stretch, 2, false)
+        };
+
+        foreach (var item in items.Where(item => item.Status != TrackerStatus.Completed))
+        {
+            if (!schedule.TryGetValue(item.Title, out var update))
+            {
+                continue;
+            }
+
+            item.TargetDate = update.TargetDate;
+            item.Lane = update.Lane;
+            item.Priority = update.Priority;
+            item.ProjectDriven = update.ProjectDriven;
+            item.UpdatedUtc = now;
+        }
+    }
+
+    private static void RescheduleLearningRadar(IEnumerable<TrainingItem> items, DateTime now)
+    {
+        var radarItems = items
+            .Where(item => item.Status != TrackerStatus.Completed &&
+                item.Notes.Contains("Added by learning radar", StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(item => item.TargetDate)
+            .ThenBy(item => item.Title)
+            .ToList();
+        var firstReviewDate = UtcDate(2026, 9, 18);
+
+        for (var index = 0; index < radarItems.Count; index++)
+        {
+            var item = radarItems[index];
+            item.TargetDate = firstReviewDate.AddDays(index * 7);
+            item.Lane = LearningLane.Stretch;
+            item.Priority = index < 8 ? 3 : 2;
+            item.ProjectDriven = false;
+            item.UpdatedUtc = now;
+        }
+    }
+
+    private static void EnsureGh600Completed(TrackerDbContext db, List<TrainingItem> items, DateTime now)
+    {
+        var certification = CertificationCatalog.FindByKey("github-agentic-ai-developer")
+            ?? throw new InvalidOperationException("The GH-600 certification catalog entry is required.");
+        var desired = certification.CreateTrainingItem();
+        var existing = items.FirstOrDefault(item =>
+            item.Category.Equals("GH-600", StringComparison.OrdinalIgnoreCase) ||
+            item.Title.Contains("Agentic AI Developer", StringComparison.OrdinalIgnoreCase));
+
+        if (existing is null)
+        {
+            existing = desired;
+            existing.CreatedUtc = now;
+            db.TrainingItems.Add(existing);
+            items.Add(existing);
+        }
+        else
+        {
+            ApplyPlanItemRefresh(existing, desired, now);
+        }
+
+        existing.Status = TrackerStatus.Completed;
+        existing.ProgressPercent = 100;
+        existing.LastStatusChangedUtc = now;
+        existing.CompletedUtc ??= now;
+        existing.Evidence = AppendPlanText(existing.Evidence, "Completion confirmed by the plan owner on August 19, 2026.", 1000);
+        existing.UpdatedUtc = now;
+    }
+
+    private static string AppendPlanText(string existing, string addition, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(addition) ||
+            existing.Contains(addition, StringComparison.OrdinalIgnoreCase))
+        {
+            return existing;
+        }
+
+        var combined = string.IsNullOrWhiteSpace(existing)
+            ? addition
+            : string.Concat(existing.Trim(), "\n\n", addition.Trim());
+        return Truncate(combined, maxLength);
+    }
+
+    private static IEnumerable<PlanItemRefresh> GetFabricAndEventPlanRefreshes()
+    {
+        var dp600Goal = CertificationCatalog.FindByKey("dp-600")?.CreateTrainingItem()
+            ?? throw new InvalidOperationException("The DP-600 certification catalog entry is required.");
+        dp600Goal.TargetDate = UtcDate(2026, 12, 18);
+        dp600Goal.Priority = 4;
+        dp600Goal.ProjectDriven = true;
+        dp600Goal.Notes = "Use the October gap assessment and the current DP-600 study guide to focus preparation on data preparation, solution maintenance, and semantic models.";
+
+        return
+        [
+            CreateFabricSprintRefresh(
+                1,
+                UtcDate(2026, 8, 20),
+                "Fabric sprint 1: Map workloads and start the trial",
+                "Foundations",
+                "Start the Fabric trial, create an East US workspace, connect the repository, and map when to use Data Factory, lakehouse, warehouse, Real-Time Intelligence, data science, and Power BI.",
+                5,
+                "Output: working trial and workspace, architecture sketch, dataset access, and a one-page workload decision map. Checkpoint: explain lakehouse versus warehouse without notes.",
+                "Learn Microsoft Fabric fundamentals"),
+            CreateFabricSprintRefresh(
+                2,
+                UtcDate(2026, 8, 21),
+                "Fabric sprint 2: Ingest NYC Taxi data with Data Factory",
+                "Data Factory",
+                "Build a parameterized pipeline that copies monthly NYC Taxi Parquet data into a Bronze area in OneLake, then force and recover from one controlled failure.",
+                5,
+                "Output: year/month parameters, one successful monthly load, retry and failure handling, and run-history evidence. Dataset root: https://azureopendatastorage.blob.core.windows.net/nyctlc/yellow/.",
+                "Complete the Microsoft Fabric beginner path"),
+            CreateFabricSprintRefresh(
+                3,
+                UtcDate(2026, 8, 24),
+                "Fabric sprint 3: Build Bronze and Silver Delta tables in OneLake",
+                "OneLake and Delta",
+                "Create source-faithful Bronze storage and typed, deduplicated Silver Delta tables with null handling, quality flags, row-count reconciliation, and an idempotent rerun.",
+                6,
+                "Output: Bronze files, Silver Delta tables, schema and row-count checks, and a short explanation of partitioning and small-file tradeoffs."),
+            CreateFabricSprintRefresh(
+                4,
+                UtcDate(2026, 8, 25),
+                "Fabric sprint 4: Transform data with PySpark and quality checks",
+                "Spark and notebooks",
+                "Use a Fabric notebook with PySpark and Spark SQL to clean taxi trips, join taxi-zone reference data, calculate quality metrics, and write reusable Silver and Gold Delta outputs.",
+                6,
+                "Output: rerunnable notebook, joins and deduplication, data-quality assertions, aggregate tables, and an explanation of schema drift and null handling."),
+            CreateFabricSprintRefresh(
+                5,
+                UtcDate(2026, 8, 26),
+                "Fabric sprint 5: Build a Gold star schema and Fabric warehouse",
+                "Warehouse and T-SQL",
+                "Model FactTrip with date, zone, and payment dimensions, load the warehouse with T-SQL, and compare the same business metric from the lakehouse and warehouse.",
+                6,
+                "Output: fact and dimension tables, CTAS or INSERT SELECT load, one incremental path, reusable views or procedures, and basic query-performance evidence."),
+            CreateFabricSprintRefresh(
+                6,
+                UtcDate(2026, 8, 27),
+                "Fabric sprint 6: Build a Direct Lake semantic model and Power BI report",
+                "Semantic model and Power BI",
+                "Create a star-schema semantic model and report for trips, revenue, tip rate, distance, duration, geography, and rolling trends using Direct Lake when appropriate.",
+                6,
+                "Output: model relationships, documented DAX measures, time-series and geography pages, and one performance-analyzer comparison."),
+            CreateFabricSprintRefresh(
+                7,
+                UtcDate(2026, 8, 28),
+                "Fabric sprint 7: Replay taxi events with Eventstream and KQL",
+                "Real-Time Intelligence",
+                "Replay a bounded taxi-data slice as timestamped events, route it through Eventstream into an Eventhouse, query it with KQL, and build a real-time operations view.",
+                5,
+                "Output: replay process, Eventstream, KQL queries for counts, late events and fare outliers, and a dashboard. Checkpoint: explain event time versus ingestion time."),
+            CreateFabricSprintRefresh(
+                8,
+                UtcDate(2026, 8, 31),
+                "Fabric sprint 8: Apply governance, lineage, and row-level security",
+                "Governance and security",
+                "Document ownership and lineage, apply descriptions, endorsements and sensitivity labels, then test workspace permissions and semantic-model row-level security by borough or zone.",
+                5,
+                "Output: catalog metadata, lineage capture, role definitions, and evidence from both an allowed and denied security test."),
+            CreateFabricSprintRefresh(
+                9,
+                UtcDate(2026, 9, 1),
+                "Fabric sprint 9: Add monitoring, Git, and deployment pipelines",
+                "Operations and CI/CD",
+                "Capture pipeline monitoring and capacity evidence, connect the workspace to Git, use a feature branch, and promote a controlled change through Fabric deployment stages.",
+                5,
+                "Output: successful and failed run evidence, Git commit, Dev-to-Test comparison and deployment, rollback notes, and environment-specific configuration."),
+            CreateFabricSprintRefresh(
+                10,
+                UtcDate(2026, 9, 2),
+                "Fabric sprint 10: Deliver the OpenText-ready NYC Taxi capstone",
+                "Capstone",
+                "Harden the complete ingestion-to-insight solution into a reproducible customer demo that explains workload choice, security, governance, monitoring, cost, and production limitations.",
+                6,
+                "Output: README, architecture diagram, test checklist, ten-minute demo, customer talk track, and a prioritized backlog. Readiness means being able to build and explain the solution, not merely completing modules.",
+                "Build a Microsoft Fabric lakehouse end to end"),
+            new()
+            {
+                Item = new TrainingItem
+                {
+                    Title = "Fabric follow-up: Capture OpenText scenarios from India",
+                    Domain = "Microsoft Fabric",
+                    Category = "Customer discovery",
+                    Description = "Turn OpenText conversations into three concrete Fabric design notes covering sources, latency, governance, security, operating model, and the recommended Fabric workload.",
+                    TargetDate = UtcDate(2026, 9, 11),
+                    Lane = LearningLane.Core,
+                    Type = TrainingItemType.Project,
+                    EstimatedHours = 3,
+                    Priority = 5,
+                    ProjectDriven = true,
+                    Notes = "Output: three scenario briefs and a list of questions that still need customer validation."
+                }
+            },
+            new()
+            {
+                Item = new TrainingItem
+                {
+                    Title = "Fabric follow-up: Harden the NYC Taxi capstone",
+                    Domain = "Microsoft Fabric",
+                    Category = "Production readiness",
+                    Description = "Add one production-like requirement such as schema evolution, incremental refresh, SLA monitoring, or a private enterprise source and document failure recovery.",
+                    TargetDate = UtcDate(2026, 9, 25),
+                    Lane = LearningLane.Core,
+                    Type = TrainingItemType.Project,
+                    EstimatedHours = 8,
+                    Priority = 4,
+                    ProjectDriven = true,
+                    Notes = "Output: production-readiness checklist, tested recovery path, and updated architecture decision record."
+                }
+            },
+            new()
+            {
+                Item = new TrainingItem
+                {
+                    Title = "Fabric follow-up: Add an OpenText-style content metadata source",
+                    Domain = "Microsoft Fabric",
+                    Category = "Content analytics",
+                    Description = "Extend the capstone with a simulated content and metadata feed so the design covers documents, classifications, lineage, and analytical joins beyond structured trip data.",
+                    TargetDate = UtcDate(2026, 10, 9),
+                    Lane = LearningLane.Core,
+                    Type = TrainingItemType.Project,
+                    EstimatedHours = 8,
+                    Priority = 4,
+                    ProjectDriven = true,
+                    Notes = "Output: second ingestion path, conformed metadata model, lineage, and a customer-facing content analytics use case."
+                }
+            },
+            new()
+            {
+                Item = new TrainingItem
+                {
+                    Title = "Fabric follow-up: Run the DP-600 gap assessment",
+                    Domain = "Microsoft Fabric",
+                    Category = "DP-600",
+                    Description = "Take the free DP-600 practice assessment and map every missed objective to the current study guide and a focused lab or review task.",
+                    TargetDate = UtcDate(2026, 10, 23),
+                    Lane = LearningLane.Core,
+                    Type = TrainingItemType.Learning,
+                    EstimatedHours = 4,
+                    Priority = 4,
+                    ProjectDriven = true,
+                    Notes = "Output: baseline score, objective-level gap map, and a dated preparation backlog for the December target."
+                }
+            },
+            new()
+            {
+                Item = new TrainingItem
+                {
+                    Title = "Fabric follow-up: Lead a customer architecture review",
+                    Domain = "Microsoft Fabric",
+                    Category = "Expert checkpoint",
+                    Description = "Practice a full architecture review that covers requirements, workload selection, security, governance, latency, cost, migration, CI/CD, monitoring, and support boundaries.",
+                    TargetDate = UtcDate(2026, 11, 13),
+                    Lane = LearningLane.Core,
+                    Type = TrainingItemType.Capstone,
+                    EstimatedHours = 4,
+                    Priority = 4,
+                    ProjectDriven = true,
+                    Notes = "Output: 30-minute architecture review, decision log, objections and answers, and an updated reusable customer talk track."
+                }
+            },
+            new()
+            {
+                Item = new TrainingItem
+                {
+                    Title = "Catch up on Microsoft Build 2026 announcements",
+                    Domain = "Industry Events",
+                    Category = "Microsoft Build 2026",
+                    Description = "Review the most relevant Fabric, data, AI, and developer-platform announcements from Microsoft Build 2026, held June 2-3 in San Francisco and online.",
+                    TargetDate = UtcDate(2026, 9, 14),
+                    Lane = LearningLane.Core,
+                    Type = TrainingItemType.Event,
+                    EstimatedHours = 4,
+                    Priority = 4,
+                    Notes = "Output: three roadmap changes, one hands-on validation, and a customer-facing summary. Official event: https://build.microsoft.com/en-US/home."
+                }
+            },
+            new()
+            {
+                Item = new TrainingItem
+                {
+                    Title = "Track GitHub Universe 2026",
+                    Domain = "Industry Events",
+                    Category = "GitHub Universe 2026",
+                    Description = "Track GitHub Universe on October 28-29 at Fort Mason Center in San Francisco and online, focusing on Copilot, Actions, security, developer platforms, and Fabric CI/CD implications.",
+                    TargetDate = UtcDate(2026, 10, 29),
+                    Lane = LearningLane.Core,
+                    Type = TrainingItemType.Event,
+                    EstimatedHours = 4,
+                    Priority = 4,
+                    Notes = "Capture announcements and sessions during the event. Official event: https://githubuniverse.com/."
+                }
+            },
+            new()
+            {
+                Item = new TrainingItem
+                {
+                    Title = "Review GitHub Universe 2026 announcements",
+                    Domain = "Industry Events",
+                    Category = "GitHub Universe follow-up",
+                    Description = "Convert GitHub Universe announcements into at most three high-value learning changes, one updated lab, and one customer-ready developer-platform talk track.",
+                    TargetDate = UtcDate(2026, 11, 6),
+                    Lane = LearningLane.Core,
+                    Type = TrainingItemType.Learning,
+                    EstimatedHours = 4,
+                    Priority = 4,
+                    Notes = "Keep only changes that materially affect daily engineering, platform governance, security, or the Fabric delivery workflow."
+                }
+            },
+            new()
+            {
+                Item = new TrainingItem
+                {
+                    Title = "Track Microsoft Ignite 2026",
+                    Domain = "Industry Events",
+                    Category = "Microsoft Ignite 2026",
+                    Description = "Track Microsoft Ignite on November 17-20 at Moscone Center in San Francisco and online, focusing on Fabric, Azure, AI, security, governance, and operations.",
+                    TargetDate = UtcDate(2026, 11, 20),
+                    Lane = LearningLane.Core,
+                    Type = TrainingItemType.Event,
+                    EstimatedHours = 4,
+                    Priority = 4,
+                    Notes = "Capture announcements and sessions during the event. Official event: https://ignite.microsoft.com/en-US/home."
+                }
+            },
+            new()
+            {
+                Item = new TrainingItem
+                {
+                    Title = "Review Microsoft Ignite 2026 announcements",
+                    Domain = "Industry Events",
+                    Category = "Microsoft Ignite follow-up",
+                    Description = "Review the ten business days after Ignite and convert major Fabric, Azure, AI, security, and governance changes into a small, prioritized learning backlog.",
+                    TargetDate = UtcDate(2026, 12, 4),
+                    Lane = LearningLane.Core,
+                    Type = TrainingItemType.Learning,
+                    EstimatedHours = 5,
+                    Priority = 4,
+                    Notes = "Output: three roadmap changes, one lab refresh, one customer talk track, and one production-readiness improvement."
+                }
+            },
+            new()
+            {
+                Item = dp600Goal
+            }
+        ];
+    }
+
+    private static PlanItemRefresh CreateFabricSprintRefresh(
+        int day,
+        DateTime targetDate,
+        string title,
+        string category,
+        string description,
+        decimal estimatedHours,
+        string notes,
+        params string[] matchTitles)
+    {
+        return new PlanItemRefresh
+        {
+            Item = new TrainingItem
+            {
+                Title = title,
+                Domain = "Microsoft Fabric",
+                Category = $"Sprint day {day}: {category}",
+                Description = description,
+                TargetDate = targetDate,
+                Lane = LearningLane.RapidRamp,
+                Type = day == 10 ? TrainingItemType.Capstone : day == 1 ? TrainingItemType.Learning : TrainingItemType.Lab,
+                EstimatedHours = estimatedHours,
+                Priority = 5,
+                ProjectDriven = true,
+                Notes = notes
+            },
+            MatchTitles = matchTitles
+        };
     }
 
     private static async Task EnsureVideoSchemaAsync(TrackerDbContext db)
@@ -1246,6 +1712,9 @@ public static class DatabaseInitializer
             new ResourceEntry { Title = "Build a RAG solution with Azure AI Search", Section = "Azure AI Search", Url = "https://learn.microsoft.com/en-us/azure/search/retrieval-augmented-generation-overview", Kind = ResourceKind.Learn, SortOrder = 20, Summary = "RAG-specific guidance for grounding apps with Azure AI Search, including indexing and retrieval patterns.", Tags = "search, rag, grounding, ai search" },
             new ResourceEntry { Title = "Well-Architected Framework", Section = "Architecture and Operations", Url = "https://learn.microsoft.com/en-us/azure/well-architected/", Kind = ResourceKind.Documentation, SortOrder = 10, Summary = "Use this to shape production guidance for security, reliability, operational excellence, performance, and cost.", Tags = "architecture, reliability, security, cost, operations" },
             new ResourceEntry { Title = "Azure Monitor and Application Insights", Section = "Architecture and Operations", Url = "https://learn.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview", Kind = ResourceKind.Documentation, SortOrder = 20, Summary = "Telemetry and observability foundation for productionizing AI and App Innovation workloads.", Tags = "monitoring, telemetry, application insights, observability" },
+            new ResourceEntry { Title = "Microsoft Build 2026", Section = "Industry Events", Url = "https://build.microsoft.com/en-US/home", Kind = ResourceKind.Documentation, SortOrder = 10, Summary = "Official Microsoft Build page for the June 2-3, 2026 event in San Francisco and online.", Tags = "event, build 2026, microsoft, announcements, fabric, ai, developer" },
+            new ResourceEntry { Title = "GitHub Universe 2026", Section = "Industry Events", Url = "https://githubuniverse.com/", Kind = ResourceKind.Documentation, SortOrder = 20, Summary = "Official GitHub Universe page for the October 28-29, 2026 event at Fort Mason Center in San Francisco and online.", Tags = "event, github universe 2026, copilot, actions, security, announcements" },
+            new ResourceEntry { Title = "Microsoft Ignite 2026", Section = "Industry Events", Url = "https://ignite.microsoft.com/en-US/home", Kind = ResourceKind.Documentation, SortOrder = 30, Summary = "Official Microsoft Ignite page for the November 17-20, 2026 event at Moscone Center in San Francisco and online.", Tags = "event, ignite 2026, microsoft, fabric, azure, ai, security, governance" },
             new ResourceEntry { Title = "Choose between App Service, Container Apps, and AKS", Section = "App Innovation", Url = "https://learn.microsoft.com/en-us/azure/architecture/guide/technology-choices/compute-decision-tree", Kind = ResourceKind.Documentation, SortOrder = 10, Summary = "Decision guidance for selecting the right Azure compute platform for APIs, web apps, containers, and AI workloads.", Tags = "app innovation, app service, container apps, hosting, architecture" },
             new ResourceEntry { Title = "Develop generative AI apps in Azure", Section = "Learning Paths", Url = "https://learn.microsoft.com/en-us/training/paths/develop-ai-solutions-azure-openai/", Kind = ResourceKind.Learn, SortOrder = 10, Summary = "Structured Microsoft Learn path to complement Foundry and AI app development work.", Tags = "learn, azure ai, path" },
             new ResourceEntry { Title = "Microsoft Fabric documentation", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/fabric/", Kind = ResourceKind.Documentation, SortOrder = 10, Summary = "Official documentation hub for Fabric workloads, administration, governance, and architecture.", Tags = "fabric, onelake, analytics, beginner" },
@@ -1253,6 +1722,19 @@ public static class DatabaseInitializer
             new ResourceEntry { Title = "Get started with Microsoft Fabric learning path", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/training/paths/get-started-fabric/", Kind = ResourceKind.Learn, SortOrder = 30, Summary = "Official beginner path covering lakehouses, warehouses, real-time intelligence, and data science.", Tags = "fabric, learning path, lakehouse, warehouse, beginner" },
             new ResourceEntry { Title = "Microsoft Fabric lakehouse tutorial", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/fabric/data-engineering/tutorial-build-lakehouse", Kind = ResourceKind.Lab, SortOrder = 40, Summary = "End-to-end beginner project for ingesting, transforming, and reporting on data in a Fabric lakehouse.", Tags = "fabric, lakehouse, tutorial, project, lab" },
             new ResourceEntry { Title = "Microsoft Fabric end-to-end tutorials", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/fabric/fundamentals/end-to-end-tutorials", Kind = ResourceKind.Lab, SortOrder = 50, Summary = "Scenario-based tutorials across Fabric data engineering, warehousing, science, and real-time workloads.", Tags = "fabric, tutorials, hands-on" },
+            new ResourceEntry { Title = "Start a Microsoft Fabric trial", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/fabric/fundamentals/fabric-trial", Kind = ResourceKind.Documentation, IsPinned = true, SortOrder = 60, Summary = "Official setup and limits for the 60-day Fabric trial, trial capacity, OneLake storage, and workspace assignment.", Tags = "fabric, trial, capacity, setup, onelake" },
+            new ResourceEntry { Title = "Microsoft Fabric training hub", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/training/fabric/", Kind = ResourceKind.Learn, IsPinned = true, SortOrder = 70, Summary = "Role-based Microsoft Learn hub for Fabric analytics, engineering, real-time, governance, and Power BI training.", Tags = "fabric, training, dp-600, learning paths" },
+            new ResourceEntry { Title = "NYC Taxi Azure Open Dataset", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/azure/open-datasets/dataset-taxi-yellow", Kind = ResourceKind.Documentation, IsPinned = true, SortOrder = 80, Summary = "Microsoft-hosted public Parquet dataset with taxi trips, timestamps, zones, fares, distance, and payment data for the Fabric capstone.", Tags = "fabric, nyc taxi, open data, parquet, capstone, data factory, spark" },
+            new ResourceEntry { Title = "NYC TLC trip record data", Section = "Microsoft Fabric", Url = "https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page", Kind = ResourceKind.Documentation, SortOrder = 90, Summary = "Authoritative NYC Taxi and Limousine Commission source page, monthly trip files, and data dictionaries.", Tags = "fabric, nyc taxi, tlc, public data, data dictionary" },
+            new ResourceEntry { Title = "Fabric Data Factory documentation", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/fabric/data-factory/", Kind = ResourceKind.Documentation, SortOrder = 100, Summary = "Official guidance for pipelines, copy activities, parameters, Dataflow Gen2, monitoring, and orchestration in Fabric.", Tags = "fabric, data factory, pipeline, ingestion, orchestration, monitoring" },
+            new ResourceEntry { Title = "OneLake overview", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/fabric/onelake/onelake-overview", Kind = ResourceKind.Documentation, SortOrder = 110, Summary = "Architecture and operating model for Fabric OneLake, workspaces, items, shortcuts, and unified data access.", Tags = "fabric, onelake, lakehouse, shortcuts, architecture" },
+            new ResourceEntry { Title = "Fabric medallion architecture module", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/training/modules/describe-medallion-architecture/", Kind = ResourceKind.Learn, SortOrder = 120, Summary = "Official module for organizing Bronze, Silver, and Gold data layers in a Fabric lakehouse.", Tags = "fabric, medallion, bronze, silver, gold, delta, lakehouse" },
+            new ResourceEntry { Title = "Transform data with Fabric notebooks", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/training/modules/fabric-transform-data-notebooks/", Kind = ResourceKind.Lab, SortOrder = 130, Summary = "Hands-on notebook module using PySpark, Spark SQL, and Delta tables for Fabric transformations.", Tags = "fabric, notebook, pyspark, spark sql, delta, transformation" },
+            new ResourceEntry { Title = "Fabric warehouse learning path", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/training/paths/work-with-data-warehouses-using-microsoft-fabric/", Kind = ResourceKind.Learn, SortOrder = 140, Summary = "Structured path for Fabric warehouse creation, loading, T-SQL querying, monitoring, and security.", Tags = "fabric, warehouse, t-sql, star schema, loading, security" },
+            new ResourceEntry { Title = "Fabric Real-Time Intelligence module", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/training/modules/get-started-kusto-fabric/", Kind = ResourceKind.Lab, SortOrder = 150, Summary = "Official introduction to Eventhouse, KQL databases, ingestion, analysis, and real-time dashboards in Fabric.", Tags = "fabric, real-time intelligence, eventhouse, kql, eventstream" },
+            new ResourceEntry { Title = "Govern analytics data in Fabric", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/training/modules/fabric-govern-analytics-data/", Kind = ResourceKind.Learn, SortOrder = 160, Summary = "Official module for discovery, endorsement, protection, lineage, and governance across Fabric.", Tags = "fabric, governance, purview, lineage, endorsement, sensitivity" },
+            new ResourceEntry { Title = "Fabric Git integration", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/fabric/cicd/git-integration/intro-to-git-integration", Kind = ResourceKind.Documentation, SortOrder = 170, Summary = "Official overview for connecting Fabric workspaces to Git and managing source-controlled item changes.", Tags = "fabric, git, github, ci-cd, workspace" },
+            new ResourceEntry { Title = "Fabric deployment pipelines", Section = "Microsoft Fabric", Url = "https://learn.microsoft.com/en-us/fabric/cicd/deployment-pipelines/intro-to-deployment-pipelines", Kind = ResourceKind.Documentation, SortOrder = 180, Summary = "Official guidance for promoting Fabric content through development, test, and production stages.", Tags = "fabric, deployment pipeline, ci-cd, dev test prod" },
             new ResourceEntry { Title = "Azure Databricks documentation", Section = "Azure Databricks", Url = "https://learn.microsoft.com/en-us/azure/databricks/", Kind = ResourceKind.Documentation, SortOrder = 10, Summary = "Official Azure Databricks reference for workspaces, notebooks, Spark, Delta Lake, Unity Catalog, and operations.", Tags = "databricks, spark, delta lake, unity catalog" },
             new ResourceEntry { Title = "Explore Azure Databricks module", Section = "Azure Databricks", Url = "https://learn.microsoft.com/en-us/training/modules/explore-azure-databricks/", Kind = ResourceKind.Learn, IsPinned = true, SortOrder = 20, Summary = "Beginner module covering the Azure Databricks platform, workloads, governance, and a hands-on exercise.", Tags = "databricks, fundamentals, beginner, module" },
             new ResourceEntry { Title = "Azure Databricks getting started tutorials", Section = "Azure Databricks", Url = "https://learn.microsoft.com/en-us/azure/databricks/getting-started/", Kind = ResourceKind.Lab, SortOrder = 30, Summary = "Official quickstarts for opening a workspace, running notebooks, querying data, and building first workflows.", Tags = "databricks, quickstart, notebook, tutorial" },
@@ -1260,7 +1742,11 @@ public static class DatabaseInitializer
             new ResourceEntry { Title = "Microsoft Learn Azure Databricks labs", Section = "Azure Databricks", Url = "https://github.com/MicrosoftLearning/mslearn-databricks", Kind = ResourceKind.Lab, SortOrder = 50, Summary = "Official lab assets for the Microsoft Learn Azure Databricks modules and end-to-end exercises.", Tags = "databricks, github, labs, delta lake, etl" },
             new ResourceEntry { Title = "Free Azure Databricks training", Section = "Azure Databricks", Url = "https://learn.microsoft.com/en-us/azure/databricks/getting-started/free-training", Kind = ResourceKind.Learn, SortOrder = 60, Summary = "Free Databricks Academy courses and webinars for additional platform and Spark foundations.", Tags = "databricks, academy, free training, beginner" },
             new ResourceEntry { Title = "AI-103 certification page", Section = "Certifications", Url = "https://learn.microsoft.com/en-us/credentials/certifications/azure-ai-apps-and-agents-developer-associate/", Kind = ResourceKind.Learn, IsPinned = true, SortOrder = 10, Summary = "Official Azure AI Apps and Agents Developer Associate credential page.", Tags = "certification, ai-103, azure ai, agents, foundry" },
-            new ResourceEntry { Title = "AI-103 study guide", Section = "Certifications", Url = "https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/ai-103", Kind = ResourceKind.Learn, SortOrder = 20, Summary = "Official AI-103 skills outline and preparation guidance.", Tags = "certification, ai-103, study guide, azure ai, agents" }
+            new ResourceEntry { Title = "AI-103 study guide", Section = "Certifications", Url = "https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/ai-103", Kind = ResourceKind.Learn, SortOrder = 20, Summary = "Official AI-103 skills outline and preparation guidance.", Tags = "certification, ai-103, study guide, azure ai, agents" },
+            new ResourceEntry { Title = "DP-600 certification page", Section = "Certifications", Url = "https://learn.microsoft.com/en-us/credentials/certifications/fabric-analytics-engineer-associate/", Kind = ResourceKind.Learn, IsPinned = true, SortOrder = 30, Summary = "Official Fabric Analytics Engineer Associate credential, renewal, exam, and free practice-assessment page.", Tags = "certification, dp-600, fabric, analytics engineer, practice assessment" },
+            new ResourceEntry { Title = "DP-600 study guide", Section = "Certifications", Url = "https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/dp-600", Kind = ResourceKind.Learn, SortOrder = 40, Summary = "Current DP-600 objective outline for maintaining solutions, preparing data, and implementing semantic models.", Tags = "certification, dp-600, fabric, study guide, semantic model" },
+            new ResourceEntry { Title = "GH-600 certification page", Section = "Certifications", Url = "https://learn.microsoft.com/en-us/credentials/certifications/agentic-ai-developer/", Kind = ResourceKind.Learn, SortOrder = 50, Summary = "Official GitHub Certified: Agentic AI Developer credential page.", Tags = "certification, gh-600, github, agentic ai developer" },
+            new ResourceEntry { Title = "GH-600 study guide", Section = "Certifications", Url = "https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/gh-600", Kind = ResourceKind.Learn, SortOrder = 60, Summary = "Official GH-600 skills outline for developing and governing agentic AI systems.", Tags = "certification, gh-600, github, study guide, agents" }
         ];
     }
 
@@ -1391,6 +1877,19 @@ public static class DatabaseInitializer
 
     private static TEnum ParseEnumOrDefault<TEnum>(string? value, TEnum fallback) where TEnum : struct
         => Enum.TryParse<TEnum>(value, ignoreCase: true, out var parsed) ? parsed : fallback;
+
+    private sealed record PlanScheduleUpdate(
+        DateTime TargetDate,
+        LearningLane Lane,
+        int Priority,
+        bool ProjectDriven);
+
+    private sealed class PlanItemRefresh
+    {
+        public required TrainingItem Item { get; init; }
+
+        public IReadOnlyList<string> MatchTitles { get; init; } = [];
+    }
 
     private sealed class LearningRadarDocument
     {

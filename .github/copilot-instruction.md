@@ -51,10 +51,11 @@ When making meaningful changes, update this file and also update
 * Learning-plan behavior:
   * `TrainingPlanPrioritizer` ranks overdue, due-soon, active, core, and nice-to-have items consistently across the Dashboard and Plan tabs
   * core completion excludes `LearningLane.Stretch` items unless they are project-driven
-  * Microsoft Fabric and Azure Databricks beginner tasks are inserted into existing databases by title without overwriting user changes
+  * the Microsoft Fabric plan is a 10-business-day pre-India sprint followed by production hardening, an OpenText-style content scenario, a DP-600 gap assessment, and a customer architecture review
+  * the one-time `fabric-opentext-events-priorities-v2` refresh updates existing seeded titles and scheduling while preserving status, progress, notes, evidence, and completion history
   * certifications reuse the existing `TrainingItems` table with `TrainingItemType.Certification`, avoiding a production schema migration
   * the Certifications tab tracks target date, progress, status, preparation notes, and evidence and can import curated Microsoft, GitHub, and Databricks goals
-  * AI-103 is the seeded near-term certification goal with an August 31, 2026 target
+  * GH-600 is seeded as completed, DP-600 targets December 18, 2026, and AI-103 resumes after the urgent Fabric sprint with an October 16, 2026 target
 * Learning-history behavior:
   * `LearningActivities` is an append-only event table for starts, progress, completions, certifications, resource and announcement reads, watched videos, reflections, and personal-tool launches
   * existing production data is backfilled once behind metadata key `learning-history-backfill-v1`

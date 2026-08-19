@@ -5,6 +5,7 @@ namespace UpskillTracker.Services;
 public static class TrainingPlanPrioritizer
 {
     private const int DueSoonWindowDays = 14;
+    private const int UrgentRampWindowDays = 21;
 
     public static PlanAttentionLevel GetAttentionLevel(TrainingItem item, DateTime today)
     {
@@ -46,12 +47,18 @@ public static class TrainingPlanPrioritizer
             (attention == PlanAttentionLevel.DueSoon && item.ProgressPercent < 50);
     }
 
+    public static bool IsUrgentRamp(TrainingItem item, DateTime today)
+        => item.Status != TrackerStatus.Completed &&
+            item.Lane == LearningLane.RapidRamp &&
+            item.ProjectDriven &&
+            item.TargetDate.Date <= today.Date.AddDays(UrgentRampWindowDays);
+
     public static bool IsNiceToHave(TrainingItem item)
         => item.Lane == LearningLane.Stretch && !item.ProjectDriven;
 
     public static string GetCommitmentLabel(TrainingItem item) => item.Lane switch
     {
-        LearningLane.RapidRamp => "Rapid ramp",
+        LearningLane.RapidRamp => "Urgent ramp",
         LearningLane.Stretch when !item.ProjectDriven => "Nice to have",
         _ => "Core commitment"
     };
@@ -76,20 +83,25 @@ public static class TrainingPlanPrioritizer
 
     public static int GetFocusRank(TrainingItem item, DateTime today)
     {
+        if (IsUrgentRamp(item, today))
+        {
+            return 0;
+        }
+
         var attentionRank = GetAttentionLevel(item, today) switch
         {
-            PlanAttentionLevel.Overdue => 0,
-            PlanAttentionLevel.DueSoon => 1,
-            PlanAttentionLevel.InProgress => 2,
-            PlanAttentionLevel.Planned => 3,
-            PlanAttentionLevel.NiceToHave => 5,
-            PlanAttentionLevel.Completed => 6,
-            _ => 4
+            PlanAttentionLevel.Overdue => 1,
+            PlanAttentionLevel.DueSoon => 2,
+            PlanAttentionLevel.InProgress => 3,
+            PlanAttentionLevel.Planned => 4,
+            PlanAttentionLevel.NiceToHave => 6,
+            PlanAttentionLevel.Completed => 7,
+            _ => 5
         };
 
-        if (attentionRank == 3 && item.ProjectDriven)
+        if (attentionRank == 4 && item.ProjectDriven)
         {
-            return 2;
+            return 3;
         }
 
         return attentionRank;

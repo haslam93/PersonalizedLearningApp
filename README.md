@@ -66,7 +66,7 @@ It is designed to help you:
 * Dashboard cards with readable semantic color accents for progress, videos, resources, notes, and announcements
 * Dynamic home and dashboard summary cards that react to live tracker data instead of fixed promotional copy
 * Dual announcement streams with Microsoft updates and thought-leader or industry posts, paged for faster scanning with actions to open and save useful updates
-* Planner tab with focus filters for at-risk, core, active, optional, and certification work, plus direct task links suggested from the shared resource library
+* Planner tab with a responsive card layout, a dedicated 10-business-day Fabric sprint, an announcement-event runway, focus filters, and direct task links suggested from the shared resource library
 * Certifications tab for tracking target dates, progress, status, preparation notes, and evidence, with a direct Mark complete action
 * Curated certification import catalog for Microsoft, GitHub, and Databricks credentials
 * Timeline tab grouped by month
@@ -76,8 +76,9 @@ It is designed to help you:
 * Notes tab for reflections, architecture notes, and lab takeaways
 * Copilot tab with GitHub OAuth sign-in, runtime model discovery, and tracker-grounded chat tools
 * PIN login backed by a secure Azure app setting and GitHub Actions secret
-* Seeded beginner tracks for Microsoft Fabric and Azure Databricks, including a Fabric lakehouse and Databricks Delta Lake project
-* Seeded AI-103 certification goal targeting August 31, 2026, with official credential and study-guide links
+* Urgent Microsoft Fabric ramp targeting August 20 through September 2, 2026, using the public NYC Taxi dataset for an ingestion-to-insight OpenText-ready capstone
+* Post-trip Fabric expert track through DP-600, plus dated Microsoft Build, GitHub Universe, and Microsoft Ignite announcement reviews
+* GH-600 GitHub Certified: Agentic AI Developer recorded as completed and AI-103 rescheduled to follow the urgent Fabric work
 
 ## UI notes
 
@@ -87,6 +88,8 @@ The current shell avoids fixed labels where tracker data is already available.
 * The home view opens with a tracker-driven overview card instead of a commentary-style hero title
 * The dashboard summary card adapts to overdue, due-soon, in-progress, and completed core work with short, direct headings
 * Ranked next actions put overdue and near-term core commitments ahead of optional backlog
+* Project-driven urgent ramps rank ahead of unrelated recovery work, and the Plan tab shows every Fabric sprint step, deadline, remaining hours, and next action without horizontal scrolling
+* Major event cards reserve review windows for Build, GitHub Universe, and Ignite so announcements become a limited set of labs and customer-ready updates
 * Core completion excludes nice-to-have work so optional topics do not hide whether committed work is on schedule
 * At-risk, due-soon, core, optional, and individual-item actions navigate directly to the matching Plan view
 * The forward Timeline excludes completed work, highlights recovery items, and shows planned hours by month
