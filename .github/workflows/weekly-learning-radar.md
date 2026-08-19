@@ -81,10 +81,12 @@ Edit `src/UpskillTracker/Data/SeedData/learning-radar.json` and append one JSON 
 Rules for entries:
 
 - `targetDate`: pick a realistic date 1 to 4 weeks out based on priority and size.
-- `lane`: `RapidRamp` for urgent project-relevant releases, `Stretch` for exploratory items, `Core` only for fundamental shifts.
+- `priority`: `5` means critical and `1` means optional. Use `5` only for an active project blocker, `4` for high-value near-term work, `3` for useful planned work, and `1` or `2` for low-urgency exploration.
+- `lane`: default to `Stretch`. Use `RapidRamp` only for an urgent release tied to an active project and `Core` only for a fundamental platform shift. Add at most one non-`Stretch` item in a weekly PR unless the PR body explains why multiple items must displace the current plan.
 - `type`: `Lab` when hands-on material exists, otherwise `Learning`.
 - `link`: only use official announcement or documentation URLs you actually fetched and verified.
 - `addedOn`: today's date.
+- Treat two entries as duplicates when they cover the same release or capability even if their titles differ. Prefer the newer or more actionable item rather than adding both.
 - Keep the JSON valid: no comments, no trailing commas.
 
 ## Step 4: Open the pull request

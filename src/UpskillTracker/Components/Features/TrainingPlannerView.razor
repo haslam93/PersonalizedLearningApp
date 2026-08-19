@@ -13,40 +13,126 @@
         </MudStack>
     </MudPaper>
 
+    @if (FabricSprintItems.Count > 0)
+    {
+        <MudPaper Class="surface-card planner-urgent-ramp-card mb-4" Elevation="0">
+            <MudStack Row="true" Wrap="Wrap.Wrap" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start" Spacing="2" Class="mb-3">
+                <div class="flex-1">
+                    <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
+                        <MudChip T="string" Color="Color.Error" Variant="Variant.Filled" Size="Size.Small">Urgent</MudChip>
+                        <MudChip T="string" Color="Color.Warning" Variant="Variant.Outlined" Size="Size.Small">OpenText / India readiness</MudChip>
+                    </MudStack>
+                    <MudText Typo="Typo.h5">10-business-day Microsoft Fabric ramp</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-secondary-text">
+                        Build one NYC Taxi solution from ingestion through governance and deployment. Finish by @FabricSprintDeadline.ToString("MMM d") with a reproducible demo and customer talk track.
+                    </MudText>
+                </div>
+                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
+                    <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled">@FabricSprintRemainingCount steps left</MudChip>
+                    <MudChip T="string" Color="Color.Default" Variant="Variant.Outlined">@FabricSprintRemainingHours.ToString("0.#") hours left</MudChip>
+                    <MudButton Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.PlayArrow" OnClick="OpenNextFabricStepAsync" Disabled="@(NextFabricSprintItem is null)">
+                        Open next step
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+
+            <MudProgressLinear Value="@FabricSprintProgress" Rounded="true" Color="Color.Error" Size="Size.Large" Class="mb-3" />
+
+            <MudGrid Spacing="2" Class="planner-sprint-grid">
+                @for (var index = 0; index < FabricSprintItems.Count; index++)
+                {
+                    var step = FabricSprintItems[index];
+                    var stepNumber = index + 1;
+                    <MudItem xs="12" sm="6" lg="4">
+                        <button type="button" class="@GetSprintStepClass(step)" @onclick="@(() => BeginEditAsync(step))">
+                            <span class="planner-sprint-step-number">@stepNumber</span>
+                            <span class="planner-sprint-step-content">
+                                <MudText Typo="Typo.subtitle2">@GetSprintStepTitle(step)</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-secondary-text">@step.TargetDate.ToString("ddd, MMM d") • @step.EstimatedHours.ToString("0.#")h</MudText>
+                            </span>
+                            <MudIcon Icon="@GetSprintStepIcon(step)" Color="@GetStatusColor(step.Status)" Size="Size.Small" />
+                        </button>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudPaper>
+    }
+
+    @if (ActiveEventItems.Count > 0)
+    {
+        <MudPaper Class="surface-card planner-event-watch-card mb-4" Elevation="0">
+            <MudStack Row="true" Wrap="Wrap.Wrap" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+                <div>
+                    <MudText Typo="Typo.h6">Announcement watch</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-secondary-text">Major events get a dated review so announcements become focused labs instead of an unbounded backlog.</MudText>
+                </div>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Event" OnClick="@(() => SetFocusFilter("Events"))">
+                    View all events
+                </MudButton>
+            </MudStack>
+            <MudGrid Spacing="2">
+                @foreach (var eventItem in ActiveEventItems.Take(3))
+                {
+                    <MudItem xs="12" md="4">
+                        <button type="button" class="planner-event-item" @onclick="@(() => BeginEditAsync(eventItem))">
+                            <MudText Typo="Typo.overline">@eventItem.TargetDate.ToString("MMM d, yyyy")</MudText>
+                            <MudText Typo="Typo.subtitle2">@eventItem.Title</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-secondary-text">@eventItem.Category</MudText>
+                        </button>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudPaper>
+    }
+
 <MudGrid Class="section-grid">
     <MudItem xs="12">
         <MudPaper Class="surface-card content-card planner-table-card mb-4" Elevation="0">
             <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-4 reminder-alert">
-                Work top to bottom in the focus view. Overdue and near-term core commitments come first; nice-to-have work stays visible without competing with required progress.
+                Work top to bottom in the focus view. The project-driven Fabric ramp comes first, followed by overdue and near-term core commitments; nice-to-have work stays visible without competing.
             </MudAlert>
 
             <MudGrid Spacing="2" Class="mb-4 planner-focus-summary">
-                <MudItem xs="6" md="3">
+                <MudItem xs="6" md="2">
+                    <button type="button" class="planner-focus-stat planner-focus-button planner-focus-stat-urgent" @onclick="@(() => SetFocusFilter("Fabric sprint"))">
+                        <MudText Typo="Typo.h5">@FabricSprintRemainingCount</MudText>
+                        <MudText Typo="Typo.caption">Fabric steps</MudText>
+                        <MudText Typo="Typo.caption" Class="planner-focus-action">Finish ramp</MudText>
+                    </button>
+                </MudItem>
+                <MudItem xs="6" md="2">
                     <button type="button" class="planner-focus-stat planner-focus-button planner-focus-stat-risk" @onclick="@(() => SetFocusFilter("At risk"))">
                         <MudText Typo="Typo.h5">@AtRiskCount</MudText>
                         <MudText Typo="Typo.caption">At risk</MudText>
                         <MudText Typo="Typo.caption" Class="planner-focus-action">Show items</MudText>
                     </button>
                 </MudItem>
-                <MudItem xs="6" md="3">
+                <MudItem xs="6" md="2">
+                    <button type="button" class="planner-focus-stat planner-focus-button planner-focus-stat-due" @onclick="@(() => SetFocusFilter("Due soon"))">
+                        <MudText Typo="Typo.h5">@DueSoonCount</MudText>
+                        <MudText Typo="Typo.caption">Due soon</MudText>
+                        <MudText Typo="Typo.caption" Class="planner-focus-action">Review dates</MudText>
+                    </button>
+                </MudItem>
+                <MudItem xs="6" md="2">
                     <button type="button" class="planner-focus-stat planner-focus-button planner-focus-stat-core" @onclick="@(() => SetFocusFilter("Core commitments"))">
                         <MudText Typo="Typo.h5">@CoreCommitmentCount</MudText>
                         <MudText Typo="Typo.caption">Core remaining</MudText>
                         <MudText Typo="Typo.caption" Class="planner-focus-action">Show commitments</MudText>
                     </button>
                 </MudItem>
-                <MudItem xs="6" md="3">
+                <MudItem xs="6" md="2">
                     <button type="button" class="planner-focus-stat planner-focus-button planner-focus-stat-active" @onclick="@(() => SetFocusFilter("In progress"))">
                         <MudText Typo="Typo.h5">@InProgressCount</MudText>
                         <MudText Typo="Typo.caption">In progress</MudText>
                         <MudText Typo="Typo.caption" Class="planner-focus-action">Continue learning</MudText>
                     </button>
                 </MudItem>
-                <MudItem xs="6" md="3">
-                    <button type="button" class="planner-focus-stat planner-focus-button planner-focus-stat-optional" @onclick="@(() => SetFocusFilter("Nice to have"))">
-                        <MudText Typo="Typo.h5">@NiceToHaveCount</MudText>
-                        <MudText Typo="Typo.caption">Nice to have</MudText>
-                        <MudText Typo="Typo.caption" Class="planner-focus-action">Review optional work</MudText>
+                <MudItem xs="6" md="2">
+                    <button type="button" class="planner-focus-stat planner-focus-button planner-focus-stat-events" @onclick="@(() => SetFocusFilter("Events"))">
+                        <MudText Typo="Typo.h5">@ActiveEventItems.Count</MudText>
+                        <MudText Typo="Typo.caption">Events</MudText>
+                        <MudText Typo="Typo.caption" Class="planner-focus-action">Open runway</MudText>
                     </button>
                 </MudItem>
             </MudGrid>
@@ -73,79 +159,73 @@
                 </MudSelect>
             </MudStack>
 
-            <MudTable Items="FilteredItems" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" RowClassFunc="GetRowClass">
-                <HeaderContent>
-                    <MudTh>Item</MudTh>
-                    <MudTh>Domain</MudTh>
-                    <MudTh>Due</MudTh>
-                    <MudTh>Status</MudTh>
-                    <MudTh>Progress</MudTh>
-                    <MudTh></MudTh>
-                </HeaderContent>
-                <RowTemplate>
-                    <MudTd DataLabel="Item">
-                        <MudText Typo="Typo.subtitle2">@context.Title</MudText>
-                        <MudText Typo="Typo.caption" Class="mud-secondary-text">@context.Type • @TrainingPlanPrioritizer.GetCommitmentLabel(context)</MudText>
-                        @if (!string.IsNullOrWhiteSpace(context.Description))
-                        {
-                            <MudText Typo="Typo.body2" Class="mt-1 mud-secondary-text">@context.Description</MudText>
-                        }
-                        <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-2">
-                            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@GetAttentionColor(context)">
-                                @TrainingPlanPrioritizer.GetAttentionLabel(context, today)
-                            </MudChip>
-                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetCommitmentColor(context)">
-                                @TrainingPlanPrioritizer.GetCommitmentLabel(context)
-                            </MudChip>
-                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default">
-                                Priority @context.Priority
-                            </MudChip>
-                        </MudStack>
-
-                        @{ var suggestedResources = GetSuggestedResources(context); }
-                        @if (suggestedResources.Count > 0)
-                        {
-                            <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-2">
-                                @foreach (var resource in suggestedResources)
-                                {
-                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenResourceAsync(resource))" EndIcon="@Icons.Material.Filled.OpenInNew">
-                                        @resource.Title
+            @if (FilteredItemList.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">No items match the current filters.</MudAlert>
+            }
+            else
+            {
+                <MudGrid Spacing="3" Class="planner-item-grid">
+                    @foreach (var context in FilteredItemList)
+                    {
+                        <MudItem xs="12" lg="6" Class="d-flex">
+                            <MudPaper Class="@GetPlannerCardClass(context)" Elevation="0">
+                                <MudStack Row="true" Wrap="Wrap.Wrap" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start" Spacing="2">
+                                    <div class="flex-1">
+                                        <MudText Typo="Typo.overline" Class="planner-item-domain">@context.Domain • @context.Category</MudText>
+                                        <MudText Typo="Typo.h6">@context.Title</MudText>
+                                    </div>
+                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Edit" OnClick="@(() => BeginEditAsync(context))">
+                                        Update
                                     </MudButton>
+                                </MudStack>
+
+                                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-2">
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@GetAttentionColor(context)">
+                                        @TrainingPlanPrioritizer.GetAttentionLabel(context, today)
+                                    </MudChip>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetCommitmentColor(context)">
+                                        @TrainingPlanPrioritizer.GetCommitmentLabel(context)
+                                    </MudChip>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default">@context.Type</MudChip>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default">Priority @context.Priority</MudChip>
+                                </MudStack>
+
+                                @if (!string.IsNullOrWhiteSpace(context.Description))
+                                {
+                                    <MudText Typo="Typo.body2" Class="mt-3 mud-secondary-text">@context.Description</MudText>
                                 }
-                            </MudStack>
-                        }
-                        else
-                        {
-                            <MudText Typo="Typo.caption" Class="mud-secondary-text d-block mt-2">No matching resource yet. Add one in Resources and it will appear here.</MudText>
-                        }
-                        <MudStack Spacing="0" Class="mt-2">
-                            <MudText Typo="Typo.caption" Class="mud-secondary-text">Last status change @FormatAbsolute(context.LastStatusChangedUtc)</MudText>
-                            @if (context.CompletedUtc.HasValue)
-                            {
-                                <MudText Typo="Typo.caption" Class="mud-secondary-text">Completed @FormatAbsolute(context.CompletedUtc.Value)</MudText>
-                            }
-                        </MudStack>
-                    </MudTd>
-                    <MudTd DataLabel="Domain">@context.Domain</MudTd>
-                    <MudTd DataLabel="Due">
-                        <MudText Typo="Typo.body2">@context.TargetDate.ToString("MMM d")</MudText>
-                        <MudText Typo="Typo.caption" Class="@GetDueTextClass(context)">@TrainingPlanPrioritizer.GetAttentionLabel(context, today)</MudText>
-                    </MudTd>
-                    <MudTd DataLabel="Status">
-                        <MudChip T="string" Variant="Variant.Filled" Color="@GetStatusColor(context.Status)">@context.Status</MudChip>
-                    </MudTd>
-                    <MudTd DataLabel="Progress">
-                        <MudProgressLinear Value="@context.ProgressPercent" Rounded="true" Color="@GetAttentionColor(context)" />
-                        <MudText Typo="Typo.caption" Class="mud-secondary-text">@context.ProgressPercent%</MudText>
-                    </MudTd>
-                    <MudTd Style="text-align: right;">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Edit" OnClick="@(() => BeginEditAsync(context))">Edit</MudButton>
-                    </MudTd>
-                </RowTemplate>
-                <NoRecordsContent>
-                    <MudText Typo="Typo.body2">No items match the current filters.</MudText>
-                </NoRecordsContent>
-            </MudTable>
+
+                                <div class="planner-item-progress mt-3">
+                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                        <MudText Typo="Typo.caption" Class="@GetDueTextClass(context)">Due @context.TargetDate.ToString("MMM d, yyyy")</MudText>
+                                        <MudText Typo="Typo.caption" Class="mud-secondary-text">@context.ProgressPercent%</MudText>
+                                    </MudStack>
+                                    <MudProgressLinear Value="@context.ProgressPercent" Rounded="true" Color="@GetAttentionColor(context)" />
+                                </div>
+
+                                @{ var suggestedResources = GetSuggestedResources(context); }
+                                @if (suggestedResources.Count > 0)
+                                {
+                                    <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-3">
+                                        @foreach (var resource in suggestedResources)
+                                        {
+                                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenResourceAsync(resource))" EndIcon="@Icons.Material.Filled.OpenInNew">
+                                                @resource.Title
+                                            </MudButton>
+                                        }
+                                    </MudStack>
+                                }
+
+                                <MudStack Row="true" Wrap="Wrap.Wrap" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Spacing="1" Class="planner-item-footer mt-3">
+                                    <MudText Typo="Typo.caption" Class="mud-secondary-text">@context.EstimatedHours.ToString("0.#") planned hours • status updated @FormatAbsolute(context.LastStatusChangedUtc)</MudText>
+                                    <MudChip T="string" Variant="Variant.Filled" Color="@GetStatusColor(context.Status)" Size="Size.Small">@context.Status</MudChip>
+                                </MudStack>
+                            </MudPaper>
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
         </MudPaper>
     </MudItem>
 
@@ -247,7 +327,7 @@
     private string selectedFocusFilter = "Do next";
     private DateTime? targetDate;
     private readonly DateTime today = DateTime.UtcNow.Date;
-    private static readonly string[] FocusFilterOptions = ["Do next", "All work", "At risk", "Due soon", "In progress", "Core commitments", "Nice to have", "Certifications"];
+    private static readonly string[] FocusFilterOptions = ["Do next", "Fabric sprint", "Events", "All work", "At risk", "Due soon", "In progress", "Core commitments", "Nice to have", "Certifications"];
     private int appliedNavigationRequestId = -1;
     private bool hasLoaded;
 
@@ -266,21 +346,52 @@
         }
     }
 
-    private IEnumerable<UpskillTracker.Models.TrainingItem> FilteredItems => TrainingPlanPrioritizer.OrderForFocus(
+    private IReadOnlyList<UpskillTracker.Models.TrainingItem> FilteredItemList => TrainingPlanPrioritizer.OrderForFocus(
         items.Where(item =>
             (string.IsNullOrWhiteSpace(searchText) || item.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) || item.Domain.Contains(searchText, StringComparison.OrdinalIgnoreCase) || item.Category.Contains(searchText, StringComparison.OrdinalIgnoreCase)) &&
             (!selectedStatus.HasValue || item.Status == selectedStatus.Value) &&
             (!selectedLane.HasValue || item.Lane == selectedLane.Value) &&
             MatchesFocusFilter(item)),
-        today);
+        today).ToList();
+
+    private IReadOnlyList<UpskillTracker.Models.TrainingItem> FabricSprintItems => items
+        .Where(IsFabricSprintItem)
+        .OrderBy(item => item.TargetDate)
+        .ToList();
+
+    private IReadOnlyList<UpskillTracker.Models.TrainingItem> ActiveEventItems => items
+        .Where(item => item.Type == UpskillTracker.Models.TrainingItemType.Event &&
+            item.Status != UpskillTracker.Models.TrackerStatus.Completed)
+        .OrderBy(item => item.TargetDate)
+        .ToList();
 
     private int AtRiskCount => items.Count(item => TrainingPlanPrioritizer.IsAtRisk(item, today));
+
+    private int DueSoonCount => items.Count(item =>
+        item.Status != UpskillTracker.Models.TrackerStatus.Completed &&
+        TrainingPlanPrioritizer.GetAttentionLevel(item, today) == UpskillTracker.Models.PlanAttentionLevel.DueSoon);
 
     private int CoreCommitmentCount => items.Count(item => item.Status != UpskillTracker.Models.TrackerStatus.Completed && !TrainingPlanPrioritizer.IsNiceToHave(item));
 
     private int InProgressCount => items.Count(item => item.Status == UpskillTracker.Models.TrackerStatus.InProgress);
 
-    private int NiceToHaveCount => items.Count(item => item.Status != UpskillTracker.Models.TrackerStatus.Completed && TrainingPlanPrioritizer.IsNiceToHave(item));
+    private int FabricSprintRemainingCount => FabricSprintItems.Count(item => item.Status != UpskillTracker.Models.TrackerStatus.Completed);
+
+    private decimal FabricSprintRemainingHours => FabricSprintItems
+        .Where(item => item.Status != UpskillTracker.Models.TrackerStatus.Completed)
+        .Sum(item => item.EstimatedHours);
+
+    private int FabricSprintProgress => FabricSprintItems.Count == 0
+        ? 0
+        : (int)Math.Round(FabricSprintItems.Average(item => item.ProgressPercent));
+
+    private DateTime FabricSprintDeadline => FabricSprintItems.Count == 0
+        ? today
+        : FabricSprintItems.Max(item => item.TargetDate);
+
+    private UpskillTracker.Models.TrainingItem? NextFabricSprintItem => TrainingPlanPrioritizer
+        .OrderForFocus(FabricSprintItems.Where(item => item.Status != UpskillTracker.Models.TrackerStatus.Completed), today)
+        .FirstOrDefault();
 
     private async Task LoadAsync()
     {
@@ -389,6 +500,8 @@
     private bool MatchesFocusFilter(UpskillTracker.Models.TrainingItem item) => selectedFocusFilter switch
     {
         "Do next" => item.Status != UpskillTracker.Models.TrackerStatus.Completed && !TrainingPlanPrioritizer.IsNiceToHave(item),
+        "Fabric sprint" => IsFabricSprintItem(item),
+        "Events" => item.Type == UpskillTracker.Models.TrainingItemType.Event,
         "At risk" => TrainingPlanPrioritizer.IsAtRisk(item, today),
         "Due soon" => item.Status != UpskillTracker.Models.TrackerStatus.Completed &&
             TrainingPlanPrioritizer.GetAttentionLevel(item, today) == UpskillTracker.Models.PlanAttentionLevel.DueSoon,
@@ -398,6 +511,18 @@
         "Certifications" => item.Type == UpskillTracker.Models.TrainingItemType.Certification,
         _ => true
     };
+
+    private static bool IsFabricSprintItem(UpskillTracker.Models.TrainingItem item)
+        => item.Domain.Equals("Microsoft Fabric", StringComparison.OrdinalIgnoreCase) &&
+            item.Title.StartsWith("Fabric sprint ", StringComparison.OrdinalIgnoreCase);
+
+    private async Task OpenNextFabricStepAsync()
+    {
+        if (NextFabricSprintItem is not null)
+        {
+            await BeginEditAsync(NextFabricSprintItem);
+        }
+    }
 
     private void SetFocusFilter(string filter)
     {
@@ -443,6 +568,34 @@
             UpskillTracker.Models.PlanAttentionLevel.NiceToHave => "row-nice-to-have",
             _ => string.Empty
         }
+    };
+
+    private string GetPlannerCardClass(UpskillTracker.Models.TrainingItem item)
+        => string.Join(' ', "planner-item-card", GetRowClass(item, 0));
+
+    private static string GetSprintStepClass(UpskillTracker.Models.TrainingItem item)
+        => item.Status switch
+        {
+            UpskillTracker.Models.TrackerStatus.Completed => "planner-sprint-step planner-sprint-step-complete",
+            UpskillTracker.Models.TrackerStatus.InProgress => "planner-sprint-step planner-sprint-step-active",
+            UpskillTracker.Models.TrackerStatus.Blocked => "planner-sprint-step planner-sprint-step-blocked",
+            _ => "planner-sprint-step"
+        };
+
+    private static string GetSprintStepTitle(UpskillTracker.Models.TrainingItem item)
+    {
+        var separatorIndex = item.Title.IndexOf(':');
+        return separatorIndex >= 0 && separatorIndex < item.Title.Length - 1
+            ? item.Title[(separatorIndex + 1)..].Trim()
+            : item.Title;
+    }
+
+    private static string GetSprintStepIcon(UpskillTracker.Models.TrainingItem item) => item.Status switch
+    {
+        UpskillTracker.Models.TrackerStatus.Completed => Icons.Material.Filled.CheckCircle,
+        UpskillTracker.Models.TrackerStatus.InProgress => Icons.Material.Filled.PlayCircle,
+        UpskillTracker.Models.TrackerStatus.Blocked => Icons.Material.Filled.Error,
+        _ => Icons.Material.Filled.RadioButtonUnchecked
     };
 
     private static Color GetStatusColor(UpskillTracker.Models.TrackerStatus status) => status switch

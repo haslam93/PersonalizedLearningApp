@@ -94,6 +94,7 @@ public class TrackerService(
                 NiceToHaveItems = activeItems.Count(TrainingPlanPrioritizer.IsNiceToHave),
                 CertificationGoals = activeItems.Count(item => item.Type == TrainingItemType.Certification),
                 RapidRampItems = trainingItems.Count(item => item.Lane == LearningLane.RapidRamp && item.Status != TrackerStatus.Completed),
+                EventCount = activeItems.Count(item => item.Type == TrainingItemType.Event),
                 CompletionRate = trainingItems.Count == 0 ? 0 : Math.Round((decimal)completedItems / trainingItems.Count * 100, 1),
                 CommitmentCompletionRate = committedItems.Count == 0 ? 0 : Math.Round((decimal)completedCommittedItems / committedItems.Count * 100, 1),
                 TotalTrackedVideos = totalTrackedVideos,

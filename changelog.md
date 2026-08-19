@@ -13,6 +13,33 @@ keywords:
 estimated_reading_time: 6
 ---
 
+## 2026-08-19
+
+### Added the urgent Microsoft Fabric and OpenText ramp
+
+* Replaced the long beginner sequence with a dated 10-business-day sprint from August 20 through September 2 covering Fabric trial setup, Data Factory, OneLake and Delta, PySpark, warehouse and T-SQL, Direct Lake and Power BI, Eventstream and KQL, governance, security, monitoring, Git, deployment pipelines, and a customer-ready capstone
+* Standardized on the Microsoft-hosted NYC Taxi open dataset and added official dataset, Fabric training, workload, governance, CI/CD, and DP-600 resources
+* Added post-trip checkpoints for OpenText scenario capture, production hardening, content metadata, a DP-600 gap assessment, and a customer architecture review
+* Added a one-time conflict-safe database refresh so the new plan reaches existing PostgreSQL and SQLite databases while retaining user progress, notes, evidence, and completed work
+
+### Reprioritized the roadmap and certification plan
+
+* Marked GH-600 GitHub Certified: Agentic AI Developer complete and added its official credential and study-guide links
+* Moved AI-103 to October 16, set DP-600 for December 18, deferred Databricks and lower-priority capstones, and spread announcement-radar items into a weekly optional backlog
+* Added Microsoft Build 2026 catch-up, GitHub Universe 2026, and Microsoft Ignite 2026 event and follow-up milestones using official dates
+
+### Rebuilt the Plan experience around action
+
+* Added an urgent sprint panel with progress, remaining effort, sequenced daily steps, and a direct next-step action
+* Replaced the horizontally constrained plan table with responsive cards that keep due dates, progress, resources, status, and the Update action visible
+* Added event-runway views to Plan and Timeline and surfaced Fabric and event counts on the Dashboard
+
+### Cleared learning automation backlog
+
+* Reviewed and merged weekly learning-radar PRs 12 through 17 and 19, removing duplicate orchestration and Foundry publishing entries during merge
+* Rescheduled the merged announcement backlog as optional work and clarified the workflow's priority scale, default lane, and semantic duplicate rules
+* Closed resolved issues for cost-control automation, Plan responsiveness, the superseded initial radar output, and the recovered workflow-access warning
+
 ## 2026-07-16
 
 ### Repaired responsive status and history UI
