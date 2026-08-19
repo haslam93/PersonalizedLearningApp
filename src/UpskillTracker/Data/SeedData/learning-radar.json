@@ -1,4 +1,75 @@
 {
   "$schema": "./learning-radar.schema.json",
-  "items": []
+  "items": [
+    {
+      "title": "Explore Copilot vision GA: attach images and PDFs to chat",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "Copilot vision is now generally available. You can attach images (JPEG, PNG, GIF, WebP) and PDFs directly to Copilot Chat prompts so the model reasons about what it sees alongside your code. Available in VS Code, github.com, Visual Studio, and Copilot CLI. Useful for UI bug reports, architecture diagrams, and error screenshots in AI app development.",
+      "targetDate": "2026-07-13",
+      "lane": "RapidRamp",
+      "type": "Lab",
+      "estimatedHours": 1.5,
+      "priority": 4,
+      "link": "https://github.blog/changelog/2026-07-01-copilot-vision-is-generally-available",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-07-06"
+    },
+    {
+      "title": "Explore Copilot enterprise managed-settings.json for AI governance",
+      "domain": "GitHub Copilot",
+      "category": "Copilot Enterprise",
+      "description": "Enterprise managed-settings.json is now generally available for GitHub Enterprise Cloud. Admins define Copilot policies—allowed models, extensions, and governance rules—in a file in a .github-private repo. Policies propagate to all Copilot clients including VS Code, CLI, and the web. Key for customer conversations on enterprise AI standards and compliance.",
+      "targetDate": "2026-07-20",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 2,
+      "priority": 3,
+      "link": "https://github.blog/changelog/2026-07-01-enterprise-managed-settings-json-is-generally-available",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-07-06"
+    },
+    {
+      "title": "Build a safe agent harness with file access and approval gates using Microsoft Agent Framework",
+      "domain": "Agent Framework",
+      "category": "Agents",
+      "description": "Part 2 of the Agent Harness series: add a file-access provider (read/write CSV portfolio data), human approval gates for risky tool calls, and durable memory (in-session and cross-session) to an MAF agent. Demonstrates key safety and trust patterns for production agentic apps that read enterprise data and must gate consequential actions behind human approval.",
+      "targetDate": "2026-07-18",
+      "lane": "RapidRamp",
+      "type": "Lab",
+      "estimatedHours": 3,
+      "priority": 4,
+      "link": "https://devblogs.microsoft.com/agent-framework/agent-harness-working-with-your-data-safely/",
+      "source": "Microsoft Agent Framework Blog",
+      "addedOn": "2026-07-06"
+    },
+    {
+      "title": "Build long-running MCP server tools on Azure Functions",
+      "domain": "App Innovation",
+      "category": "Azure Functions",
+      "description": "Tutorial covering how to build MCP tools that exceed the default client timeout using Azure Durable Functions or notification callbacks. Practical for AI app teams exposing enterprise operations as MCP tools on Azure Functions, where tool execution times can be unbounded (e.g. data pipelines, batch jobs, external API calls with retries).",
+      "targetDate": "2026-07-27",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 3,
+      "link": "https://techcommunity.microsoft.com/blog/appsonazureblog/how-to-build-long-running-mcp-tools-on-azure-functions/4532653",
+      "source": "Apps on Azure Blog",
+      "addedOn": "2026-07-06"
+    },
+    {
+      "title": "Explore agentic Logic Apps for routing Azure Service Health alerts to service owners",
+      "domain": "Integration Services",
+      "category": "Logic Apps",
+      "description": "Walkthrough showing how to build an agentic Logic Apps workflow that automatically routes Azure Service Health alerts to the correct service owner teams based on affected subscription, resource group, or service type. Demonstrates real-world agentic integration patterns for AI-enabled operations and enterprise incident management, directly applicable to customer reliability conversations.",
+      "targetDate": "2026-07-20",
+      "lane": "RapidRamp",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 4,
+      "link": "https://techcommunity.microsoft.com/blog/integrationsonazureblog/automatically-route-azure-service-health-alerts-to-the-right-service-owners-usin/4531853",
+      "source": "Integrations on Azure Blog",
+      "addedOn": "2026-07-06"
+    }
+  ]
 }
