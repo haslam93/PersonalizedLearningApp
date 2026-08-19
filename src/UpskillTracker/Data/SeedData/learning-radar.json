@@ -252,6 +252,76 @@
       "link": "https://github.blog/changelog/2026-07-23-copilot-cloud-agent-for-linear-is-now-generally-available",
       "source": "GitHub Changelog",
       "addedOn": "2026-07-24"
+    },
+    {
+      "title": "Explore MCP C# SDK v2.0 — stateless HTTP and Multi Round-Trip Requests",
+      "domain": "Architecture and Operations",
+      "category": "MCP",
+      "description": "The MCP C# SDK reached v2.0 implementing the 2026-07-28 revision of the MCP specification — the largest protocol revision since launch. Key changes: HTTP is now stateless by default (no session handshake), the HTTP surface is standardised so ordinary load balancers can route MCP traffic, and Multi Round-Trip Requests enable interactive tools without long-lived sessions. Backward-compatible with v1 code. Directly relevant for building MCP servers on ASP.NET Core.",
+      "targetDate": "2026-08-14",
+      "lane": "RapidRamp",
+      "type": "Lab",
+      "estimatedHours": 3,
+      "priority": 1,
+      "link": "https://devblogs.microsoft.com/dotnet/announcing-v20-of-the-official-mcp-csharp-sdk/",
+      "source": ".NET Blog",
+      "addedOn": "2026-07-31"
+    },
+    {
+      "title": "Explore Copilot Code Review with Agent Skills and MCP (GA)",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "Copilot code review support for agent skills and MCP servers is now generally available for all Copilot Pro, Pro+, Business, and Enterprise plans. Agent skills (via SKILL.md files in .github/skills) let you embed team-specific coding standards into every review. MCP server connections pull context from issue trackers, documentation systems, and service catalogs directly into the review. Attribution on skill/MCP comments is also new. A direct productivity multiplier for PR workflows.",
+      "targetDate": "2026-08-14",
+      "lane": "RapidRamp",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 1,
+      "link": "https://github.blog/changelog/2026-07-29-copilot-code-review-agent-skills-and-mcp-now-generally-available",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-07-31"
+    },
+    {
+      "title": "Explore GitHub Copilot in VS Code July 2026 — Vision GA and Multi-Chat Sessions",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "VS Code v1.127–v1.131 (July 2026) shipped several notable features: Copilot Vision (paste images and PDFs into chat) is now generally available; multi-chat sessions let you fork and compare approaches within one agent session; worktrees support lets each agent session work in an isolated Git worktree; and subagent tracking shows model, elapsed time, and active tool per running subagent. High daily-workflow impact for agentic development.",
+      "targetDate": "2026-08-21",
+      "lane": "RapidRamp",
+      "type": "Learning",
+      "estimatedHours": 1.5,
+      "priority": 2,
+      "link": "https://github.blog/changelog/2026-07-30-github-copilot-in-visual-studio-code-july-2026-releases",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-07-31"
+    },
+    {
+      "title": "Explore Agent Framework: composing multi-agent systems with GitHub Copilot SDK and Squad",
+      "domain": "Agent Framework",
+      "category": "Agent Framework",
+      "description": "Microsoft Agent Framework (MAF) v1.0 now has a first-party adapter for the GitHub Copilot SDK, enabling you to wire a coding-capable Copilot agent into a MAF IServiceCollection alongside other agents. The blog post also introduces Squad — an open-source multi-agent framework (aka.ms/copilot-squad) where a coordinator dispatches tasks to specialist agents. The combination provides agent runtime, model abstraction, telemetry, and coding capability in one .NET app.",
+      "targetDate": "2026-08-21",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 3,
+      "priority": 2,
+      "link": "https://devblogs.microsoft.com/agent-framework/building-agent-teams-with-agent-framework-github-copilot-cli-and-squad/",
+      "source": "Microsoft Agent Framework Blog",
+      "addedOn": "2026-07-31"
+    },
+    {
+      "title": "Explore dynamic Agent Skill discovery from MCP servers in .NET",
+      "domain": "Agent Framework",
+      "category": "Agent Framework",
+      "description": "Microsoft.Agents.AI.Mcp (released this week for .NET) lets agents discover and load Agent Skills on demand from an MCP server rather than bundling them at build time. The server advertises skills via a skill://index.json discovery document; agents pull full instructions only when a task matches. This enables centralised skill governance — domain experts publish once, all agents across the organisation pick up updates without redeployment.",
+      "targetDate": "2026-08-28",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 3,
+      "link": "https://devblogs.microsoft.com/agent-framework/discover-agent-skills-from-mcp-servers-in-net/",
+      "source": "Microsoft Agent Framework Blog",
+      "addedOn": "2026-07-31"
     }
   ]
 }
