@@ -462,6 +462,48 @@
       "link": "https://techcommunity.microsoft.com/t5/apps-on-azure-blog/add-ai-to-the-workflows-you-already-have-using-serverless-agents/ba-p/4544824",
       "source": "Apps on Azure Blog",
       "addedOn": "2026-08-14"
+    },
+    {
+      "title": "Give Copilot agents real tools via Logic Apps connectors without hand-wiring MCP",
+      "domain": "Integration Services",
+      "category": "Logic Apps",
+      "description": "Published 2026-08-20, this Integrations on Azure walkthrough shows how to wire Logic Apps managed connectors — covering 1,400+ services — directly into Copilot agent tool-calls without building or hosting a custom MCP server. Logic Apps handles the connector lifecycle, auth, and schema exposure. Directly actionable for App Innovation engineers who want to give AI agents enterprise-system access (SAP, Dynamics, SharePoint, etc.) quickly and securely.",
+      "targetDate": "2026-09-11",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 3,
+      "link": "https://techcommunity.microsoft.com/blog/integrationsonazureblog/give-your-copilot-agents-real-tools-without-hand-wiring-mcp/4548254",
+      "source": "Integrations on Azure Blog",
+      "addedOn": "2026-08-21"
+    },
+    {
+      "title": "Power the Azure SRE Agent with custom integration tools",
+      "domain": "Architecture and Operations",
+      "category": "AI Ops",
+      "description": "Published 2026-08-18, this Integrations on Azure post covers how to extend the Azure SRE Agent with additional operational tools — wiring it to monitoring APIs, runbooks, and incident-management systems via Logic Apps connectors and MCP. Relevant for App Innovation engineers building AI-assisted reliability engineering workflows and wanting to move from passive alerting to autonomous remediation.",
+      "targetDate": "2026-09-18",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1.5,
+      "priority": 3,
+      "link": "https://techcommunity.microsoft.com/blog/integrationsonazureblog/power-azure-sre-agent-with-the-tools-it-needs/4547882",
+      "source": "Integrations on Azure Blog",
+      "addedOn": "2026-08-21"
+    },
+    {
+      "title": "Explore APIM dependency telemetry in Application Insights for policy observability",
+      "domain": "App Innovation",
+      "category": "APIM",
+      "description": "Published 2026-08-13, this update introduces dependency telemetry emission from Azure API Management policies directly into Application Insights. Each APIM policy step now appears as a dependency span in distributed traces, enabling end-to-end visibility from client request through gateway policies to backend AI model calls. Critical for diagnosing latency and failure in AI Gateway architectures where APIM fronts LLM endpoints.",
+      "targetDate": "2026-09-25",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1.5,
+      "priority": 3,
+      "link": "https://techcommunity.microsoft.com/blog/integrationsonazureblog/introducing-dependency-telemetry-in-application-insights-for-azure-api-managemen/4545504",
+      "source": "Integrations on Azure Blog",
+      "addedOn": "2026-08-21"
     }
   ]
 }
