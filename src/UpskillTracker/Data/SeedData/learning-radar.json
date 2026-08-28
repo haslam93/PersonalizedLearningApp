@@ -462,6 +462,76 @@
       "link": "https://techcommunity.microsoft.com/t5/apps-on-azure-blog/add-ai-to-the-workflows-you-already-have-using-serverless-agents/ba-p/4544824",
       "source": "Apps on Azure Blog",
       "addedOn": "2026-08-14"
+    },
+    {
+      "title": "Explore Agent and Workflow Channels in Microsoft Agent Framework (Python)",
+      "domain": "Agent Framework",
+      "category": "Agents",
+      "description": "Released 2026-08-27, the new channels packages let you expose a Python Agent Framework agent or workflow over multiple protocols without changing agent logic: OpenAI Responses API (agent-framework-hosting-responses), Telegram (agent-framework-hosting-telegram), A2A native (agent-framework-hosting-a2a), and MCP (agent-framework-hosting-mcp). Each channel package handles protocol translation at its boundary; authentication, routing, and storage remain in the host app. Directly relevant for building multi-surface agent backends that serve Copilot, Teams bots, MCP clients, and mobile channels from a single agent definition.",
+      "targetDate": "2026-09-18",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 3,
+      "link": "https://devblogs.microsoft.com/agent-framework/introducing-agent-and-workflow-channels/",
+      "source": "Microsoft Agent Framework Blog",
+      "addedOn": "2026-08-28"
+    },
+    {
+      "title": "Explore Foundry Hosted Agents: deploy a .NET Agent Framework app to Azure in 3 lines",
+      "domain": "Microsoft Foundry",
+      "category": "Foundry",
+      "description": "Posted 2026-08-25, Foundry Hosted Agents give a dotnet run console agent a managed home in Azure AI Foundry — handling session storage, scaling, telemetry, and auth — without requiring a Dockerfile or custom web server. The blog post shows the full path from a local Agent Framework C# app to a Foundry-hosted endpoint with minimal code additions. Highly actionable for any engineer who has built an MAF agent locally and needs to ship it to Azure.",
+      "targetDate": "2026-09-11",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 3,
+      "link": "https://devblogs.microsoft.com/dotnet/from-dotnet-run-to-foundry-hosted-agent-in-3-lines-of-csharp/",
+      "source": ".NET Blog",
+      "addedOn": "2026-08-28"
+    },
+    {
+      "title": "Explore shared agentic work with GitHub Copilot in Microsoft Teams",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "Released 2026-08-21, GitHub Copilot cloud agent sessions can now be started and collaboratively steered from within a Microsoft Teams channel, thread, or DM by mentioning @GitHub. All participants can add context, ask questions, and guide the agent. Sessions created in Teams continue seamlessly in the Copilot app on github.com, enabling cross-surface handoffs. Understanding this workflow is essential for enterprise teams adopting agentic coding in their existing collaboration tooling.",
+      "targetDate": "2026-09-25",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1.5,
+      "priority": 2,
+      "link": "https://github.blog/changelog/2026-08-21-shared-agentic-work-with-github-copilot-in-microsoft-teams",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-08-28"
+    },
+    {
+      "title": "Explore C# 15 new language features in .NET 11 Preview 7",
+      "domain": "App Innovation",
+      "category": "Application Modernisation",
+      "description": "C# 15 features are fully available in .NET 11 Preview 7 (announced 2026-08-26). Headline additions: union types (first-class sum types enforced by the compiler), closed hierarchies (sealed class hierarchies with exhaustive switch), collection expression arguments, extension indexers, and labeled break/continue. Union types in particular change how AI output models and discriminated result types are expressed in C# — directly applicable to agent tool return types and AI API response contracts. Try the features now ahead of the .NET 11 November GA.",
+      "targetDate": "2026-10-02",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 2,
+      "link": "https://devblogs.microsoft.com/dotnet/explore-csharp-15/",
+      "source": ".NET Blog",
+      "addedOn": "2026-08-28"
+    },
+    {
+      "title": "Explore GitHub Copilot Global Model Policy GA — enterprise model governance",
+      "domain": "GitHub Copilot",
+      "category": "Copilot Enterprise",
+      "description": "The Copilot Global Model Policy reached general availability on 2026-08-26 and is being enforced across all Copilot Business and Enterprise plans through 1 September. The policy sets a default allow/deny state for all generally available models; open-weight models and models requiring data retention are disabled by default. Admins can override per-model. Understanding the policy model, default states, and override workflow is important for enterprise AI governance conversations and for ensuring teams have access to the models they need.",
+      "targetDate": "2026-09-18",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1,
+      "priority": 3,
+      "link": "https://github.blog/changelog/2026-08-26-global-model-policy-generally-available",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-08-28"
     }
   ]
 }
