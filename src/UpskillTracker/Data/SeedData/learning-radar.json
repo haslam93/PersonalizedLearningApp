@@ -462,6 +462,62 @@
       "link": "https://techcommunity.microsoft.com/t5/apps-on-azure-blog/add-ai-to-the-workflows-you-already-have-using-serverless-agents/ba-p/4544824",
       "source": "Apps on Azure Blog",
       "addedOn": "2026-08-14"
+    },
+    {
+      "title": "Explore Copilot CLI content exclusions for governed coding workflows",
+      "domain": "GitHub Copilot",
+      "category": "Copilot Governance",
+      "description": "Content exclusions are now generally available in GitHub Copilot app and CLI. Enterprise, organization, and repository admins can enforce exclusion policies that the CLI respects during chat and agent-style workflows. Study how exclusion rules change prompt grounding and safe repository usage for governed engineering environments.",
+      "targetDate": "2026-09-19",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1.5,
+      "priority": 3,
+      "link": "https://github.blog/changelog/2026-09-02-content-exclusions-generally-available-in-copilot-app-and-cli",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-09-07"
+    },
+    {
+      "title": "Explore Microsoft Foundry long-running agents and human approvals",
+      "domain": "Microsoft Foundry",
+      "category": "Foundry Agents",
+      "description": "Microsoft Foundry's August 2026 updates added preview guidance for long-running hosted agents, steerable and crash-resilient deployments, task-state management, and human-in-the-loop approval steps. Review the new agent lifecycle and resilience model, then map where these patterns fit customer-facing agent workloads.",
+      "targetDate": "2026-09-26",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 2,
+      "priority": 3,
+      "link": "https://learn.microsoft.com/en-us/azure/foundry/whats-new-foundry",
+      "source": "Microsoft Foundry What's New",
+      "addedOn": "2026-09-07"
+    },
+    {
+      "title": "Lab APIOps CLI for source-controlled API Management delivery",
+      "domain": "Integration Services",
+      "category": "API Management",
+      "description": "APIOps CLI was introduced to extract, version, review, preview, and publish Azure API Management configuration through source-controlled DevOps workflows. Use it to model APIs, policies, and environment promotion in Git-backed pipelines, then compare it to current APIM deployment practices.",
+      "targetDate": "2026-09-21",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 3,
+      "priority": 4,
+      "link": "https://techcommunity.microsoft.com/blog/integrationsonazureblog/introducing-apiops-cli/4552378",
+      "source": "Integrations on Azure Blog",
+      "addedOn": "2026-09-07"
+    },
+    {
+      "title": "Explore Azure SRE Agent VNet integration GA for private enterprise estates",
+      "domain": "Architecture and Operations",
+      "category": "Operational Security",
+      "description": "Azure SRE Agent VNet integration is now generally available, letting outbound agent traffic follow enterprise routing, firewall, DNS, and logging policies while reaching resources behind private endpoints. Study how this changes the reference architecture for production operations agents in locked-down Azure environments.",
+      "targetDate": "2026-09-28",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 2,
+      "priority": 3,
+      "link": "https://techcommunity.microsoft.com/blog/appsonazureblog/azure-sre-agent-vnet-integration-is-now-generally-available/4549774",
+      "source": "Apps on Azure Blog",
+      "addedOn": "2026-09-07"
     }
   ]
 }
