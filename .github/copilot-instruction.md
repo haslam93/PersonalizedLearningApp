@@ -2,7 +2,7 @@
 title: Copilot project memory
 description: Persistent summary of the Azure AI Upskilling Hub application, GitHub configuration, deployment model, and maintenance instructions for future coding sessions
 author: Microsoft
-ms.date: 2026-07-16
+ms.date: 2026-09-07
 ms.topic: reference
 keywords:
   - copilot
@@ -26,7 +26,7 @@ When making meaningful changes, update this file and also update
 * Repository: `haslam93/PersonalizedLearningApp`
 * Primary production URL: <https://halearningapp.azurewebsites.net>
 * Custom domain: <https://skilling.hammadaslam.com>
-* Current access model: PIN gate in the app UI backed by Azure app setting `AccessPin`
+* Current access model: server-enforced PIN policy backed by Azure app setting `AccessPin`, a revocable eight-hour session cookie, and Blazor circuit guards
 
 ## Current application architecture
 
@@ -48,6 +48,15 @@ When making meaningful changes, update this file and also update
   * the Plan tab shows task-level matching links from the shared Resources library
   * the Dashboard focus list also surfaces matching links for active items
   * the Resources tab remains the single place where users add or edit links that power those suggestions
+* Learning workspace behavior:
+  * `LearningStudio` is the Dashboard's primary experience: ranked next action, resource links, Learn / Apply / Recall guide, topic progress map, and local-week activity chart
+  * 15/30/60-minute budgets are planning guides, not timers or logged study time; map percentages represent recorded plan progress, not proficiency
+  * `LearningInsightsBuilder` computes topic progress, local-week counts, remaining effort, and self-assessed 1/3/7-day recall intervals
+  * recall is stored as ordinary `NoteEntry` rows with category `Active recall` and exact `training:<id>` / `confidence:<value>` tags; do not introduce a migration for these features
+  * review dates use the original reflection `CreatedUtc` in the browser time zone, not `UpdatedUtc`
+  * `LearningStudioSession` is owned by Home and preserves per-item recall drafts across tab changes within a circuit, never across users
+  * Home uses `?view=` for bookmarkable tabs and passes topic-specific `PlanNavigationRequest.Domain` to the Plan filter
+  * opening a video is not evidence of watching: only an explicit Seen action records a watched-video event; do not rewrite existing history
 * Learning-plan behavior:
   * `TrainingPlanPrioritizer` ranks overdue, due-soon, active, core, and nice-to-have items consistently across the Dashboard and Plan tabs
   * core completion excludes `LearningLane.Stretch` items unless they are project-driven
@@ -75,23 +84,27 @@ When making meaningful changes, update this file and also update
 * UI shell behavior:
   * the main app bar uses a minimal title and no fixed date badge
   * `components-reconnect-modal` must remain available so an open tab recovers cleanly when an Azure deployment replaces its Blazor Server circuit
-  * the Home page opens with a tracker-driven workspace overview instead of hardcoded focus-area copy
-  * the Dashboard summary card adapts to live completion, in-progress, and overdue counts
-  * the Dashboard emphasizes schedule pressure, core-plan completion, and a ranked "Do next" list
+  * Home does not load a second dashboard snapshot or repeat urgency metrics; `LearningStudio` leads the Dashboard and compact reporting follows it
+  * `learning.css` bridges existing MudBlazor components to shared Clawpilot color variables; `theme.js` handles explicit, saved, and system theme preferences before first paint
+  * keep visible keyboard focus, skip navigation, reduced-motion support, and the reconnect overlay
   * overview metric buttons keep their label, value, and action as separate stacked elements; do not place heading components inline inside native buttons
   * overdue optional work does not trigger the main reminder warning
   * the Dashboard announcement feed initially renders six items and uses show-more/show-fewer controls to avoid excessively long mobile pages
   * data tables inside surface cards keep `overflow-x: auto` so wide rows stay horizontally scrollable and the trailing action column (for example the Plan tab Edit button) stays reachable
-  * the Plan tab uses a single-column layout: a full-width training items table on top and the "Add/Edit training item" form below it, and the per-row Edit button scrolls to that form via the `scrollToElement` helper in `wwwroot/app.js`
+  * the Plan tab uses responsive item cards with a full-width Add/Edit form below; Update scrolls to the form through `scrollToElement`
+  * deletions of personal learning records and channels require a confirmation dialog; `MudDialogProvider` is registered in MainLayout
 * Live feed behavior:
   * the Dashboard shows a server-side cached feed of official Microsoft announcements
   * each filtered feed initially displays six announcements and can be expanded in six-item increments
   * users can open an announcement directly or save it into the shared Resources library
+  * core Dashboard rendering must not wait for external feed HTTP calls; total source failure throws rather than caching an empty success
 * Main services:
   * `TrackerService`
   * `AnnouncementFeedService`
   * `CopilotAuthService`
   * `CopilotChatService`
+  * `PinSessionService`, `PinAuthentication`, and `PinCircuitAuthenticationStateProvider`
+  * `ReadinessService`
 * Database storage:
   * local development uses SQLite in the project data path
   * Azure uses a privately networked PostgreSQL Flexible Server
@@ -139,8 +152,13 @@ When making meaningful changes, update this file and also update
 ## Current authentication and access model
 
 * App Service Authentication is intentionally disabled
-* Access is controlled by the Blazor `PinGate` component
+* `PinGate` renders native forms; the `PortalAccess` policy protects pages, API writes, and circuit events on the server
+* Never trust browser storage as authorization. `PinSessionService` validates a protected cookie against a revocable process-local session
+* Login has a shared five-attempts-per-minute rate limit and a fixed eight-hour session lifetime; production cookies are Secure and HttpOnly
+* Locking revokes access in already-open tabs. App restarts require PIN re-entry; scale-out needs shared session/rate-limit storage and Blazor session affinity
+* Login/logout and GitHub confirmation POSTs require antiforgery; announcement JSON writes send `X-CSRF-TOKEN` from `#portal-lock-form`
 * GitHub OAuth is used inside the app for the Copilot tab only
+* Keep GitHub identity primary and PIN identity separate so unlocking the portal cannot impersonate a GitHub Copilot sign-in
 * The PIN must not be stored in source code
 * The PIN is read from configuration key `AccessPin`
 * In Azure, `AccessPin` is stored as an app setting
@@ -181,8 +199,11 @@ File: [workflows/ci.yml](workflows/ci.yml)
 * Steps:
   * checkout
   * setup .NET 8
-  * restore
-  * build
+  * compile Bicep
+  * restore and build the .NET regression project
+  * run .NET tests and isolated browser journeys
+  * retain validation artifacts for seven days
+* Also exposes `workflow_call`; CD uses this same job as a required dependency
 
 ### CD workflow
 
@@ -193,13 +214,24 @@ File: [workflows/cd.yml](workflows/cd.yml)
 * Uses GitHub OIDC with `azure/login@v2`
 * Publishes the app for `linux-x64` and creates a zip package
 * Bundles the matching Copilot CLI into the deployment artifact
-* Deploys infrastructure on each run so secure settings remain synchronized
+* Serializes production runs, requires CI success, and rejects stale-main deployment attempts
+* Deploys infrastructure only when infra/CD configuration changes or manual `deployInfra` is selected; use the manual switch after changing secrets
 * Deploys infrastructure with `az deployment group create`
 * Deploys app package with `az webapp deploy`
 * Passes `APP_ACCESS_PIN` into Bicep as secure parameter `accessPin`
 * Passes `APP_GH_OAUTH_CLIENT_ID` and `APP_GH_OAUTH_CLIENT_SECRET` into Bicep for the in-app Copilot sign-in flow
 * Targets App Service plan SKU `P0v3`
 * Provisions PostgreSQL and configures the web app identity as its Microsoft Entra administrator
+* Builds with `SourceRevisionId` and polls `/healthz` for a ready database and the exact pushed commit
+* `/healthz` is anonymous and uncached: HTTP 200 with `{status:"healthy",version,commit}` when PIN configuration and database/schema are ready, otherwise 503 / `unhealthy`
+* Creates/binds an App Service managed certificate when necessary and confirms custom-domain HTTPS
+* Passes the discovered certificate thumbprint to Bicep; manual infrastructure deployments outside Actions must supply it to preserve an existing binding
+
+### Weekly learning radar
+
+* The September 4, 2026 agent artifact reported HTTP 400 because the default `claude-sonnet-4.6` was unavailable to the `agentic-workflows` integrator
+* The workflow source now specifies `model: gpt-5.4`; generated lockfiles and action pins must be updated with the installed gh-aw compiler, never hand-edited
+* Keep threat detection and draft-PR review enabled; research must not automatically overwrite the user's saved learning data
 
 ### Cost control tag workflow
 
@@ -216,7 +248,7 @@ File: [workflows/cost-control-tag.yml](workflows/cost-control-tag.yml)
 
 * `azd deploy` has previously failed due to `Microsoft.Web` deployment history `504 Gateway Timeout`
 * The direct GitHub Actions CD workflow is the more reliable deployment path right now
-* The custom domain currently exists, but HTTPS certificate binding should be revalidated before relying on it
+* CD verifies both the Azure URL and the custom-domain HTTPS endpoint before reporting full deployment success
 * The default Azure URL is the most reliable validation endpoint
 * The Copilot SDK requires a permission handler when creating sessions; current code uses `PermissionHandler.ApproveAll`
 

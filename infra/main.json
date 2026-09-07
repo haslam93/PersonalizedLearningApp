@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "14380294107065046721"
+      "templateHash": "15714997806868238453"
     }
   },
   "parameters": {
@@ -47,6 +47,13 @@
       "defaultValue": "",
       "metadata": {
         "description": "Optional custom hostname to bind to the web app. Leave empty to skip custom domain deployment."
+      }
+    },
+    "customHostnameCertificateThumbprint": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Existing certificate thumbprint to preserve custom-domain HTTPS during manual infrastructure deployments."
       }
     },
     "accessPin": {
@@ -170,6 +177,9 @@
           "customHostname": {
             "value": "[parameters('customHostname')]"
           },
+          "customHostnameCertificateThumbprint": {
+            "value": "[parameters('customHostnameCertificateThumbprint')]"
+          },
           "gitHubOAuthClientId": {
             "value": "[parameters('gitHubOAuthClientId')]"
           },
@@ -208,7 +218,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "3722671231240622725"
+              "templateHash": "243574067756574417"
             }
           },
           "parameters": {
@@ -303,6 +313,13 @@
               "defaultValue": "",
               "metadata": {
                 "description": "Optional custom hostname to bind to the App Service web app."
+              }
+            },
+            "customHostnameCertificateThumbprint": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Existing custom-domain certificate thumbprint. CI/CD discovers this before provisioning so infrastructure updates preserve HTTPS."
               }
             },
             "logAnalyticsWorkspaceName": {
@@ -887,14 +904,7 @@
               "type": "Microsoft.Web/sites/hostNameBindings",
               "apiVersion": "2024-11-01",
               "name": "[format('{0}/{1}', parameters('webAppName'), parameters('customHostname'))]",
-              "properties": {
-                "azureResourceName": "[parameters('webAppName')]",
-                "azureResourceType": "Website",
-                "customHostNameDnsRecordType": "CName",
-                "hostNameType": "Verified",
-                "siteName": "[parameters('webAppName')]",
-                "sslState": "Disabled"
-              },
+              "properties": "[shallowMerge(createArray(createObject('azureResourceName', parameters('webAppName'), 'azureResourceType', 'Website', 'customHostNameDnsRecordType', 'CName', 'hostNameType', 'Verified', 'siteName', parameters('webAppName'), 'sslState', if(empty(parameters('customHostnameCertificateThumbprint')), 'Disabled', 'SniEnabled')), if(not(empty(parameters('customHostnameCertificateThumbprint'))), createObject('thumbprint', parameters('customHostnameCertificateThumbprint')), createObject())))]",
               "dependsOn": [
                 "[resourceId('Microsoft.Web/sites', parameters('webAppName'))]"
               ]

@@ -46,6 +46,9 @@ param webAppName string
 @description('Optional custom hostname to bind to the App Service web app.')
 param customHostname string = ''
 
+@description('Existing custom-domain certificate thumbprint. CI/CD discovers this before provisioning so infrastructure updates preserve HTTPS.')
+param customHostnameCertificateThumbprint string = ''
+
 @description('Name of the Log Analytics workspace.')
 param logAnalyticsWorkspaceName string
 
@@ -564,7 +567,10 @@ resource customHostnameBinding 'Microsoft.Web/sites/hostNameBindings@2024-11-01'
     customHostNameDnsRecordType: 'CName'
     hostNameType: 'Verified'
     siteName: webAppName
-    sslState: 'Disabled'
+    sslState: empty(customHostnameCertificateThumbprint) ? 'Disabled' : 'SniEnabled'
+    ...(!empty(customHostnameCertificateThumbprint) ? {
+      thumbprint: customHostnameCertificateThumbprint
+    } : {})
   }
 }
 

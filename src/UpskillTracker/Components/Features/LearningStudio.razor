@@ -1,0 +1,335 @@
+@using System.Globalization
+@using UpskillTracker.Models
+@using UpskillTracker.Services
+@inject TrackerService TrackerService
+@inject BrowserTimeZoneService BrowserTimeZone
+@inject ISnackbar Snackbar
+
+<section class="learning-studio" aria-labelledby="studio-title">
+    <div class="studio-heading">
+        <div>
+            <span class="studio-eyebrow">A little focus, every day</span>
+            <h2 id="studio-title">Make your next session count.</h2>
+            <p>Learn one thing. Put it to work. Recall it in your own words.</p>
+        </div>
+        <span class="studio-date">@Today.ToString("dddd, MMMM d")</span>
+    </div>
+
+    <div class="studio-grid">
+        <section class="studio-card focus-session" aria-labelledby="focus-title">
+            <div class="studio-card-topline">
+                <span class="studio-eyebrow">01 / Your next best step</span>
+                <MudIcon Icon="@Icons.Material.Outlined.Explore" />
+            </div>
+            @if (NextItem is { } focus)
+            {
+                <span class="focus-domain">@focus.Domain</span>
+                <h3 id="focus-title">@focus.Title</h3>
+                <p class="focus-description">@focus.Description</p>
+                <div class="focus-context">
+                    <span><MudIcon Icon="@Icons.Material.Outlined.Event" Size="Size.Small" /> @TrainingPlanPrioritizer.GetAttentionLabel(focus, Today)</span>
+                    <span>@focus.ProgressPercent% recorded progress</span>
+                    <span>~@LearningInsightsBuilder.RemainingHours(focus).ToString("0.#")h remaining</span>
+                </div>
+                <p class="focus-reason">Why this step: project priorities, due dates, and active work come before optional learning.</p>
+                <div class="studio-actions">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow"
+                               OnClick="@(() => OnOpenPlan.InvokeAsync(new PlanNavigationRequest("All work", focus.Id)))">
+                        @(focus.Status == TrackerStatus.NotStarted ? "Open this step" : "Continue this step")
+                    </MudButton>
+                    <a class="studio-text-link" href="#recall-practice">Try active recall <span aria-hidden="true">&darr;</span></a>
+                </div>
+
+                <div class="session-budget">
+                    <strong>Make room for a focused session</strong>
+                    <div class="studio-segmented" role="group" aria-label="Session time budget">
+                        @foreach (var minutes in new[] { 15, 30, 60 })
+                        {
+                            <button type="button" aria-pressed="@(sessionMinutes == minutes ? "true" : "false")" @onclick="@(() => sessionMinutes = minutes)">@minutes min</button>
+                        }
+                    </div>
+                </div>
+
+                <ol class="session-path" aria-label="@($"{sessionMinutes}-minute learning session guide")">
+                    <li>
+                        <span class="session-step-number">1</span>
+                        <div><strong>Learn <small>@LearnMinutes min</small></strong><p>Read one resource. Look for the idea you need, not every detail.</p></div>
+                    </li>
+                    <li>
+                        <span class="session-step-number">2</span>
+                        <div><strong>Apply <small>@ApplyMinutes min</small></strong><p>Try a small example or sketch how you would use it in a real project.</p></div>
+                    </li>
+                    <li>
+                        <span class="session-step-number">3</span>
+                        <div><strong>Recall <small>@RecallMinutes min</small></strong><p>Close the reference. Explain the idea and one important trade-off.</p></div>
+                    </li>
+                </ol>
+
+                @if (SuggestedResources.Count > 0)
+                {
+                    <div class="session-resources">
+                        <span class="studio-eyebrow">Start with a useful reference</span>
+                        @foreach (var resource in SuggestedResources)
+                        {
+                            <a href="@resource.Url" target="_blank" rel="noopener noreferrer" @onclick="@(() => TrackResourceAsync(resource))">
+                                <MudIcon Icon="@Icons.Material.Outlined.MenuBook" Size="Size.Small" />
+                                <span>@resource.Title</span>
+                                <MudIcon Icon="@Icons.Material.Filled.NorthEast" Size="Size.Small" />
+                            </a>
+                        }
+                    </div>
+                }
+                <p class="studio-footnote">This is a time-boxing guide, not a timer or an automatic completion log.</p>
+            }
+            else
+            {
+                <h3 id="focus-title">Room for your next idea.</h3>
+                <p>There is no unfinished work in your plan. Revisit something you learned, or add a small, useful next step.</p>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => OnOpenPlan.InvokeAsync(new PlanNavigationRequest("All work")))">Open your plan</MudButton>
+            }
+        </section>
+
+        <div class="studio-side">
+            <section class="studio-card topic-map" aria-labelledby="topic-map-title">
+                <div class="studio-card-topline">
+                    <span class="studio-eyebrow">02 / The bigger picture</span>
+                    <MudIcon Icon="@Icons.Material.Outlined.AccountTree" />
+                </div>
+                <h3 id="topic-map-title">Your learning map</h3>
+                <p>See where your effort is going. Choose a topic to explore its plan.</p>
+                @if (topics.Count == 0)
+                {
+                    <p class="studio-empty">Add a plan item with a domain to start your map.</p>
+                }
+                @foreach (var topic in topics.Take(showAllTopics ? topics.Count : 5))
+                {
+                    <button type="button" class="topic-row" @onclick="@(() => OnOpenPlan.InvokeAsync(new PlanNavigationRequest("All work", Domain: topic.Domain)))"
+                            aria-label="@($"Open {topic.Domain}: {topic.Completed} of {topic.Total} complete, {topic.ProgressPercent}% average plan progress")">
+                        <span class="topic-row-title"><strong>@topic.Domain</strong><span>@topic.ProgressPercent%</span></span>
+                        <span class="topic-track" aria-hidden="true"><span style="@($"width: {topic.ProgressPercent.ToString(CultureInfo.InvariantCulture)}%")"></span></span>
+                        <span class="topic-row-detail">@topic.Completed / @topic.Total complete <span>@topic.InProgress in progress <span aria-hidden="true">&rarr;</span></span></span>
+                    </button>
+                }
+                @if (topics.Count > 5)
+                {
+                    <button type="button" class="studio-text-button" aria-expanded="@(showAllTopics ? "true" : "false")" @onclick="@(() => showAllTopics = !showAllTopics)">
+                        @(showAllTopics ? "Show fewer topics" : $"See all {topics.Count} topics")
+                    </button>
+                }
+                <p class="studio-footnote">Average recorded plan progress, not a measure of proficiency.</p>
+            </section>
+
+            <section class="studio-card week-rhythm" aria-labelledby="week-title">
+                <div class="week-heading"><h3 id="week-title">A rhythm, not a streak</h3><strong>@week.Count(day => day.Activities > 0)<small> active days</small></strong></div>
+                <div class="week-chart" aria-label="Learning activity this week, Monday to Sunday">
+                    @foreach (var day in week)
+                    {
+                        <button type="button" class="@(day.Date == Today ? "week-day is-today" : "week-day")" disabled="@day.IsFuture"
+                                title="@($"{day.Date:ddd, MMM d}: {day.Activities} tracked actions")"
+                                aria-label="@($"{day.Date:dddd, MMMM d}: {(day.IsFuture ? "upcoming" : $"{day.Activities} tracked actions. Open history")}")"
+                                @onclick="@(() => OnOpenHistoryDate.InvokeAsync(day.Date))">
+                            <span class="week-count">@(day.IsFuture ? "-" : day.Activities.ToString())</span>
+                            <span class="week-bar-well"><span class="week-bar" style="@($"height: {(day.Activities == 0 ? 0 : Math.Max(12, day.Activities * 100 / Math.Max(1, week.Max(value => value.Activities))))}%")"></span></span>
+                            <span>@day.Date.ToString("ddd")[..1]</span>
+                        </button>
+                    }
+                </div>
+                <p class="studio-footnote">Your local week. Breaks are part of learning.</p>
+            </section>
+        </div>
+    </div>
+
+    <section id="recall-practice" class="studio-card recall-practice" aria-labelledby="recall-title">
+        <div class="recall-intro">
+            <span class="studio-eyebrow">03 / Make it stick</span>
+            <h3 id="recall-title">Recall before you reveal.</h3>
+            <p>Re-reading feels familiar. Explaining from memory shows you what to revisit.</p>
+            <span class="review-due-label">@reviews.Count(review => review.DueDate <= Today) ready to revisit</span>
+            <p class="studio-footnote">Self-assessed review intervals: 1, 3, or 7 days. Your reflections stay in Notes and History.</p>
+        </div>
+        <div class="recall-workbench">
+            @if (reviews.Count == 0)
+            {
+                <div class="studio-empty">
+                    <MudIcon Icon="@Icons.Material.Outlined.Psychology" Size="Size.Large" />
+                    <h4>Your first review starts with a little progress.</h4>
+                    <p>Mark a plan item in progress or complete. Its saved context will be available here for recall practice.</p>
+                </div>
+            }
+            else
+            {
+                <MudSelect T="int" Label="Choose a topic to revisit" Variant="Variant.Outlined" Value="@selectedReviewId" ValueChanged="SelectReview" Disabled="@isSaving">
+                    @foreach (var review in reviews)
+                    {
+                        <MudSelectItem T="int" Value="@review.Item.Id">@review.Item.Title</MudSelectItem>
+                    }
+                </MudSelect>
+                @if (SelectedReview is { } selected)
+                {
+                    <p class="review-schedule">
+                        @(selected.LastReviewedDate is null ? "First review" : $"Last reviewed {selected.LastReviewedDate:MMM d}")
+                        <span aria-hidden="true"> / </span>
+                        @(selected.DueDate <= Today ? "Ready to revisit" : $"Next review {selected.DueDate:MMM d}")
+                    </p>
+                    <p class="recall-question">Without looking: how would you explain this, where would you apply it, and what trade-off matters?</p>
+                    <MudTextField T="string" @bind-Value="answer" Label="Your explanation, from memory" Variant="Variant.Outlined"
+                                  Lines="3" Immediate="true" MaxLength="@LearningInsightsBuilder.MaxAnswerLength" Disabled="@isSaving"
+                                  HelperText="Your draft survives tab changes. Save it to keep it after a reload." />
+                    <button type="button" class="studio-text-button reveal-button" aria-expanded="@(referenceRevealed ? "true" : "false")" aria-controls="recall-reference"
+                            @onclick="@(() => referenceRevealed = !referenceRevealed)">
+                        @(referenceRevealed ? "Hide saved context" : "Reveal saved context") <MudIcon Icon="@(referenceRevealed ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Size="Size.Small" />
+                    </button>
+                    @if (referenceRevealed)
+                    {
+                        <div id="recall-reference" class="recall-reference">
+                            <strong>Your saved context, not a generated answer key</strong>
+                            @if (!string.IsNullOrWhiteSpace(selected.Item.Description))
+                            {
+                                <p>@selected.Item.Description</p>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(selected.Item.Notes))
+                            {
+                                <p class="preserve-lines">@selected.Item.Notes</p>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(selected.Item.Evidence))
+                            {
+                                <p class="preserve-lines"><strong>Evidence:</strong> @selected.Item.Evidence</p>
+                            }
+                            @if (string.IsNullOrWhiteSpace(selected.Item.Description) && string.IsNullOrWhiteSpace(selected.Item.Notes) && string.IsNullOrWhiteSpace(selected.Item.Evidence))
+                            {
+                                <p>No reference is saved yet. Add notes or evidence to this item in your plan.</p>
+                            }
+                        </div>
+                    }
+                    <fieldset class="recall-confidence">
+                        <legend>How did that feel?</legend>
+                        @foreach (var grade in Enum.GetValues<RecallConfidence>())
+                        {
+                            <button type="button" disabled="@isSaving" aria-pressed="@(confidence == grade ? "true" : "false")" @onclick="@(() => confidence = grade)">
+                                <strong>@ConfidenceLabel(grade)</strong>
+                                <span>Revisit in @LearningInsightsBuilder.GetReviewInterval(grade) day@(grade == RecallConfidence.Revisit ? "" : "s")</span>
+                            </button>
+                        }
+                    </fieldset>
+                    <MudTextField T="string" @bind-Value="nextStep" Label="One thing to try or clarify next (optional)" Variant="Variant.Outlined"
+                                  Immediate="true" MaxLength="@LearningInsightsBuilder.MaxNextStepLength" Disabled="@isSaving" />
+                    <div class="studio-actions">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.BookmarkAdd"
+                                   OnClick="SaveReflectionAsync" Disabled="@(isSaving || TrackerService.HasRecentTransientReadFailure || string.IsNullOrWhiteSpace(answer) || confidence is null)">
+                            @(isSaving ? "Saving reflection..." : "Save reflection & schedule review")
+                        </MudButton>
+                    </div>
+                    @if (savedMessage is not null)
+                    {
+                        <p class="recall-saved" role="status">@savedMessage</p>
+                    }
+                }
+            }
+        </div>
+    </section>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public DashboardSnapshot Snapshot { get; set; } = new();
+    [Parameter, EditorRequired] public LearningHistorySnapshot History { get; set; } = new();
+    [Parameter] public IReadOnlyList<ResourceEntry> Resources { get; set; } = [];
+    [Parameter] public IReadOnlyList<NoteEntry> Notes { get; set; } = [];
+    [Parameter] public LearningStudioSession Session { get; set; } = new();
+    [Parameter] public EventCallback<PlanNavigationRequest> OnOpenPlan { get; set; }
+    [Parameter] public EventCallback<DateTime> OnOpenHistoryDate { get; set; }
+    [Parameter] public EventCallback OnDataChanged { get; set; }
+
+    private IReadOnlyList<TopicProgress> topics = [];
+    private IReadOnlyList<LearningDay> week = [];
+    private IReadOnlyList<RecallReview> reviews = [];
+    private int sessionMinutes { get => Session.SessionMinutes; set => Session.SessionMinutes = value; }
+    private int selectedReviewId { get => Session.SelectedReviewId; set => Session.SelectedReviewId = value; }
+    private bool showAllTopics;
+    private bool referenceRevealed;
+    private bool isSaving { get => Session.IsSaving; set => Session.IsSaving = value; }
+    private RecallDraft Draft => Session.Drafts.TryGetValue(selectedReviewId, out var draft)
+        ? draft : Session.Drafts[selectedReviewId] = new RecallDraft();
+    private string answer { get => Draft.Answer; set => Draft.Answer = value; }
+    private string nextStep { get => Draft.NextStep; set => Draft.NextStep = value; }
+    private RecallConfidence? confidence { get => Draft.Confidence; set => Draft.Confidence = value; }
+    private string? savedMessage { get => Session.SavedMessage; set => Session.SavedMessage = value; }
+
+    private DateTime Today => BrowserTimeZone.ToLocal(DateTime.UtcNow).Date;
+    private TrainingItem? NextItem => Snapshot.FocusItems.FirstOrDefault();
+    private RecallReview? SelectedReview => reviews.FirstOrDefault(review => review.Item.Id == selectedReviewId);
+    private int LearnMinutes => sessionMinutes / 3;
+    private int RecallMinutes => sessionMinutes == 15 ? 3 : sessionMinutes / 6;
+    private int ApplyMinutes => sessionMinutes - LearnMinutes - RecallMinutes;
+    private IReadOnlyList<ResourceEntry> SuggestedResources => NextItem is { } item ? TaskResourceMatcher.GetMatches(item, Resources, 2) : [];
+
+    protected override void OnParametersSet()
+    {
+        topics = LearningInsightsBuilder.BuildTopics(Snapshot.TrainingItems);
+        week = LearningInsightsBuilder.BuildWeek(History.Activities, DateTime.UtcNow, BrowserTimeZone.TimeZone);
+        reviews = LearningInsightsBuilder.BuildReviewQueue(Snapshot.TrainingItems, Notes, DateTime.UtcNow, BrowserTimeZone.TimeZone);
+        if (reviews.All(review => review.Item.Id != selectedReviewId))
+        {
+            SelectReview(reviews.FirstOrDefault()?.Item.Id ?? 0);
+        }
+    }
+
+    private void SelectReview(int id)
+    {
+        selectedReviewId = id;
+        referenceRevealed = false;
+        savedMessage = null;
+    }
+
+    private async Task SaveReflectionAsync()
+    {
+        if (isSaving || SelectedReview is null || confidence is null || string.IsNullOrWhiteSpace(answer))
+        {
+            Snackbar.Add("Choose a topic, write your reflection, and select a self-assessment.", Severity.Info);
+            return;
+        }
+
+        var submittedItemId = SelectedReview.Item.Id;
+        var submittedDraft = Draft;
+        var note = LearningInsightsBuilder.CreateReflection(SelectedReview.Item, answer, nextStep, confidence.Value);
+        var dueDate = Today.AddDays(LearningInsightsBuilder.GetReviewInterval(confidence.Value));
+        isSaving = true;
+        try
+        {
+            await TrackerService.SaveNoteAsync(note);
+            Session.CompleteDraft(submittedItemId, submittedDraft);
+            referenceRevealed = false;
+            savedMessage = $"Reflection saved to Notes and History. Next review: {dueDate:MMM d}.";
+            Snackbar.Add(savedMessage, Severity.Success);
+        }
+        catch (TrackerStorageUnavailableException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+        finally
+        {
+            isSaving = false;
+            await Session.RefreshAsync();
+        }
+    }
+
+    private async Task TrackResourceAsync(ResourceEntry resource)
+    {
+        try
+        {
+            await TrackerService.TouchResourceOpenedAsync(resource.Id);
+            await OnDataChanged.InvokeAsync();
+        }
+        catch (TrackerStorageUnavailableException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+    }
+
+    private static string ConfidenceLabel(RecallConfidence confidence) => confidence switch
+    {
+        RecallConfidence.Revisit => "Needs another pass",
+        RecallConfidence.Explain => "I can explain it",
+        RecallConfidence.Apply => "I can apply it",
+        _ => string.Empty
+    };
+}

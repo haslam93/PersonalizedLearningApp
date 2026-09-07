@@ -1,38 +1,53 @@
 window.upskillTracker = window.upskillTracker || {};
 
-window.upskillTracker.openAnnouncement = function (announcement) {
+window.upskillTracker.openAnnouncement = async function (announcement) {
     if (!announcement || !announcement.url) {
-        return;
+        throw new Error("An announcement URL is required.");
     }
 
-    const payload = JSON.stringify(announcement);
+    const url = new URL(announcement.url);
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+        throw new Error("Announcement links must use HTTP or HTTPS.");
+    }
 
+    window.open(url.href, "_blank", "noopener,noreferrer");
+    const token = document.querySelector("#portal-lock-form input[name='__RequestVerificationToken']")?.value;
+    if (!token) {
+        console.warn("The announcement opened, but tracking needs a fresh portal session.");
+        return false;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 10000);
     try {
-        if (navigator.sendBeacon) {
-            const request = new Blob([payload], { type: "application/json" });
-            navigator.sendBeacon("/api/announcements/opened", request);
-        } else {
-            fetch("/api/announcements/opened", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: payload,
-                credentials: "same-origin",
-                keepalive: true
-            }).catch(() => {});
+        const response = await fetch("/api/announcements/opened", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": token
+            },
+            body: JSON.stringify(announcement),
+            credentials: "same-origin",
+            signal: controller.signal
+        });
+        if (!response.ok) {
+            console.warn(`Announcement tracking failed with HTTP ${response.status}.`);
         }
-    } catch {
-        // Keep link opening even if the tracking request fails.
+        return response.ok;
+    } catch (error) {
+        if (!(error instanceof TypeError) && error.name !== "AbortError") throw error;
+        console.warn("The announcement opened, but its read could not be recorded.");
+        return false;
+    } finally {
+        window.clearTimeout(timeout);
     }
-
-    window.open(announcement.url, "_blank", "noopener,noreferrer");
 };
 
 window.scrollToElement = function (elementId) {
     const element = document.getElementById(elementId);
     if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "start" });
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        element.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
     }
 };
 

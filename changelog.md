@@ -2,7 +2,7 @@
 title: Changelog
 description: Chronological record of major product, infrastructure, deployment, authentication, and documentation changes for Hammad's Learning Portal
 author: Microsoft
-ms.date: 2026-07-16
+ms.date: 2026-09-07
 ms.topic: reference
 keywords:
   - changelog
@@ -12,6 +12,40 @@ keywords:
   - deployment
 estimated_reading_time: 6
 ---
+
+## 2026-09-07
+
+### Made the dashboard a learning workspace
+
+* Replaced repeated overview and urgency panels with a ranked next step, matching resources, a visual Learn / Apply / Recall guide, and adjustable 15-, 30-, and 60-minute session budgets
+* Added a topic progress map with direct topic-to-Plan navigation and a browser-local weekly activity chart without streak penalties
+* Added active recall against saved plan context, self-assessed 1/3/7-day review scheduling, and durable reflections in the existing Notes and Learning History tables
+* Preserved recall drafts while switching tabs and made workspace tabs bookmarkable with browser back/forward support
+* Added a shared light/dark theme, keyboard focus indicators, skip navigation, reduced-motion support, and responsive layouts
+
+### Corrected misleading progress and data-loss risks
+
+* Stopped treating opening a video as watching it; opening queues the video and only an explicit completion action records watched-video history
+* Corrected remaining sprint effort to account for recorded progress
+* Added confirmation before deleting plan items, certifications, resources, notes, or video channels
+* Added immediate labeled search, readable multi-line notes, note field length limits, and HTTP(S) validation for saved resource links
+* Made the core dashboard independent of external-feed loading and prevented a total feed failure from replacing a successful cached feed or showing a false success message
+
+### Strengthened delivery and learning automation
+
+* Added .NET regression coverage and isolated Playwright learner journeys to the reusable CI workflow; CD now requires it to succeed
+* Added serialized deployment, current-main checks, exact-commit database readiness polling, managed-certificate provisioning, and custom-domain HTTPS confirmation
+* Made the existing infrastructure-change filter and manual force switch effective, quoted secure deployment parameters, and preserved existing certificate bindings across Actions deployments
+* Traced the failed September 4 radar to an unsupported default model in its retained artifact; pinned a supported research model and regenerated the workflow with gh-aw
+
+### Enforced access on the server
+
+* Replaced the forgeable browser unlock flag with an eight-hour HttpOnly cookie backed by a revocable server session
+* Added PIN policy enforcement for pages, HTTP writes, OAuth entry points, and events on already-connected Blazor circuits
+* Added antiforgery protection, a shared five-attempt-per-minute PIN budget, safe local redirects, and cross-tab locking
+* Kept GitHub Copilot identity separate from portal access and added protected native confirmation forms for connecting/disconnecting it
+* Updated announcement tracking to send its antiforgery token and only mark a read as saved after the server accepts it
+* Added an anonymous, uncached, three-second-bounded readiness probe reporting database/schema readiness and build identity without exposing configuration
 
 ## 2026-08-19
 

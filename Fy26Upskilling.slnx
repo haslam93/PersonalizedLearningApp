@@ -1,2 +1,8 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/UpskillTracker/UpskillTracker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/UpskillTracker.Tests/UpskillTracker.Tests.csproj" />
+  </Folder>
 </Solution>

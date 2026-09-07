@@ -1,5 +1,6 @@
 @inject UpskillTracker.Services.TrackerService TrackerService
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <div class="section-shell">
     <MudPaper Class="surface-card section-intro-card certification-intro-card mb-4" Elevation="0">
@@ -393,6 +394,12 @@
     private async Task DeleteGoalAsync()
     {
         if (editingGoal is null || editingGoal.Id == 0)
+        {
+            return;
+        }
+
+        if (await DialogService.ShowMessageBox("Delete this certification goal?", "The goal and its preparation notes will be removed. Existing learning history will remain.",
+            yesText: "Delete goal", cancelText: "Keep goal") != true)
         {
             return;
         }

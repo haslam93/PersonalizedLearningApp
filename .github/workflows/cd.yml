@@ -16,6 +16,10 @@ permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: learning-portal-production
+  cancel-in-progress: false
+
 env:
   AZURE_CUSTOM_HOSTNAME: skilling.hammadaslam.com
   AZURE_APPINSIGHTS_NAME: appi-personal-learning-tn33sb
@@ -34,13 +38,29 @@ env:
   POSTGRES_ADMIN_LOGIN: pgbootstrap
 
 jobs:
+  validate:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
   deploy:
+    needs: validate
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     environment: production
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Require the current main commit
+        run: |
+          current_main=$(git ls-remote origin refs/heads/main | cut -f1)
+          if [ "$current_main" != "$GITHUB_SHA" ]; then
+            echo "::error::A newer main commit exists. Deploy that commit instead of overwriting it."
+            exit 1
+          fi
 
       - name: Detect infrastructure changes
         id: changes
@@ -50,6 +70,7 @@ jobs:
             infra:
               - 'infra/**'
               - 'azure.yaml'
+              - '.github/workflows/cd.yml'
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -60,12 +81,12 @@ jobs:
         run: dotnet restore ${{ env.PROJECT_PATH }}
 
       - name: Publish
-        run: dotnet publish ${{ env.PROJECT_PATH }} --configuration Release --runtime linux-x64 --self-contained false --output ${{ env.PUBLISH_PATH }}
+        run: dotnet publish ${{ env.PROJECT_PATH }} --configuration Release --runtime linux-x64 --self-contained false --output ${{ env.PUBLISH_PATH }} -p:SourceRevisionId="$GITHUB_SHA"
 
       - name: Package deployment artifacts
         run: |
           cd ${{ env.PUBLISH_PATH }}
-          zip -r ${{ github.workspace }}/upskilltracker.zip .
+          zip -qr ${{ github.workspace }}/upskilltracker.zip .
 
       - name: Sign in to Azure with OIDC
         uses: azure/login@v2
@@ -74,20 +95,38 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           allow-no-subscriptions: true
 
+      - name: Preserve the custom domain certificate
+        env:
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          certificates=$(az webapp config ssl list \
+            --subscription "$AZURE_SUBSCRIPTION_ID" \
+            --resource-group "$AZURE_RESOURCE_GROUP" --only-show-errors -o json)
+          thumbprint=$(echo "$certificates" | jq -r \
+            '[.[] | select((.hostNames // []) | index(env.AZURE_CUSTOM_HOSTNAME))] | .[0].thumbprint // empty')
+          echo "EXISTING_TLS_THUMBPRINT=$thumbprint" >> "$GITHUB_ENV"
+
       - name: Deploy infrastructure
         id: infra
+        if: inputs.deployInfra || steps.changes.outputs.infra == 'true'
+        env:
+          APP_ACCESS_PIN: ${{ secrets.APP_ACCESS_PIN }}
+          APP_GH_OAUTH_CLIENT_ID: ${{ secrets.APP_GH_OAUTH_CLIENT_ID }}
+          APP_GH_OAUTH_CLIENT_SECRET: ${{ secrets.APP_GH_OAUTH_CLIENT_SECRET }}
+          APP_YOUTUBE_API_KEY: ${{ secrets.APP_YOUTUBE_API_KEY }}
+          APP_POSTGRES_ADMIN_PASSWORD: ${{ secrets.APP_POSTGRES_ADMIN_PASSWORD }}
         run: |
           deployment_output=$(az deployment group create \
             --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --name infra-${{ github.run_id }} \
             --template-file infra/resources.bicep \
-            --parameters accessPin=${{ secrets.APP_ACCESS_PIN }} \
-                         gitHubOAuthClientId=${{ secrets.APP_GH_OAUTH_CLIENT_ID }} \
-                         gitHubOAuthClientSecret=${{ secrets.APP_GH_OAUTH_CLIENT_SECRET }} \
-                         youTubeApiKey=${{ secrets.APP_YOUTUBE_API_KEY }} \
+            --parameters accessPin="$APP_ACCESS_PIN" \
+                         gitHubOAuthClientId="$APP_GH_OAUTH_CLIENT_ID" \
+                         gitHubOAuthClientSecret="$APP_GH_OAUTH_CLIENT_SECRET" \
+                         youTubeApiKey="$APP_YOUTUBE_API_KEY" \
                          postgresAdminLogin=${{ env.POSTGRES_ADMIN_LOGIN }} \
-                         postgresAdminPassword=${{ secrets.APP_POSTGRES_ADMIN_PASSWORD }} \
+                         postgresAdminPassword="$APP_POSTGRES_ADMIN_PASSWORD" \
                          copilotDefaultModel=${{ env.COPILOT_DEFAULT_MODEL }} \
             --parameters location=${{ env.AZURE_LOCATION }} \
                          postgresLocation=${{ env.AZURE_POSTGRES_LOCATION }} \
@@ -96,6 +135,7 @@ jobs:
                          appServicePlanSku=${{ env.AZURE_APP_SERVICE_PLAN_SKU }} \
                          webAppName=${{ env.AZURE_WEBAPP_NAME }} \
                          customHostname=${{ env.AZURE_CUSTOM_HOSTNAME }} \
+                         customHostnameCertificateThumbprint="$EXISTING_TLS_THUMBPRINT" \
                          logAnalyticsWorkspaceName=${{ env.AZURE_LOG_ANALYTICS_NAME }})
 
           echo "$deployment_output" > deployment-output.json
@@ -106,6 +146,7 @@ jobs:
           echo "POSTGRES_DATABASE_NAME=$postgres_database_name" >> $GITHUB_ENV
 
       - name: Configure PostgreSQL Entra admin
+        if: steps.infra.outcome == 'success'
         run: |
           webapp_principal_id=$(az webapp identity show \
             --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }} \
@@ -160,3 +201,58 @@ jobs:
             --async true \
             --track-status false \
             --timeout 180000
+
+      - name: Verify the deployed commit and database readiness
+        run: |
+          body=$(mktemp)
+          trap 'rm -f "$body"' EXIT
+          url="https://${AZURE_WEBAPP_NAME}.azurewebsites.net/healthz"
+          for attempt in $(seq 1 30); do
+            if status=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
+                --output "$body" --write-out '%{http_code}' "$url"); then
+              if [ "$status" = "200" ] && jq -e --arg sha "$GITHUB_SHA" \
+                  '.status == "healthy" and .commit == $sha' "$body" >/dev/null; then
+                echo "The deployed commit is serving with a ready database."
+                echo "### Production deployment" >> "$GITHUB_STEP_SUMMARY"
+                echo "- Commit: \`$GITHUB_SHA\`" >> "$GITHUB_STEP_SUMMARY"
+                echo "- App: https://${AZURE_WEBAPP_NAME}.azurewebsites.net" >> "$GITHUB_STEP_SUMMARY"
+                exit 0
+              fi
+            fi
+            echo "Waiting for the new app and database (attempt $attempt/30)."
+            sleep 20
+          done
+          echo "::error::The expected commit did not become healthy. Deployment is not confirmed."
+          exit 1
+
+      - name: Enable and verify custom-domain HTTPS
+        env:
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          thumbprint="$EXISTING_TLS_THUMBPRINT"
+          if [ -z "$thumbprint" ]; then
+            thumbprint=$(az webapp config ssl create \
+              --subscription "$AZURE_SUBSCRIPTION_ID" \
+              --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" \
+              --hostname "$AZURE_CUSTOM_HOSTNAME" --query thumbprint -o tsv --only-show-errors)
+          fi
+          if [ -z "$thumbprint" ] || [ "$thumbprint" = "None" ]; then
+            echo "::error::Azure did not issue a managed certificate for the custom hostname."
+            exit 1
+          fi
+          az webapp config ssl bind \
+            --subscription "$AZURE_SUBSCRIPTION_ID" \
+            --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" \
+            --hostname "$AZURE_CUSTOM_HOSTNAME" --certificate-thumbprint "$thumbprint" \
+            --ssl-type SNI --only-show-errors --output none
+          for attempt in $(seq 1 18); do
+            if response=$(curl --fail --silent --show-error --connect-timeout 10 --max-time 20 \
+                "https://${AZURE_CUSTOM_HOSTNAME}/healthz") && \
+                echo "$response" | jq -e --arg sha "$GITHUB_SHA" '.status == "healthy" and .commit == $sha' >/dev/null; then
+              echo "- Custom domain: https://${AZURE_CUSTOM_HOSTNAME}" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Custom-domain HTTPS did not become healthy."
+          exit 1

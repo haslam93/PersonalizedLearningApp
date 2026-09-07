@@ -1,6 +1,7 @@
 @inject UpskillTracker.Services.TrackerService TrackerService
 @inject UpskillTracker.Services.YouTubeVideoService YouTubeVideoService
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 @inject IJSRuntime JSRuntime
 
 <MudGrid Class="video-shell">
@@ -68,7 +69,7 @@
                     <div>
                         <MudText Typo="Typo.overline" Class="text-uppercase overview-kicker">Video radar</MudText>
                         <MudText Typo="Typo.h5" Class="mb-1">Latest from your learning channels</MudText>
-                        <MudText Typo="Typo.body2" Class="mud-secondary-text">Track fresh uploads, promote the important ones to the dashboard, and clear them when you are done.</MudText>
+                        <MudText Typo="Typo.body2" Class="mud-secondary-text">Opening a video keeps it in your queue. Choose "Mark as seen" after watching to record it in your learning history.</MudText>
                     </div>
                     <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="video-summary-chips">
                         <MudChip T="string" Variant="Variant.Filled" Color="Color.Primary">@visibleVideoCount visible</MudChip>
@@ -79,7 +80,7 @@
             </div>
 
             <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" Class="mb-4 video-filter-bar">
-                <MudTextField @bind-Value="searchText" Placeholder="Search videos" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="flex-1 video-filter-field" />
+                <MudTextField @bind-Value="searchText" Label="Search videos" Immediate="true" DebounceInterval="200" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="flex-1 video-filter-field" />
                 <MudSelect T="string" @bind-Value="selectedChannel" Label="Channel" Variant="Variant.Outlined" Clearable="true" Class="video-filter-field">
                     @foreach (var channelName in channelNames)
                     {
@@ -111,7 +112,7 @@
                             <MudPaper Class="resource-card video-card mb-3" Elevation="0">
                                 @if (!string.IsNullOrWhiteSpace(video.ThumbnailUrl))
                                 {
-                                    <img src="@video.ThumbnailUrl" alt="@video.Title" class="video-thumbnail" />
+                                    <img src="@video.ThumbnailUrl" alt="@video.Title" class="video-thumbnail" loading="lazy" />
                                 }
 
                                 <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start" Class="video-card-header">
@@ -277,6 +278,12 @@
 
     private async Task RemoveChannelAsync(int id)
     {
+        if (await DialogService.ShowMessageBox("Remove this channel?", "This removes the channel and its queued videos. Existing learning history will remain.",
+            yesText: "Remove channel", cancelText: "Keep channel") != true)
+        {
+            return;
+        }
+
         try
         {
             await TrackerService.DeleteVideoChannelAsync(id);

@@ -1,0 +1,13 @@
+{
+  "name": "personalized-learning-browser-tests",
+  "private": true,
+  "scripts": {
+    "test": "node --test --test-concurrency=1 smoke.test.cjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

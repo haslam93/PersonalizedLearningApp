@@ -1,9 +1,10 @@
 ﻿@page "/"
 @inject UpskillTracker.Services.TrackerService TrackerService
+@inject NavigationManager Navigation
 
 <PageTitle>Hammad's Learning Portal</PageTitle>
 
-<ReminderBanner OnOpenPlan="NavigateToPlanAsync" />
+<h1 class="sr-only">Hammad's Learning Portal</h1>
 
 @if (TrackerService.HasRecentTransientReadFailure)
 {
@@ -12,66 +13,9 @@
 	</MudAlert>
 }
 
-@if (isLoading)
-{
-	<MudSkeleton Height="210px" Class="mb-6" />
-}
-else if (snapshot is not null)
-{
-	<MudPaper Class="hero-card workspace-overview mb-6" Elevation="0">
-		<MudGrid Style="align-items:center;">
-			<MudItem xs="12" md="7">
-				<MudStack Spacing="2">
-					<div>
-						<MudText Typo="Typo.overline" Class="text-uppercase overview-kicker">Workspace overview</MudText>
-						<MudText Typo="Typo.h3" Class="mb-2">Hammad's Learning Portal</MudText>
-						<MudText Typo="Typo.body1" Class="overview-summary">@GetOverviewSummary()</MudText>
-					</div>
-
-					<MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
-						<MudButton Class="overview-action-pill" Color="@(snapshot.AtRiskItems > 0 ? Color.Error : Color.Success)" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.PriorityHigh" OnClick="@(() => NavigateToPlanAsync(new UpskillTracker.Models.PlanNavigationRequest("At risk")))">
-							@snapshot.AtRiskItems at risk
-						</MudButton>
-						<MudButton Class="overview-action-pill" Color="Color.Info" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Checklist" OnClick="@(() => NavigateToPlanAsync(new UpskillTracker.Models.PlanNavigationRequest("Core commitments")))">
-							@snapshot.CoreRemainingItems core commitments
-						</MudButton>
-						<MudButton Class="overview-action-pill" Color="Color.Secondary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.WorkspacePremium" OnClick="NavigateToCertifications">
-							@snapshot.CertificationGoals certification goals
-						</MudButton>
-					</MudStack>
-				</MudStack>
-			</MudItem>
-			<MudItem xs="12" md="5">
-				<div class="overview-stats-grid">
-					<button type="button" class="overview-stat overview-stat-button" @onclick="NavigateToHistory" aria-label="Open learning history">
-						<span class="overview-stat-label">Core completion</span>
-						<strong class="overview-stat-value">@snapshot.CommitmentCompletionRate%</strong>
-						<span class="overview-stat-action">View history</span>
-					</button>
-					<button type="button" class="overview-stat overview-stat-button" @onclick="@(() => NavigateToPlanAsync(new UpskillTracker.Models.PlanNavigationRequest("Due soon")))" aria-label="Open items due in the next 14 days">
-						<span class="overview-stat-label">Due in 14 days</span>
-						<strong class="overview-stat-value">@snapshot.DueNext14Days</strong>
-						<span class="overview-stat-action">Review due work</span>
-					</button>
-					<button type="button" class="overview-stat overview-stat-button" @onclick="@(() => NavigateToPlanAsync(new UpskillTracker.Models.PlanNavigationRequest("At risk")))" aria-label="Open at-risk items">
-						<span class="overview-stat-label">At risk</span>
-						<strong class="overview-stat-value">@snapshot.AtRiskItems</strong>
-						<span class="overview-stat-action">Recover plan</span>
-					</button>
-					<button type="button" class="overview-stat overview-stat-button" @onclick="@(() => NavigateToPlanAsync(new UpskillTracker.Models.PlanNavigationRequest("Nice to have")))" aria-label="Open nice-to-have items">
-						<span class="overview-stat-label">Nice to have</span>
-						<strong class="overview-stat-value">@snapshot.NiceToHaveItems</strong>
-						<span class="overview-stat-action">Review optional work</span>
-					</button>
-				</div>
-			</MudItem>
-		</MudGrid>
-	</MudPaper>
-}
-
-<MudTabs @bind-ActivePanelIndex="activeTabIndex" Elevation="0" Rounded="true" PanelClass="pt-6" Class="tracker-tabs">
+<MudTabs ActivePanelIndex="@activeTabIndex" ActivePanelIndexChanged="SelectTabAsync" MinimumTabWidth="100px" Elevation="0" Rounded="true" PanelClass="pt-6" Class="tracker-tabs">
 	<MudTabPanel Text="Dashboard" Icon="@Icons.Material.Filled.Dashboard">
-		<DashboardView OnOpenPlan="NavigateToPlanAsync" OnOpenHistory="NavigateToHistoryAsync" OnOpenHistoryDate="NavigateToHistoryDateAsync" />
+		<DashboardView LearningSession="@learningSession" OnOpenPlan="NavigateToPlanAsync" OnOpenHistory="NavigateToHistoryAsync" OnOpenHistoryDate="NavigateToHistoryDateAsync" />
 	</MudTabPanel>
 	<MudTabPanel Text="Plan" Icon="@Icons.Material.Filled.Checklist">
 		<TrainingPlannerView NavigationRequest="@planNavigationRequest" NavigationRequestId="@planNavigationToken" />
@@ -103,78 +47,54 @@ else if (snapshot is not null)
 </MudTabs>
 
 @code {
-	private UpskillTracker.Models.DashboardSnapshot? snapshot;
-	private bool isLoading = true;
+	[SupplyParameterFromQuery(Name = "view")]
+	public string? RequestedView { get; set; }
+
+	private static readonly string[] TabKeys = ["dashboard", "plan", "certifications", "timeline", "history", "tools", "resources", "videos", "notes", "copilot"];
+	private string? appliedView;
+	private readonly UpskillTracker.Models.LearningStudioSession learningSession = new();
 	private int activeTabIndex;
 	private int planNavigationToken;
 	private int historyNavigationToken;
 	private DateTime? historyRequestedDate;
 	private UpskillTracker.Models.PlanNavigationRequest planNavigationRequest = new("Do next");
 
-	protected override async Task OnInitializedAsync()
+	protected override void OnParametersSet()
 	{
-		snapshot = await TrackerService.GetDashboardSnapshotAsync();
-		isLoading = false;
+		var view = RequestedView?.ToLowerInvariant() ?? "dashboard";
+		if (appliedView != view)
+		{
+			appliedView = view;
+			activeTabIndex = Math.Max(0, Array.IndexOf(TabKeys, view));
+		}
 	}
 
-	private string GetOverviewSummary()
+	private Task SelectTabAsync(int index)
 	{
-		if (TrackerService.HasRecentTransientReadFailure)
-		{
-			return "The PostgreSQL database is currently down or stopped. Start it in Azure and refresh this page when it is back online.";
-		}
-
-		if (snapshot is null)
-		{
-			return "Your learning plan, notes, resources, and Copilot workspace live together here.";
-		}
-
-		if (snapshot.AtRiskItems > 0)
-		{
-			var nextItem = snapshot.FocusItems.FirstOrDefault()?.Title;
-			return nextItem is null
-				? $"{snapshot.AtRiskItems} core item{(snapshot.AtRiskItems == 1 ? string.Empty : "s")} need attention. Review dates and reduce the nice-to-have backlog."
-				: $"{FormatItemCount(snapshot.AtRiskItems)} at risk. Start with \"{nextItem}\" and keep nice-to-have work behind core commitments.";
-		}
-
-		return $"The committed plan is on schedule. {FormatInProgressItems(snapshot.InProgressItems)}, {snapshot.DueNext14Days} are due in the next 14 days, and {snapshot.NiceToHaveItems} are optional.";
+		activeTabIndex = Math.Clamp(index, 0, TabKeys.Length - 1);
+		var uri = Navigation.GetUriWithQueryParameter("view", activeTabIndex == 0 ? null : TabKeys[activeTabIndex]);
+		Navigation.NavigateTo(uri);
+		return Task.CompletedTask;
 	}
-
-	private static string FormatInProgressItems(int count)
-		=> $"{count} item{(count == 1 ? string.Empty : "s")} {(count == 1 ? "is" : "are")} in progress";
-
-	private static string FormatItemCount(int count)
-		=> $"{count} item{(count == 1 ? " is" : "s are")}";
 
 	private Task NavigateToPlanAsync(UpskillTracker.Models.PlanNavigationRequest request)
 	{
 		planNavigationRequest = request;
 		planNavigationToken++;
-		activeTabIndex = 1;
-		return Task.CompletedTask;
-	}
-
-	private void NavigateToCertifications()
-		=> activeTabIndex = 2;
-
-	private void NavigateToHistory()
-	{
-		historyRequestedDate = null;
-		historyNavigationToken++;
-		activeTabIndex = 4;
+		return SelectTabAsync(1);
 	}
 
 	private Task NavigateToHistoryAsync()
 	{
-		NavigateToHistory();
-		return Task.CompletedTask;
+		historyRequestedDate = null;
+		historyNavigationToken++;
+		return SelectTabAsync(4);
 	}
 
 	private Task NavigateToHistoryDateAsync(DateTime date)
 	{
 		historyRequestedDate = date.Date;
 		historyNavigationToken++;
-		activeTabIndex = 4;
-		return Task.CompletedTask;
+		return SelectTabAsync(4);
 	}
 }

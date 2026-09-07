@@ -39,9 +39,7 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
             return cached;
         }
 
-        var announcements = await RefreshAnnouncementsAsync(cancellationToken);
-        cache.Set(CacheKey, announcements, CacheDuration);
-        return announcements;
+        return await RefreshAnnouncementsAsync(cancellationToken);
     }
 
     public Task<IReadOnlyList<AnnouncementItem>> RefreshAsync(CancellationToken cancellationToken = default)
@@ -51,9 +49,13 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
     {
         var fetchTasks = FeedSources.Select(source => FetchFeedAsync(source, cancellationToken));
         var feedResults = await Task.WhenAll(fetchTasks);
+        if (feedResults.All(result => !result.Succeeded))
+        {
+            throw new HttpRequestException("None of the announcement sources could be reached. Previously loaded updates have been kept.");
+        }
 
         var announcements = feedResults
-            .SelectMany(result => result)
+            .SelectMany(result => result.Items)
             .GroupBy(item => item.Url, StringComparer.OrdinalIgnoreCase)
             .Select(group => group.OrderByDescending(item => item.PublishedUtc).First())
             .GroupBy(item => item.Source, StringComparer.OrdinalIgnoreCase)
@@ -67,7 +69,9 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
         return announcements;
     }
 
-    private async Task<IReadOnlyList<AnnouncementItem>> FetchFeedAsync(FeedSource source, CancellationToken cancellationToken)
+    private sealed record FeedFetchResult(IReadOnlyList<AnnouncementItem> Items, bool Succeeded);
+
+    private async Task<FeedFetchResult> FetchFeedAsync(FeedSource source, CancellationToken cancellationToken)
     {
         try
         {
@@ -76,16 +80,18 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
 
             var payload = await response.Content.ReadAsStringAsync(cancellationToken);
 
-            return source.Kind switch
+            var items = source.Kind switch
             {
                 FeedSourceKind.HtmlPage => ParseHtmlPage(payload, source),
                 _ => ParseFeed(XDocument.Parse(payload, LoadOptions.PreserveWhitespace), source)
             };
+            return new FeedFetchResult(items, true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is HttpRequestException or System.Xml.XmlException ||
+            ex is OperationCanceledException && !cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(ex, "Unable to refresh announcement feed from {FeedUrl}", source.FeedUrl);
-            return [];
+            return new FeedFetchResult([], false);
         }
     }
 

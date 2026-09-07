@@ -1,5 +1,6 @@
 @inject UpskillTracker.Services.TrackerService TrackerService
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <div class="section-shell">
     <MudPaper Class="surface-card section-intro-card notes-intro-card mb-4" Elevation="0">
@@ -16,10 +17,14 @@
     <MudItem xs="12" lg="7">
         <MudPaper Class="surface-card content-card notes-library-card mb-4" Elevation="0">
             <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" Class="mb-4">
-                <MudTextField @bind-Value="searchText" Placeholder="Search notes" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="flex-1" />
+                <MudTextField @bind-Value="searchText" Label="Search notes" Immediate="true" DebounceInterval="200" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="flex-1" />
                 <MudCheckBox @bind-Value="pinnedOnly" Label="Pinned only" Color="Color.Primary" />
             </MudStack>
 
+            @if (!FilteredNotes.Any())
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">No notes match. Clear your filters or capture a new takeaway.</MudAlert>
+            }
             @foreach (var note in FilteredNotes)
             {
                 <MudPaper Class="note-card mb-3" Elevation="0">
@@ -36,7 +41,7 @@
                             <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="@(() => BeginEdit(note))">Edit</MudButton>
                         </MudStack>
                     </MudStack>
-                    <MudText Typo="Typo.body2" Class="mt-3">@note.Content</MudText>
+                    <MudText Typo="Typo.body2" Class="mt-3 preserve-lines">@note.Content</MudText>
                 </MudPaper>
             }
         </MudPaper>
@@ -50,11 +55,11 @@
             </MudStack>
 
             <MudStack Spacing="2">
-                <MudTextField @bind-Value="editingNote.Title" Label="Title" Variant="Variant.Outlined" Required="true" />
-                <MudTextField @bind-Value="editingNote.Category" Label="Category" Variant="Variant.Outlined" />
-                <MudTextField @bind-Value="editingNote.RelatedArea" Label="Related area" Variant="Variant.Outlined" />
-                <MudTextField @bind-Value="editingNote.Tags" Label="Tags" Variant="Variant.Outlined" />
-                <MudTextField @bind-Value="editingNote.Content" Label="Content" Variant="Variant.Outlined" Lines="8" Required="true" />
+                <MudTextField @bind-Value="editingNote.Title" Label="Title" Variant="Variant.Outlined" Required="true" MaxLength="140" />
+                <MudTextField @bind-Value="editingNote.Category" Label="Category" Variant="Variant.Outlined" MaxLength="80" />
+                <MudTextField @bind-Value="editingNote.RelatedArea" Label="Related area" Variant="Variant.Outlined" MaxLength="120" />
+                <MudTextField @bind-Value="editingNote.Tags" Label="Tags" Variant="Variant.Outlined" MaxLength="300" />
+                <MudTextField @bind-Value="editingNote.Content" Label="Content" Variant="Variant.Outlined" Lines="8" Required="true" MaxLength="4000" />
                 <MudCheckBox @bind-Value="editingNote.IsPinned" Label="Pinned" Color="Color.Primary" />
             </MudStack>
 
@@ -133,6 +138,12 @@
     private async Task DeleteAsync()
     {
         if (editingNote.Id == 0)
+        {
+            return;
+        }
+
+        if (await DialogService.ShowMessageBox("Delete this note?", "The note will be removed. Its existing learning history will remain.",
+            yesText: "Delete note", cancelText: "Keep note") != true)
         {
             return;
         }

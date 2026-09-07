@@ -2,7 +2,7 @@
 title: Hammad's Learning Portal
 description: Personal learning and certification tracker with actionable planning, learning history, personal tools, GitHub Copilot chat, and Azure deployment automation
 author: Microsoft
-ms.date: 2026-07-16
+ms.date: 2026-09-07
 ms.topic: overview
 keywords:
   - learning portal
@@ -27,7 +27,7 @@ experience that is grounded in your saved plan, notes, and resources.
 The app is organized as a lightweight interactive Blazor experience hosted on
 Azure App Service.
 
-* The browser loads a Blazor web app with a lightweight PIN gate in the main layout.
+* Server-side PIN authorization protects pages, HTTP mutations, and Blazor circuit events; the browser receives an expiring HttpOnly session cookie rather than an unlock flag.
 * Feature views for Dashboard, Plan, Certifications, Timeline, Learning History, My Tools, Resources, Notes, and Copilot run
    through shared application services.
 * `AnnouncementFeedService` loads and caches both official Microsoft updates and
@@ -43,6 +43,8 @@ For the Mermaid version of the architecture, see [arch.md](arch.md).
 ## Portal screenshot
 
 ![Hammad's Learning Portal](docs/images/portal-home.png)
+
+![Active recall with an example explanation and a scheduled review](docs/images/active-recall.png)
 
 It is designed to help you:
 
@@ -60,11 +62,15 @@ It is designed to help you:
 
 ## Main app features
 
-* Dashboard with schedule-risk, core-completion, and ranked "Do next" metrics
-* Clickable dashboard, reminder, and overview metrics that open the relevant Plan filter instead of acting as static status labels
+* A focused learning dashboard with a ranked next step, matching references, and a visual Learn / Apply / Recall session guide for 15, 30, or 60 minutes
+* An interactive topic map with average recorded progress and completion counts; each topic opens its exact Plan filter
+* Active recall grounded in your own plan descriptions, notes, and evidence, with self-assessed 1-, 3-, or 7-day review intervals
+* Recall drafts that survive tab changes during the current visit, plus saved reflections in Notes and durable Learning History
+* A browser-local weekly activity chart that emphasizes consistency without streak pressure
+* Compact, actionable core-completion, schedule-risk, and due-soon metrics
 * Compact 12-week learning contribution calendar and recent-achievement preview on the Dashboard
-* Dashboard cards with readable semantic color accents for progress, videos, resources, notes, and announcements
-* Dynamic home and dashboard summary cards that react to live tracker data instead of fixed promotional copy
+* A consistent warm light / charcoal dark theme, visible keyboard focus, reduced-motion support, and responsive learning cards
+* Bookmarkable tabs through `?view=plan`, `?view=notes`, and the other workspace views, with browser back/forward support
 * Dual announcement streams with Microsoft updates and thought-leader or industry posts, paged for faster scanning with actions to open and save useful updates
 * Planner tab with a responsive card layout, a dedicated 10-business-day Fabric sprint, an announcement-event runway, focus filters, and direct task links suggested from the shared resource library
 * Certifications tab for tracking target dates, progress, status, preparation notes, and evidence, with a direct Mark complete action
@@ -73,20 +79,26 @@ It is designed to help you:
 * Learning History tab with an accessible one-year activity calendar, active-day and milestone metrics, day details, filters, and a month/year narrative
 * My Tools tab linking to the Azure Integration Hub, Microsoft Foundry Updates Portal, GitHub Enterprise Admin Hub, and GitHub Agentic Workflows Lab
 * Resources tab with editable sections and links that power task-level suggestions across the app
-* Notes tab for reflections, architecture notes, and lab takeaways
+* Notes tab with readable multi-line reflections, immediate search, and confirmation before deleting personal learning data
 * Copilot tab with GitHub OAuth sign-in, runtime model discovery, and tracker-grounded chat tools
-* PIN login backed by a secure Azure app setting and GitHub Actions secret
+* Server-verified PIN login backed by a secure Azure app setting, expiring sessions, antiforgery protection, rate limiting, and cross-tab locking
 * Urgent Microsoft Fabric ramp targeting August 20 through September 2, 2026, using the public NYC Taxi dataset for an ingestion-to-insight OpenText-ready capstone
 * Post-trip Fabric expert track through DP-600, plus dated Microsoft Build, GitHub Universe, and Microsoft Ignite announcement reviews
 * GH-600 GitHub Certified: Agentic AI Developer recorded as completed and AI-103 rescheduled to follow the urgent Fabric work
 
 ## UI notes
 
-The current shell avoids fixed labels where tracker data is already available.
+The dashboard gives learning actions priority over reporting and backlog pressure.
 
 * The top app bar uses the product name Hammad's Learning Portal and no hardcoded date badge
-* The home view opens with a tracker-driven overview card instead of a commentary-style hero title
-* The dashboard summary card adapts to overdue, due-soon, in-progress, and completed core work with short, direct headings
+* `LearningStudio` replaces the repeated Home overview, reminder banner, and dashboard urgency cards with one next-step view
+* The session guide allocates a chosen time budget across learning, application, and recall; it is not a timer and does not automatically mark work complete
+* The learning map is average recorded plan progress, not a proficiency score or an AI assessment
+* Recall asks you to explain a concept before revealing your saved context; self-assessments schedule a future review without changing plan completion
+* Recall notes use category `Active recall` and structured tags linking the original training item and confidence choice; no new database table or schema migration is required
+* Review dates are calculated from the reflection's original creation date in the browser's time zone; editing an old note does not move the review date
+* Opening a video moves it to the watch queue, not to completed learning. Only an explicit "Mark as seen" records a watched-video event; existing history is not rewritten
+* `learning.css` adapts the existing MudBlazor views to the shared theme. `theme.js` supports system preference, a saved preference, and an explicit `?clawpilotTheme=light` or `dark` override
 * Ranked next actions put overdue and near-term core commitments ahead of optional backlog
 * Project-driven urgent ramps rank ahead of unrelated recovery work, and the Plan tab shows every Fabric sprint step, deadline, remaining hours, and next action without horizontal scrolling
 * Major event cards reserve review windows for Build, GitHub Universe, and Ignite so announcements become a limited set of labs and customer-ready updates
@@ -94,13 +106,12 @@ The current shell avoids fixed labels where tracker data is already available.
 * At-risk, due-soon, core, optional, and individual-item actions navigate directly to the matching Plan view
 * The forward Timeline excludes completed work, highlights recovery items, and shows planned hours by month
 * The learning heatmap uses labeled, keyboard-navigable day cells, opens on recent activity on narrow screens, and treats breaks as neutral rather than punishing a lost streak
-* Overview metrics use stacked labels, values, and actions so completion and urgency counts stay readable at desktop and mobile widths
 * If an Azure deployment replaces an open Blazor Server circuit, the shell shows a reconnect overlay and reloads automatically when the old circuit is rejected
-* Dashboard cards use soft semantic color surfaces so sections are easier to scan without sacrificing contrast
 * The dashboard includes a dedicated video watch tracker with queue, seen count, and completion progress
 * The announcement section uses a stream switcher so Microsoft updates and curated industry posts stay separate
 * The announcement feed starts with six items and offers show-more and show-fewer controls instead of creating an excessively long mobile page
-* Reminder warnings focus on overdue core commitments and report optional backlog separately
+* The learning dashboard renders before external announcement feeds finish; a failed refresh reports a problem instead of erasing the last successful cached feed
+* Plan, certification, resource, note, and channel deletion requires confirmation
 
 ## Learning history data
 
@@ -129,6 +140,12 @@ The app records durable `LearningActivity` events when you start or advance a pl
 
 3. Open the local URL shown in the terminal.
 
+Set a local PIN first with user secrets if one is not already configured:
+
+```powershell
+dotnet user-secrets set "AccessPin" "<your-local-six-digit-pin>" --project .\src\UpskillTracker\UpskillTracker.csproj
+```
+
 The app stores its SQLite database in the local `Data` folder by default.
 Production uses Azure Database for PostgreSQL with the web app's managed identity.
 
@@ -136,11 +153,49 @@ Local development uses the configured `AccessPin` value if present. In Azure,
 the PIN is stored as an app setting and supplied through deployment secrets, not
 hardcoded in source.
 
+### Access and session behavior
+
+The six-digit PIN is verified on the server. Successful entry creates an
+eight-hour, non-sliding session cookie (`Secure` in production, `HttpOnly`,
+`SameSite=Lax`). Five login attempts are allowed per minute across the app.
+Native login, logout, and GitHub confirmation forms use antiforgery tokens.
+Announcement writes send the same token in `X-CSRF-TOKEN`.
+
+The PIN session is separate from GitHub Copilot sign-in: a GitHub account alone
+does not grant portal access. Locking revokes the session across tabs, and
+already-connected circuits recheck access before handling an event.
+Sessions and the attempt budget are process-local; app restarts require PIN
+entry again. This is a single-instance personal portal, not a multi-user
+identity system. Scale-out requires shared session/rate-limit storage and
+appropriate Blazor session affinity; MFA requires a real identity provider.
+
+### Regression and browser coverage
+
+```powershell
+dotnet test .\tests\UpskillTracker.Tests\UpskillTracker.Tests.csproj --configuration Release
+Set-Location .\tests\browser
+npm ci
+npx playwright install chromium
+npm test
+```
+
+The browser suite launches its own local app with a temporary SQLite database
+and a randomly generated test PIN. It exercises learning navigation, recall
+persistence, cancellation of deletion, themes, and all ten tabs at mobile
+width. It never connects to the production database. To use an installed Edge
+browser locally instead of downloading Chromium, set
+`$env:PLAYWRIGHT_CHANNEL = "msedge"` before `npm test`.
+
 ## GitHub Copilot SDK setup
 
 The app now includes a Copilot chat tab backed by the official GitHub Copilot
 SDK. The current Azure production callback URL is
 `https://halearningapp.azurewebsites.net/signin-github`.
+
+Use the host registered with your GitHub OAuth App for Copilot sign-in. If you
+switch to the custom domain, update that application's callback URL to
+`https://skilling.hammadaslam.com/signin-github`; enabling HTTPS alone does not
+change the OAuth registration.
 
 ### Where to get the real GitHub OAuth values
 
@@ -204,7 +259,8 @@ Windows CLI from the build output.
 
 ## Azure deployment
 
-The easiest deployment path is now `azd`.
+The production deployment path is GitHub Actions: push to `main`, or manually
+dispatch `cd`. The `azd` and direct scripts remain available for bootstrapping.
 
 ### Recommended: one-command deployment with azd
 
@@ -360,15 +416,33 @@ policy restrictions.
 The CD workflow also:
 
 * publishes the app for `linux-x64` so the bundled Copilot CLI matches App Service
-* deploys infrastructure through Bicep on each run so secure app settings stay in sync
+* requires the reusable CI job to pass build, .NET regression coverage, Bicep compilation, and browser journeys before deployment starts
+* serializes production deployments and refuses to deploy a stale `main` commit
+* deploys infrastructure when infrastructure or CD configuration changes, or when a manual run selects `deployInfra`; use that switch after rotating deployment secrets
 * applies the secure `AccessPin`, GitHub OAuth, and Copilot model settings through Azure deployment parameters
 * targets App Service plan SKU `P0v3` by default for private networking
 * provisions PostgreSQL and configures the web app identity as its Microsoft Entra administrator
+* embeds the Git commit in the app and polls `/healthz` until that exact commit is serving with a reachable database
+* provisions a free App Service managed certificate when needed, binds SNI TLS, and confirms HTTPS on the custom domain
+* discovers and passes the existing certificate thumbprint to Bicep so subsequent Actions deployments do not disable HTTPS
+
+For a manual infrastructure deployment outside Actions, pass
+`customHostnameCertificateThumbprint` when a custom-domain certificate already
+exists. Certificate issuance and final HTTPS binding are performed by CD.
+The anonymous health endpoint returns readiness and build identity only, not
+database configuration or error details.
 
 ## Repository automation
 
 * CI workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml)
 * CD workflow: [.github/workflows/cd.yml](.github/workflows/cd.yml)
 * PostgreSQL recovery workflow: [.github/workflows/cost-control-tag.yml](.github/workflows/cost-control-tag.yml)
+* Weekly learning radar: [.github/workflows/weekly-learning-radar.md](.github/workflows/weekly-learning-radar.md); edit this source and regenerate the lockfile with `gh aw compile weekly-learning-radar --validate`
 * Azure deployment script: [scripts/deploy-azure.ps1](scripts/deploy-azure.ps1)
 * Publish profile helper: [scripts/get-publish-profile.ps1](scripts/get-publish-profile.ps1)
+
+The radar explicitly uses `gpt-5.4` rather than relying on a changing Copilot
+engine default. The September 4 failure artifact reported that the default
+`claude-sonnet-4.6` was unavailable to the `agentic-workflows` integrator.
+Research still produces draft pull requests for human review; it does not
+silently modify your saved plan or bypass threat detection.

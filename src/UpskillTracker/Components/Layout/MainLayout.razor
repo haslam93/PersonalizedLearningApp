@@ -3,6 +3,8 @@
 
 <MudPopoverProvider />
 <MudSnackbarProvider />
+<MudDialogProvider />
+<a class="skip-link" href="#learning-content">Skip to learning content</a>
 
 <MudLayout>
     <MudAppBar Elevation="0" Class="tracker-appbar">
@@ -14,11 +16,15 @@
             <MudText Typo="Typo.caption" Class="mud-secondary-text">Focused learning workspace</MudText>
         </MudStack>
         <MudSpacer />
+        <button type="button" class="theme-toggle" onclick="window.upskillTracker.toggleTheme()" aria-label="Toggle light and dark theme">
+            <span class="theme-dark-label"><MudIcon Icon="@Icons.Material.Outlined.DarkMode" Size="Size.Small" /><span class="theme-toggle-text">Dark mode</span></span>
+            <span class="theme-light-label"><MudIcon Icon="@Icons.Material.Outlined.LightMode" Size="Size.Small" /><span class="theme-toggle-text">Light mode</span></span>
+        </button>
     </MudAppBar>
 
     <MudMainContent>
         <PinGate>
-            <div class="shell-container">
+            <div id="learning-content" class="shell-container" tabindex="-1">
                 @if (DatabaseAvailabilityState.IsUnavailable)
                 {
                     <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" Class="mb-4 database-status-banner">

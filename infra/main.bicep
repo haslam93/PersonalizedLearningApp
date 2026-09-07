@@ -18,6 +18,9 @@ param webAppName string = ''
 @description('Optional custom hostname to bind to the web app. Leave empty to skip custom domain deployment.')
 param customHostname string = ''
 
+@description('Existing certificate thumbprint to preserve custom-domain HTTPS during manual infrastructure deployments.')
+param customHostnameCertificateThumbprint string = ''
+
 @description('Access PIN shown by the app login screen. Stored as a secure app setting in Azure.')
 @secure()
 param accessPin string = ''
@@ -84,6 +87,7 @@ module resources './resources.bicep' = {
     copilotCliPath: copilotCliPath
     copilotDefaultModel: copilotDefaultModel
     customHostname: customHostname
+    customHostnameCertificateThumbprint: customHostnameCertificateThumbprint
     gitHubOAuthClientId: gitHubOAuthClientId
     gitHubOAuthClientSecret: gitHubOAuthClientSecret
     youTubeApiKey: youTubeApiKey

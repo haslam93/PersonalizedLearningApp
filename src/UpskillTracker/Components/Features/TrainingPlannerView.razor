@@ -1,5 +1,6 @@
 @inject UpskillTracker.Services.TrackerService TrackerService
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 @inject IJSRuntime JSRuntime
 
 <div class="section-shell">
@@ -138,7 +139,13 @@
             </MudGrid>
 
             <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" Class="mb-4">
-                <MudTextField @bind-Value="searchText" Placeholder="Search training items" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="flex-1" />
+                <MudTextField @bind-Value="searchText" Label="Search training items" Immediate="true" DebounceInterval="200" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="flex-1" />
+                <MudSelect T="string" @bind-Value="selectedDomain" Label="Topic" Variant="Variant.Outlined" Clearable="true">
+                    @foreach (var domain in items.Select(item => item.Domain.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(domain => domain))
+                    {
+                        <MudSelectItem T="string" Value="@domain">@domain</MudSelectItem>
+                    }
+                </MudSelect>
                 <MudSelect T="string" @bind-Value="selectedFocusFilter" Label="Focus" Variant="Variant.Outlined">
                     @foreach (var option in FocusFilterOptions)
                     {
@@ -328,6 +335,7 @@
     private DateTime? targetDate;
     private readonly DateTime today = DateTime.UtcNow.Date;
     private static readonly string[] FocusFilterOptions = ["Do next", "Fabric sprint", "Events", "All work", "At risk", "Due soon", "In progress", "Core commitments", "Nice to have", "Certifications"];
+    private string? selectedDomain;
     private int appliedNavigationRequestId = -1;
     private bool hasLoaded;
 
@@ -351,6 +359,7 @@
             (string.IsNullOrWhiteSpace(searchText) || item.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) || item.Domain.Contains(searchText, StringComparison.OrdinalIgnoreCase) || item.Category.Contains(searchText, StringComparison.OrdinalIgnoreCase)) &&
             (!selectedStatus.HasValue || item.Status == selectedStatus.Value) &&
             (!selectedLane.HasValue || item.Lane == selectedLane.Value) &&
+            (string.IsNullOrWhiteSpace(selectedDomain) || item.Domain.Trim().Equals(selectedDomain, StringComparison.OrdinalIgnoreCase)) &&
             MatchesFocusFilter(item)),
         today).ToList();
 
@@ -379,7 +388,7 @@
 
     private decimal FabricSprintRemainingHours => FabricSprintItems
         .Where(item => item.Status != UpskillTracker.Models.TrackerStatus.Completed)
-        .Sum(item => item.EstimatedHours);
+        .Sum(LearningInsightsBuilder.RemainingHours);
 
     private int FabricSprintProgress => FabricSprintItems.Count == 0
         ? 0
@@ -470,6 +479,12 @@
             return;
         }
 
+        if (await DialogService.ShowMessageBox("Delete this plan item?", "The item and its saved context will be removed. Existing learning history will remain.",
+            yesText: "Delete item", cancelText: "Keep item") != true)
+        {
+            return;
+        }
+
         try
         {
             await TrackerService.DeleteTrainingItemAsync(editingItem.Id);
@@ -529,6 +544,7 @@
         selectedFocusFilter = filter;
         selectedStatus = null;
         selectedLane = null;
+        selectedDomain = null;
         searchText = string.Empty;
     }
 
@@ -542,6 +558,7 @@
         appliedNavigationRequestId = NavigationRequestId;
         selectedStatus = null;
         selectedLane = null;
+        selectedDomain = NavigationRequest.Domain;
 
         if (NavigationRequest.TrainingItemId.HasValue)
         {

@@ -2,7 +2,7 @@
 title: Hammad's Learning Portal architecture
 description: High-level architecture for the Blazor learning portal, durable learning history, personal tools, GitHub Copilot SDK integration, and Azure hosting flow
 author: Microsoft
-ms.date: 2026-07-16
+ms.date: 2026-09-07
 ms.topic: overview
 keywords:
   - architecture
@@ -57,9 +57,12 @@ flowchart TB
 
 ## Runtime notes
 
-* The user opens Hammad's Learning Portal and passes through a simple client-side PIN gate.
+* Server-side PIN authorization protects pages, HTTP mutations, OAuth entry points, and each inbound Blazor circuit event. `PinGate` renders native antiforgery-protected forms, not a browser-side authorization flag.
+* The portal's expiring, revocable cookie session is separate from the GitHub identity used by Copilot. Session/rate-limit state is process-local; restarting requires PIN re-entry.
 * Interactive Razor components render the actionable dashboard, editable tracker tabs, Learning History, personal tools, and the Copilot chat workspace.
-* The home view and dashboard summary cards are driven by tracker data so the shell avoids stale fixed date ranges and static campaign copy.
+* `LearningStudio` turns tracker data into a ranked next step, a visual learning/applying/recalling session guide, a topic progress map, and browser-local weekly activity.
+* Recall reflections reuse the Notes table and existing History recorder, with exact training-item/confidence tags and self-assessed review intervals based on the reflection's local creation day.
+* Home owns temporary recall drafts across bookmarkable tab changes. Completing an in-flight save only clears the submitted draft and refreshes the currently mounted Dashboard.
 * `AnnouncementFeedService` loads and memory-caches two announcement streams: official Microsoft sources and curated thought-leader or industry sources.
 * `TrackerService` handles reads and writes for training items, resources, notes, and append-only learning activity.
 * Provider-specific conflict-safe activity inserts prevent duplicate tracking events from breaking the primary user action.
@@ -91,6 +94,8 @@ flowchart LR
 
 ## Delivery notes
 
-* GitHub Actions builds and publishes the app for `linux-x64`.
+* CD requires the reusable CI job's build, .NET regressions, Bicep compilation, and isolated browser journeys before publishing for `linux-x64`.
+* Serialized production deployment checks that the commit is still current on main, then polls an uncached database/schema readiness endpoint for that exact build.
 * The published artifact includes the platform-matching Copilot CLI required by the .NET SDK on Azure App Service.
 * The CD workflow passes PIN, GitHub OAuth, and Copilot model settings into Bicep so Azure app settings remain aligned with source-controlled infrastructure.
+* Infrastructure runs on relevant changes or a manual force switch. Existing TLS thumbprints are preserved, and Actions provisions/binds a managed certificate when necessary before confirming custom-domain HTTPS.

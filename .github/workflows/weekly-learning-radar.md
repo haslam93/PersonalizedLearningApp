@@ -7,10 +7,14 @@ on:
 permissions:
   contents: read
 timeout-minutes: 20
+model: gpt-5.4
+engine:
+  id: copilot
 network:
   allowed:
     - defaults
     - github
+    - "github.blog"
     - "learn.microsoft.com"
     - "azure.microsoft.com"
     - "devblogs.microsoft.com"
@@ -19,11 +23,14 @@ network:
 tools:
   web-fetch:
 safe-outputs:
+  threat-detection:
+    engine:
+      id: copilot
   create-pull-request:
     title-prefix: "[learning-radar] "
     labels: [learning-radar, automation]
     draft: true
-    expires: 14
+    expires: 14d
     if-no-changes: ignore
 ---
 

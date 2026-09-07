@@ -1,0 +1,55 @@
+@using Microsoft.AspNetCore.Components.Authorization
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <title>Access your learning portal</title>
+    <script src="theme.js"></script>
+    <link rel="stylesheet" href="bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="_content/MudBlazor/MudBlazor.min.css" />
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="learning.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+</head>
+<body>
+    <MudThemeProvider Theme="@App.Theme" />
+    <CascadingAuthenticationState>
+        @if (Action is "github-login" or "github-logout")
+        {
+            <main class="pin-gate-shell">
+                <MudPaper Class="pin-card" Elevation="0">
+                    <MudStack Spacing="3">
+                        <MudText Typo="Typo.h4">@(Action == "github-login" ? "Connect GitHub Copilot" : "Disconnect GitHub Copilot")</MudText>
+                        <MudText Typo="Typo.body1">
+                            @(Action == "github-login"
+                                ? "Continue to GitHub to connect your Copilot account. This does not replace your portal PIN."
+                                : "Disconnect your GitHub account from Copilot. Your PIN access will stay unlocked.")
+                        </MudText>
+                        <form method="post" action="@(Action == "github-login" ? "/auth/github/login" : "/auth/github/logout")" data-enhance="false">
+                            <AntiforgeryToken />
+                            <input type="hidden" name="returnUrl" value="@LocalReturnUrl.Normalize(ReturnUrl)" />
+                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true">
+                                @(Action == "github-login" ? "Continue to GitHub" : "Disconnect GitHub")
+                            </MudButton>
+                        </form>
+                        <a href="@LocalReturnUrl.Normalize(ReturnUrl)">Back to the portal</a>
+                    </MudStack>
+                </MudPaper>
+            </main>
+        }
+        else
+        {
+            <PinGate ErrorCode="@ErrorCode" ReturnUrl="@ReturnUrl" />
+        }
+    </CascadingAuthenticationState>
+</body>
+</html>
+
+@code {
+    [Parameter] public string? Action { get; set; }
+    [Parameter] public string? ErrorCode { get; set; }
+    [Parameter] public string? ReturnUrl { get; set; }
+}

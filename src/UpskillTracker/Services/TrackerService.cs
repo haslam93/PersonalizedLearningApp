@@ -104,6 +104,7 @@ public class TrackerService(
                 VideoWatchCompletionRate = totalTrackedVideos == 0 ? 0 : Math.Round((decimal)seenVideos / totalTrackedVideos * 100, 1),
                 UpcomingItems = upcomingItems,
                 FocusItems = focusItems,
+                TrainingItems = trainingItems,
                 PinnedResources = pinnedResources,
                 RecentNotes = recentNotes,
                 NeedToWatchVideos = needToWatchVideos
@@ -657,12 +658,14 @@ public class TrackerService(
             }
 
             var now = DateTime.UtcNow;
-            video.WatchState = VideoWatchState.Seen;
+            if (video.WatchState is VideoWatchState.Inbox or VideoWatchState.Removed)
+            {
+                video.WatchState = VideoWatchState.NeedToWatch;
+            }
             video.LastViewedUtc = now;
             video.RemovedUtc = null;
             video.UpdatedUtc = now;
             await db.SaveChangesAsync();
-            await RecordVideoActivityAsync(db, video, now);
         }, "mark video opened");
     }
 

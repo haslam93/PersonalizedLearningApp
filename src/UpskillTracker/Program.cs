@@ -10,10 +10,12 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 using Npgsql;
 using UpskillTracker.Components;
+using UpskillTracker.Components.Authentication;
 using UpskillTracker.Data;
 using UpskillTracker.Models;
 using UpskillTracker.Services;
@@ -32,6 +34,7 @@ builder.Services.AddMudServices();
 builder.Services.AddApplicationInsightsTelemetry();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<DatabaseAvailabilityState>();
+builder.Services.AddScoped<ReadinessService>();
 builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(StorageOptions.SectionName));
 builder.Services.Configure<GitHubOAuthOptions>(builder.Configuration.GetSection(GitHubOAuthOptions.SectionName));
 builder.Services.Configure<CopilotSdkOptions>(builder.Configuration.GetSection(CopilotSdkOptions.SectionName));
@@ -59,6 +62,8 @@ var authenticationBuilder = builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
     options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = PinSessionService.Scheme;
+    options.DefaultForbidScheme = PinSessionService.Scheme;
 });
 
 authenticationBuilder.AddCookie(options =>
@@ -68,6 +73,7 @@ authenticationBuilder.AddCookie(options =>
     options.SlidingExpiration = true;
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
 });
+authenticationBuilder.AddPortalPin(builder.Environment);
 
 if (gitHubOAuthOptions.IsConfigured)
 {
@@ -156,6 +162,8 @@ var app = builder.Build();
 
 await DatabaseInitializer.InitializeAsync(app.Services);
 
+app.UseForwardedHeaders();
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
@@ -165,30 +173,58 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
-app.UseAuthentication();
+app.UsePortalPinAuthentication(gitHubOAuthOptions.CallbackPath);
 app.UseAuthorization();
+app.UseRateLimiter();
 app.UseAntiforgery();
 
-app.MapGet("/auth/github/login", async (HttpContext httpContext) =>
+app.MapPortalPinEndpoints();
+
+app.MapGet("/healthz", async (HttpContext context, ReadinessService readiness) =>
 {
-    var returnUrl = NormalizeReturnUrl(httpContext.Request.Query["returnUrl"]);
+    var result = await readiness.CheckAsync(context.RequestAborted);
+    return Results.Json(result, statusCode: result.Status == "healthy"
+        ? StatusCodes.Status200OK
+        : StatusCodes.Status503ServiceUnavailable);
+}).AllowAnonymous();
+
+app.MapGet("/auth/github/login", (string? returnUrl) =>
+    new RazorComponentResult<AuthenticationPage>(new
+    {
+        Action = "github-login",
+        ReturnUrl = LocalReturnUrl.Normalize(returnUrl)
+    })).RequireAuthorization(PinSessionService.Policy);
+
+app.MapPost("/auth/github/login", async (HttpContext httpContext) =>
+{
+    var form = await httpContext.Request.ReadFormAsync(httpContext.RequestAborted);
+    var returnUrl = LocalReturnUrl.Normalize(form["returnUrl"]);
     var options = httpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Options.IOptions<GitHubOAuthOptions>>().Value;
 
     if (!options.IsConfigured)
     {
-        httpContext.Response.Redirect(returnUrl);
-        return;
+        return Results.LocalRedirect(returnUrl);
     }
 
-    await httpContext.ChallengeAsync(GitHubOAuthOptions.AuthenticationScheme, new AuthenticationProperties
+    return Results.Challenge(new AuthenticationProperties
+        {
+            RedirectUri = $"/auth/github/complete?returnUrl={Uri.EscapeDataString(returnUrl)}"
+        },
+        [GitHubOAuthOptions.AuthenticationScheme]);
+}).RequireAuthorization(PinSessionService.Policy)
+    .AddEndpointFilter<PortalAntiforgeryFilter>();
+
+app.MapGet("/auth/github/complete", (string? returnUrl) => Results.LocalRedirect(LocalReturnUrl.Normalize(returnUrl)))
+    .RequireAuthorization(PinSessionService.Policy);
+
+app.MapGet("/auth/github/logout", (string? returnUrl) =>
+    new RazorComponentResult<AuthenticationPage>(new
     {
-        RedirectUri = $"/auth/github/complete?returnUrl={Uri.EscapeDataString(returnUrl)}"
-    });
-}).AllowAnonymous();
+        Action = "github-logout",
+        ReturnUrl = LocalReturnUrl.Normalize(returnUrl)
+    })).RequireAuthorization(PinSessionService.Policy);
 
-app.MapGet("/auth/github/complete", (string? returnUrl) => Results.LocalRedirect(NormalizeReturnUrl(returnUrl))).AllowAnonymous();
-
-app.MapGet("/auth/github/logout", async (HttpContext httpContext, GitHubTokenStore tokenStore, CopilotChatService copilotChatService) =>
+app.MapPost("/auth/github/logout", async (HttpContext httpContext, GitHubTokenStore tokenStore, CopilotChatService copilotChatService) =>
 {
     var authSessionId = httpContext.User.FindFirstValue(CopilotAuthClaims.SessionId);
     if (!string.IsNullOrWhiteSpace(authSessionId))
@@ -198,8 +234,10 @@ app.MapGet("/auth/github/logout", async (HttpContext httpContext, GitHubTokenSto
     }
 
     await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-    return Results.LocalRedirect(NormalizeReturnUrl(httpContext.Request.Query["returnUrl"]));
-}).AllowAnonymous();
+    var form = await httpContext.Request.ReadFormAsync(httpContext.RequestAborted);
+    return Results.LocalRedirect(LocalReturnUrl.Normalize(form["returnUrl"]));
+}).RequireAuthorization(PinSessionService.Policy)
+    .AddEndpointFilter<PortalAntiforgeryFilter>();
 
 app.MapPost("/api/announcements/opened", async (AnnouncementOpenRequest request, TrackerService trackerService) =>
 {
@@ -230,10 +268,12 @@ app.MapPost("/api/announcements/opened", async (AnnouncementOpenRequest request,
     }
 
     return Results.Ok();
-}).AllowAnonymous();
+}).RequireAuthorization(PinSessionService.Policy)
+    .AddEndpointFilter<PortalAntiforgeryFilter>();
 
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+    .AddInteractiveServerRenderMode()
+    .RequireAuthorization(PinSessionService.Policy);
 
 app.Run();
 
@@ -358,21 +398,6 @@ static string ResolveSqliteConnectionString(string configuredConnectionString, I
     return connectionString;
 }
 
-static string NormalizeReturnUrl(string? returnUrl)
-{
-    if (string.IsNullOrWhiteSpace(returnUrl))
-    {
-        return "/";
-    }
-
-    if (Uri.TryCreate(returnUrl, UriKind.Absolute, out _))
-    {
-        return "/";
-    }
-
-    return returnUrl.StartsWith('/') ? returnUrl : $"/{returnUrl}";
-}
-
 static DateTime NormalizeAnnouncementPublishedUtc(DateTime? publishedUtc)
 {
     if (publishedUtc is null)
@@ -402,3 +427,5 @@ internal sealed record AnnouncementOpenRequest(
     string? Topic,
     string? Stream,
     string? SourceUrl);
+
+public partial class Program;

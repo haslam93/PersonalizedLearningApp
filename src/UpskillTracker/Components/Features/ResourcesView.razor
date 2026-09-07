@@ -1,5 +1,6 @@
 @inject UpskillTracker.Services.TrackerService TrackerService
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 @inject IJSRuntime JSRuntime
 
 <div class="section-shell">
@@ -17,7 +18,7 @@
     <MudItem xs="12" lg="7">
         <MudPaper Class="surface-card content-card resources-library-card mb-4" Elevation="0">
             <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" Class="mb-4">
-                <MudTextField @bind-Value="searchText" Placeholder="Search resources" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="flex-1" />
+                <MudTextField @bind-Value="searchText" Label="Search resources" Immediate="true" DebounceInterval="200" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="flex-1" />
                 <MudSelect T="string" @bind-Value="selectedSection" Label="Section" Variant="Variant.Outlined" Clearable="true">
                     @foreach (var sectionName in sections)
                     {
@@ -160,6 +161,13 @@
             return;
         }
 
+        if (!Uri.TryCreate(editingResource.Url, UriKind.Absolute, out var resourceUri) ||
+            (resourceUri.Scheme != Uri.UriSchemeHttps && resourceUri.Scheme != Uri.UriSchemeHttp))
+        {
+            Snackbar.Add("Use a complete http:// or https:// resource URL.", Severity.Warning);
+            return;
+        }
+
         try
         {
             await TrackerService.SaveResourceAsync(editingResource);
@@ -176,6 +184,12 @@
     private async Task DeleteAsync()
     {
         if (editingResource.Id == 0)
+        {
+            return;
+        }
+
+        if (await DialogService.ShowMessageBox("Delete this resource?", "This link will no longer appear in your library or task suggestions. Existing learning history will remain.",
+            yesText: "Delete resource", cancelText: "Keep resource") != true)
         {
             return;
         }

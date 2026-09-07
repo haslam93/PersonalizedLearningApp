@@ -44,6 +44,8 @@ public class DashboardSnapshot
 
     public IReadOnlyList<TrainingItem> FocusItems { get; init; } = [];
 
+    public IReadOnlyList<TrainingItem> TrainingItems { get; init; } = [];
+
     public IReadOnlyList<ResourceEntry> PinnedResources { get; init; } = [];
 
     public IReadOnlyList<NoteEntry> RecentNotes { get; init; } = [];
