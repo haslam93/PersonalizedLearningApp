@@ -35,6 +35,7 @@ estimated_reading_time: 6
 
 * Added .NET regression coverage and isolated Playwright learner journeys to the reusable CI workflow; CD now requires it to succeed
 * Added serialized deployment, current-main checks, exact-commit database readiness polling, managed-certificate provisioning, and custom-domain HTTPS confirmation
+* Confirmed asynchronous Azure certificate issuance during rollout; added named-certificate polling and reuse of pending requests instead of assuming the create response or SSL list is complete
 * Made the existing infrastructure-change filter and manual force switch effective, quoted secure deployment parameters, and preserved existing certificate bindings across Actions deployments
 * Traced the failed September 4 radar to an unsupported default model in its retained artifact; pinned a supported research model and regenerated the workflow with gh-aw
 

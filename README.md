@@ -423,12 +423,16 @@ The CD workflow also:
 * targets App Service plan SKU `P0v3` by default for private networking
 * provisions PostgreSQL and configures the web app identity as its Microsoft Entra administrator
 * embeds the Git commit in the app and polls `/healthz` until that exact commit is serving with a reachable database
-* provisions a free App Service managed certificate when needed, binds SNI TLS, and confirms HTTPS on the custom domain
+* provisions a free App Service managed certificate when needed, waits for its issued thumbprint, binds SNI TLS, and confirms HTTPS on the custom domain
 * discovers and passes the existing certificate thumbprint to Bicep so subsequent Actions deployments do not disable HTTPS
 
 For a manual infrastructure deployment outside Actions, pass
 `customHostnameCertificateThumbprint` when a custom-domain certificate already
 exists. Certificate issuance and final HTTPS binding are performed by CD.
+Azure can return from certificate creation before issuance completes, so CD
+polls the named certificate rather than trusting the create response or the
+resource-group SSL list. Binding uses the hostname-binding ARM endpoint also
+declared in Bicep, avoiding a second dependency on that incomplete list.
 The anonymous health endpoint returns readiness and build identity only, not
 database configuration or error details.
 
