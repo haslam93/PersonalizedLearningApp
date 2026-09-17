@@ -62,6 +62,35 @@ It is designed to help you:
 
 ## Main app features
 
+### Long-term LLM foundations
+
+The plan includes a Stretch sequence from Andrej Karpathy, after the existing Python
+foundations work. Suggested dates are adjustable; budgets assume roughly two hours
+per week and include viewing, coding, debugging, and reflection.
+
+| Target | Project and official repository | Approx. video length | Planned effort |
+| --- | --- | --- | --- |
+| January 29, 2027 | [Build micrograd](https://github.com/karpathy/micrograd) | 2.5 hours | 8 hours |
+| March 26, 2027 | [Let's build GPT from scratch](https://github.com/karpathy/ng-video-lecture) | 2 hours | 16 hours |
+| May 7, 2027 | [Build the GPT tokenizer (minbpe)](https://github.com/karpathy/minbpe) | 2.25 hours | 10 hours |
+| July 30, 2027 | [Reproduce GPT-2 (124M), optional capstone](https://github.com/karpathy/build-nanogpt) | 4 hours | 24 hours |
+
+The small GPT project builds a character-level Shakespeare generator; the GPT-2
+reproduction is a separate, advanced follow-on. The first three items total **34
+hours**, or **58 hours** with the optional capstone. These are planning estimates,
+not published course completion times; prerequisite study and unattended training
+are extra. Use reduced models for learning and budget full GPU runs separately.
+The [Zero to Hero curriculum](https://github.com/karpathy/nn-zero-to-hero) provides
+the makemore prerequisites if PyTorch tensors and language-model training are new.
+Each plan item includes its video link, prerequisites, and completion criteria,
+with companion repositories available under **Resources → LLM Foundations**.
+In **Plan**, select **Nice to have** or **All work** and search for **Karpathy**;
+the default **Do next** filter intentionally excludes this long-term Stretch work.
+The sequence is added once to both new and existing databases without overwriting
+matching items or re-adding items deleted after the update.
+
+### Feature overview
+
 * A focused learning dashboard with a ranked next step, matching references, and a visual Learn / Apply / Recall session guide for 15, 30, or 60 minutes
 * An interactive topic map with average recorded progress and completion counts; each topic opens its exact Plan filter
 * Active recall grounded in your own plan descriptions, notes, and evidence, with self-assessed 1-, 3-, or 7-day review intervals
