@@ -16,6 +16,7 @@ public static class DatabaseInitializer
     private const string LegacySqliteLearningHistoryImportMetadataKey = "legacy-sqlite-learning-history-import-v1";
     private const string PlanExpansionMetadataKey = "fabric-databricks-certifications-plan-v1";
     private const string LearningPlanRefreshMetadataKey = "fabric-opentext-events-priorities-v2";
+    private const string KarpathyLearningPlanMetadataKey = "karpathy-llm-learning-plan-v1";
     private const string LearningHistoryBackfillMetadataKey = "learning-history-backfill-v1";
     private static readonly HashSet<string> SeedNoteTitles = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -53,9 +54,10 @@ public static class DatabaseInitializer
                 db.TrainingItems.AddRange(GetSeedTrainingItems());
             }
 
-            await EnsurePlanExpansionTrainingItemsAsync(db);
+            await EnsurePlanTrainingItemsAsync(db, PlanExpansionMetadataKey, GetPlanExpansionTrainingItems());
             await ImportLearningRadarItemsAsync(db, environment, logger);
             await EnsureLearningPlanRefreshAsync(db);
+            await EnsurePlanTrainingItemsAsync(db, KarpathyLearningPlanMetadataKey, GetKarpathyTrainingItems());
 
             await EnsureSeedResourcesAsync(db);
             await EnsureSeedVideoChannelsAsync(db);
@@ -104,14 +106,14 @@ public static class DatabaseInitializer
         }
     }
 
-    private static async Task EnsurePlanExpansionTrainingItemsAsync(TrackerDbContext db)
+    private static async Task EnsurePlanTrainingItemsAsync(TrackerDbContext db, string metadataKey, IEnumerable<TrainingItem> items)
     {
         var expansionAlreadyApplied = await db.AppMetadataEntries
             .AsNoTracking()
-            .AnyAsync(entry => entry.Key == PlanExpansionMetadataKey);
+            .AnyAsync(entry => entry.Key == metadataKey);
 
         if (expansionAlreadyApplied ||
-            db.AppMetadataEntries.Local.Any(entry => entry.Key == PlanExpansionMetadataKey))
+            db.AppMetadataEntries.Local.Any(entry => entry.Key == metadataKey))
         {
             return;
         }
@@ -124,7 +126,7 @@ public static class DatabaseInitializer
             .Select(title => title.Trim())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var item in GetPlanExpansionTrainingItems())
+        foreach (var item in items)
         {
             if (!existingTitles.Add(item.Title.Trim()))
             {
@@ -136,7 +138,7 @@ public static class DatabaseInitializer
 
         db.AppMetadataEntries.Add(new AppMetadataEntry
         {
-            Key = PlanExpansionMetadataKey,
+            Key = metadataKey,
             Value = $"Applied:{DateTime.UtcNow:O}",
             UpdatedUtc = DateTime.UtcNow
         });
@@ -1549,6 +1551,77 @@ public static class DatabaseInitializer
         ];
     }
 
+    private static IEnumerable<TrainingItem> GetKarpathyTrainingItems()
+    {
+        return
+        [
+            new TrainingItem
+            {
+                Title = "Andrej Karpathy: build micrograd from scratch",
+                Domain = "LLM Foundations",
+                Category = "Andrej Karpathy",
+                Description = "Build a small automatic differentiation engine and neural network to understand the gradients and backpropagation behind LLM training. First step in the long-term Karpathy sequence.",
+                TargetDate = UtcDate(2027, 1, 29),
+                Lane = LearningLane.Stretch,
+                Type = TrainingItemType.Lab,
+                EstimatedHours = 8,
+                Priority = 2,
+                Notes = "Prerequisites: basic Python and high-school calculus/chain rule. Video: approximately 2.5 hours. Planning estimate: 6-10 hours total including viewing, implementation, debugging, and reflection; reserve 8 hours (four weeks at 2 hours/week). "
+                    + "Done when: implement scalar autograd and an MLP, compare gradients with PyTorch, and explain backpropagation. "
+                    + "Video: https://www.youtube.com/watch?v=VMj-3S1tku0\nRepository: https://github.com/karpathy/micrograd\nCurriculum: https://github.com/karpathy/nn-zero-to-hero"
+            },
+            new TrainingItem
+            {
+                Title = "Andrej Karpathy: build a small GPT language model from scratch",
+                Domain = "LLM Foundations",
+                Category = "Andrej Karpathy",
+                Description = "Complete Let's build GPT: from scratch, in code, spelled out. Build a character-level Shakespeare generator with causal self-attention and transformer blocks. This is the small educational LLM project, not a production chatbot or full GPT-2 reproduction.",
+                TargetDate = UtcDate(2027, 3, 26),
+                Lane = LearningLane.Stretch,
+                Type = TrainingItemType.Project,
+                EstimatedHours = 16,
+                Priority = 2,
+                Notes = "Sequence: after micrograd and Python foundations. Prerequisites: PyTorch tensors, torch.nn, training loops, and autoregressive modeling; use the makemore lessons in Zero to Hero first if these are unfamiliar (extra time). "
+                    + "Video: approximately 2 hours. Planning estimate: 12-20 hours total including viewing, setup, coding, debugging, and experiments; reserve 16 hours (eight weeks at 2 hours/week), excluding unattended training and prerequisite study. "
+                    + "Start with reduced batch size, context, and model dimensions on CPU; a GPU speeds up the tutorial configuration. Done when: train a small model, record train/validation loss and generated samples, and explain causal masking. "
+                    + "Video: https://www.youtube.com/watch?v=kCc8FmEb1nY\nCompanion repository: https://github.com/karpathy/ng-video-lecture\nCurriculum: https://github.com/karpathy/nn-zero-to-hero"
+            },
+            new TrainingItem
+            {
+                Title = "Andrej Karpathy: build the GPT tokenizer with minbpe",
+                Domain = "LLM Foundations",
+                Category = "Andrej Karpathy",
+                Description = "Implement byte-level byte pair encoding (BPE), vocabulary training, encoding, and decoding. Connect tokenization choices to context limits, token costs, and multilingual behavior in AI applications.",
+                TargetDate = UtcDate(2027, 5, 7),
+                Lane = LearningLane.Stretch,
+                Type = TrainingItemType.Lab,
+                EstimatedHours = 10,
+                Priority = 2,
+                Notes = "Sequence: after the small GPT project; compare BPE with its character-level vocabulary. Prerequisites: Python strings, bytes, dictionaries, and basic regex. "
+                    + "Video: approximately 2.25 hours. Planning estimate: 8-12 hours total including viewing and exercises; reserve 10 hours (five weeks at 2 hours/week). CPU is sufficient for small exercises. "
+                    + "Done when: complete the basic minbpe exercises, test encode/decode round trips including Unicode, and explain how vocabulary size changes token counts. "
+                    + "Video: https://www.youtube.com/watch?v=zduSFxRajkE\nRepository and exercises: https://github.com/karpathy/minbpe"
+            },
+            new TrainingItem
+            {
+                Title = "Andrej Karpathy: reproduce GPT-2 (124M) with build-nanogpt",
+                Domain = "LLM Foundations",
+                Category = "Andrej Karpathy",
+                Description = "Optional advanced capstone: follow Let's reproduce GPT-2 (124M) to understand GPT-2 architecture, pretrained weight loading, training optimization, and evaluation. This is a separate follow-on to the small GPT tutorial, not chat fine-tuning.",
+                TargetDate = UtcDate(2027, 7, 30),
+                Lane = LearningLane.Stretch,
+                Type = TrainingItemType.Capstone,
+                EstimatedHours = 24,
+                Priority = 1,
+                Notes = "Sequence: after GPT from scratch and minbpe. Prerequisites: confident PyTorch, tensor shapes, training loops, and GPU basics. "
+                    + "Video: approximately 4 hours. Planning estimate: 20-30 hours total including viewing, implementation, debugging, and evaluation; reserve 24 hours (twelve weeks at 2 hours/week), excluding unattended training, downloads, and GPU spend. "
+                    + "Use a reduced configuration and short runs for learning; full 124M training is optional and needs a separate GPU/time/cost budget. The repo's approximately one-hour/$10 reproduction claim is hardware-specific compute time, not learning time or a current price guarantee. "
+                    + "Done when: validate weight loading, run a small training/evaluation experiment, and document throughput, loss, and hardware trade-offs. "
+                    + "Video: https://www.youtube.com/watch?v=l8pRSuU81PU\nRepository: https://github.com/karpathy/build-nanogpt"
+            }
+        ];
+    }
+
     private static IEnumerable<TrainingItem> GetPlanExpansionTrainingItems()
     {
         var ai103Goal = CertificationCatalog.FindByKey("ai-103")?.CreateTrainingItem()
@@ -1692,6 +1765,10 @@ public static class DatabaseInitializer
     {
         return
         [
+            new ResourceEntry { Title = "Andrej Karpathy: micrograd", Section = "LLM Foundations", Url = "https://github.com/karpathy/micrograd", Kind = ResourceKind.GitHub, SortOrder = 10, Summary = "Official autograd and neural-network tutorial repository; start here for backpropagation foundations.", Tags = "karpathy, micrograd, python, neural networks" },
+            new ResourceEntry { Title = "Andrej Karpathy: Let's build GPT from scratch", Section = "LLM Foundations", Url = "https://github.com/karpathy/ng-video-lecture", Kind = ResourceKind.GitHub, SortOrder = 20, Summary = "Official companion to the small character-level GPT video, with Shakespeare data and tutorial code.", Tags = "karpathy, gpt, transformer, pytorch, llm" },
+            new ResourceEntry { Title = "Andrej Karpathy: GPT tokenizer and minbpe exercises", Section = "LLM Foundations", Url = "https://github.com/karpathy/minbpe", Kind = ResourceKind.GitHub, SortOrder = 30, Summary = "Official byte-level BPE implementation and exercises for the GPT tokenizer lecture.", Tags = "karpathy, tokenizer, minbpe, bpe, llm" },
+            new ResourceEntry { Title = "Andrej Karpathy: Let's reproduce GPT-2 (124M)", Section = "LLM Foundations", Url = "https://github.com/karpathy/build-nanogpt", Kind = ResourceKind.GitHub, SortOrder = 40, Summary = "Advanced follow-on video repository for GPT-2 training and optimization; budget GPU compute separately.", Tags = "karpathy, gpt-2, build-nanogpt, training, llm" },
             new ResourceEntry { Title = "Foundry SDK overview (Python)", Section = "Microsoft Foundry", Url = "https://learn.microsoft.com/en-us/azure/foundry/how-to/develop/sdk-overview?pivots=programming-language-python", Kind = ResourceKind.Learn, IsPinned = true, SortOrder = 10, Summary = "Primary starting point for the latest Foundry 2.x SDK workflow and project-based development.", Tags = "foundry, sdk, python, latest" },
             new ResourceEntry { Title = "Foundry documentation home", Section = "Microsoft Foundry", Url = "https://learn.microsoft.com/en-us/azure/foundry/", Kind = ResourceKind.Documentation, SortOrder = 20, Summary = "Broader Foundry product documentation across projects, models, agents, evaluations, and observability.", Tags = "foundry, docs" },
             new ResourceEntry { Title = "GitHub Copilot documentation", Section = "GitHub Copilot", Url = "https://docs.github.com/en/copilot", Kind = ResourceKind.Documentation, IsPinned = true, SortOrder = 10, Summary = "Keep customer-ready Copilot knowledge current across chat, coding workflows, and governance.", Tags = "copilot, docs, github" },
