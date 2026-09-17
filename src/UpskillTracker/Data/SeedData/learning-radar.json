@@ -462,6 +462,76 @@
       "link": "https://techcommunity.microsoft.com/t5/apps-on-azure-blog/add-ai-to-the-workflows-you-already-have-using-serverless-agents/ba-p/4544824",
       "source": "Apps on Azure Blog",
       "addedOn": "2026-08-14"
+    },
+    {
+      "title": "Lab Microsoft Foundry long-running hosted agents with approval and recovery",
+      "domain": "Microsoft Foundry",
+      "category": "Foundry",
+      "description": "Microsoft Foundry added preview support for long-running hosted agents, including task primitives for crash recovery, reconnectable streaming, state management, and human-in-the-loop approvals. This is a meaningful shift from simple request-response agents toward resilient business workflows. Build a small hosted agent that pauses for approval, survives a restart, and resumes work cleanly.",
+      "targetDate": "2026-09-25",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 3,
+      "priority": 4,
+      "link": "https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/long-running-agent-reference",
+      "source": "Microsoft Foundry What's New",
+      "addedOn": "2026-09-11"
+    },
+    {
+      "title": "Explore enterprise-managed permissions for GitHub Copilot agent operations",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "GitHub shipped centrally managed allow, approve, and block controls for agent shell commands, file reads and edits, and network domains across the Copilot app, Copilot CLI, and Agent Host sessions in VS Code. For enterprise-safe agent adoption, study how these policies override user settings, auto-approval, and saved approvals, then map them to common governance patterns.",
+      "targetDate": "2026-09-18",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 2,
+      "priority": 4,
+      "link": "https://github.blog/changelog/2026-09-09-enterprise-managed-permissions-for-github-copilot-agent-operations",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-09-11"
+    },
+    {
+      "title": "Explore Copilot content exclusions in the app and CLI",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "GitHub Copilot app and CLI now honor enterprise, organization, and repository content exclusion policies, preventing excluded files from being used as agent context. This closes an important governance gap for sensitive repositories and regulated teams. Review how exclusion scopes propagate and how they affect day-to-day agent workflows before broad rollout.",
+      "targetDate": "2026-10-02",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1.5,
+      "priority": 3,
+      "link": "https://github.blog/changelog/2026-09-02-content-exclusions-generally-available-in-copilot-app-and-cli",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-09-11"
+    },
+    {
+      "title": "Lab native memory for Microsoft Agent Framework with Azure Cosmos DB",
+      "domain": "Agent Framework",
+      "category": "Memory",
+      "description": "Microsoft Agent Framework introduced a preview Azure Cosmos DB integration that gives agents durable, cross-session memory through CosmosMemoryContextProvider. This makes it practical to persist user facts, summaries, and recalled context inside the agent lifecycle instead of bolting memory on externally. Prototype how memory extraction, recall, and storage fit into an enterprise agent design.",
+      "targetDate": "2026-10-02",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 3,
+      "priority": 3,
+      "link": "https://devblogs.microsoft.com/agent-framework/native-memory-for-microsoft-agent-framework-with-azure-cosmos-db/",
+      "source": "Microsoft Agent Framework Blog",
+      "addedOn": "2026-09-11"
+    },
+    {
+      "title": "Explore Managed Instance on Azure App Service (GA)",
+      "domain": "App Innovation",
+      "category": "App Service",
+      "description": "Managed Instance on Azure App Service reached general availability for Windows web apps that depend on OS-level capabilities blocked by the standard App Service sandbox, such as registry access, COM, Windows services, MSI installers, mapped drives, or network shares. This opens a pragmatic migration path from legacy ASP.NET estates to PaaS while retaining App Service features like slots, auth, managed identity, and CI/CD. Assess where it changes hosting guidance for modernization projects.",
+      "targetDate": "2026-09-25",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 2,
+      "priority": 4,
+      "link": "https://azure.github.io/AppService/2026/09/10/managed-instance-ga-and-markdown-for-agents.html",
+      "source": "Azure App Service Blog",
+      "addedOn": "2026-09-11"
     }
   ]
 }
