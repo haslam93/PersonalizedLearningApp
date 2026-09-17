@@ -210,7 +210,7 @@ jobs:
             --clean true \
             --restart true \
             --async false \
-            --track-status true \
+            --track-status false \
             --timeout 180000
 
       - name: Verify the deployed commit and database readiness
