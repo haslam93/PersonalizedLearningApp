@@ -320,6 +320,9 @@ static void ConfigureDataProtection(IServiceCollection services, StorageOptions 
         // and serving traffic. Fall back to ephemeral, process-local keys so the app can still start.
         // Operational tradeoff: ephemeral keys do not survive process restarts, so any protected payloads
         // (auth cookies, antiforgery tokens, etc.) issued before the restart become invalid afterwards.
+        // A standalone bootstrap logger is used (rather than building the app's service provider here) to
+        // avoid creating a second copy of singleton services this early in startup; it still writes to the
+        // console, which App Service captures the same way as the rest of the app's startup diagnostics.
         using var bootstrapLoggerFactory = LoggerFactory.Create(logging => logging.AddSimpleConsole());
         bootstrapLoggerFactory.CreateLogger("DataProtectionStartup").LogCritical(
             exception,
