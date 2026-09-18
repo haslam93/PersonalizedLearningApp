@@ -532,6 +532,76 @@
       "link": "https://azure.github.io/AppService/2026/09/10/managed-instance-ga-and-markdown-for-agents.html",
       "source": "Azure App Service Blog",
       "addedOn": "2026-09-11"
+    },
+    {
+      "title": "Explore Copilot feature engagement in the impact dashboard",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "GitHub Copilot's impact dashboard now breaks adoption down by key features instead of only broad usage totals. Study how feature-level engagement changes rollout, enablement, and success measurement so you can spot where chat, reviews, or agent workflows need targeted coaching before wider enterprise adoption.",
+      "targetDate": "2026-09-25",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1.5,
+      "priority": 3,
+      "link": "https://github.blog/changelog/2026-09-17-copilot-impact-dashboard-now-shows-feature-engagement",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-09-18"
+    },
+    {
+      "title": "Review Copilot budget increase requests (GA)",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "Copilot budget increase requests are now generally available, adding an approval flow for developers who hit AI credit limits. Learn how the request and approval path affects credit governance, developer productivity, and enterprise rollout plans for usage-based Copilot features.",
+      "targetDate": "2026-10-02",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1.5,
+      "priority": 3,
+      "link": "https://github.blog/changelog/2026-09-16-copilot-budget-increase-requests-are-generally-available/",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-09-18"
+    },
+    {
+      "title": "Tune Copilot auto model selection for cost, quality, and speed",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "Copilot auto model selection now supports Efficiency, Balance, and Intelligence tiers. Study when to bias toward cheaper and faster responses versus higher-quality reasoning so you can set sane defaults for CLI, IDE, and app workflows without treating model choice as a one-size-fits-all decision.",
+      "targetDate": "2026-09-25",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1.5,
+      "priority": 4,
+      "link": "https://github.blog/changelog/2026-09-14-configure-cost-and-quality-in-copilot-auto-model-selection",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-09-18"
+    },
+    {
+      "title": "Explore TLS certificates and end-to-end TLS for Azure Functions Flex Consumption (GA)",
+      "domain": "App Innovation",
+      "category": "Azure Functions",
+      "description": "Azure Functions Flex Consumption now supports site-scoped TLS certificates and end-to-end TLS encryption. Review how custom domains, mTLS, and encrypted front-end-to-worker traffic change the security posture for serverless AI endpoints before recommending Flex Consumption for production agent and API workloads.",
+      "targetDate": "2026-10-09",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 2,
+      "priority": 4,
+      "link": "https://techcommunity.microsoft.com/blog/appsonazureblog/ssltls-certificates-and-end-to-end-encryption-for-azure-functions-flex-consumpti/4556425",
+      "source": "Apps on Azure Blog",
+      "addedOn": "2026-09-18"
+    },
+    {
+      "title": "Explore Azure App Service as a trigger destination for Managed Connectors",
+      "domain": "Integration Services",
+      "category": "Managed Connectors",
+      "description": "Azure Managed Connectors public preview can now deliver connector events directly to Azure App Service as a trigger destination. Learn how this changes integration patterns for existing web apps and APIs, especially when you need event-driven ingestion without moving the workload into Logic Apps or Functions.",
+      "targetDate": "2026-10-09",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 2,
+      "priority": 3,
+      "link": "https://techcommunity.microsoft.com/blog/appsonazureblog/azure-app-service-is-now-a-trigger-destination-for-azure-managed-connectors/4555785",
+      "source": "Apps on Azure Blog",
+      "addedOn": "2026-09-18"
     }
   ]
 }
