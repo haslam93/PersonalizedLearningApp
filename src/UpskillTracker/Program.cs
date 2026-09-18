@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
 using Npgsql;
 using UpskillTracker.Components;
@@ -316,10 +317,15 @@ static void ConfigureDataProtection(IServiceCollection services, StorageOptions 
     {
         // Persisting keys to blob storage is best-effort at startup: a slow or unavailable dependency here
         // (e.g. transient managed-identity token acquisition delays) must not prevent Kestrel from binding
-        // and serving traffic. Fall back to ephemeral keys and let the app continue in degraded mode.
-        Console.Error.WriteLine(
-            $"Warning: could not reach Azure Blob Storage for data protection keys within {dataProtectionBlobStartupTimeout}. " +
-            $"Continuing with ephemeral keys. {exception.Message}");
+        // and serving traffic. Fall back to ephemeral, process-local keys so the app can still start.
+        // Operational tradeoff: ephemeral keys do not survive process restarts, so any protected payloads
+        // (auth cookies, antiforgery tokens, etc.) issued before the restart become invalid afterwards.
+        using var bootstrapLoggerFactory = LoggerFactory.Create(logging => logging.AddSimpleConsole());
+        bootstrapLoggerFactory.CreateLogger("DataProtectionStartup").LogCritical(
+            exception,
+            "Could not reach Azure Blob Storage for data protection keys within {Timeout}. " +
+            "Continuing with ephemeral, process-local keys; previously issued protected payloads will be invalidated.",
+            dataProtectionBlobStartupTimeout);
     }
 }
 
