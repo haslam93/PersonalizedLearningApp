@@ -1950,7 +1950,9 @@ public static class DatabaseInitializer
         => value.Length <= maxLength ? value : value[..maxLength];
 
     private static DateTime ParseDateOrDefault(string? value, DateTime fallback)
-        => DateTime.TryParse(value, out var parsed) ? parsed.Date : fallback;
+        => DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
+            ? parsed.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)
+            : DateTime.SpecifyKind(fallback.Date, DateTimeKind.Utc);
 
     private static TEnum ParseEnumOrDefault<TEnum>(string? value, TEnum fallback) where TEnum : struct
         => Enum.TryParse<TEnum>(value, ignoreCase: true, out var parsed) ? parsed : fallback;

@@ -16,6 +16,21 @@ jobs:
     permissions:
       contents: read
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: local-ci-only
+          POSTGRES_DB: postgres
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,6 +50,8 @@ jobs:
         run: dotnet build ./tests/UpskillTracker.Tests/UpskillTracker.Tests.csproj --configuration Release --no-restore
 
       - name: Run regression tests
+        env:
+          POSTGRES_TEST_CONNECTION_STRING: "Host=127.0.0.1;Port=${{ job.services.postgres.ports[5432] }};Database=postgres;Username=postgres;Password=local-ci-only;SSL Mode=Disable"
         run: dotnet test ./tests/UpskillTracker.Tests/UpskillTracker.Tests.csproj --configuration Release --no-build --logger "trx;LogFileName=regression.trx" --results-directory ./test-results
 
       - name: Setup Node

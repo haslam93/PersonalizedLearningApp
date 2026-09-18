@@ -2,7 +2,7 @@
 title: Hammad's Learning Portal
 description: Personal learning and certification tracker with actionable planning, learning history, personal tools, GitHub Copilot chat, and Azure deployment automation
 author: Microsoft
-ms.date: 2026-09-07
+ms.date: 2026-09-18
 ms.topic: overview
 keywords:
   - learning portal
@@ -214,6 +214,23 @@ persistence, cancellation of deletion, themes, and all ten tabs at mobile
 width. It never connects to the production database. To use an installed Edge
 browser locally instead of downloading Chromium, set
 `$env:PLAYWRIGHT_CHANNEL = "msedge"` before `npm test`.
+
+CI also runs startup and incremental learning-radar import checks against a
+disposable PostgreSQL 16 service, matching production's database provider.
+Radar `targetDate` values use the schema's `yyyy-MM-dd` format and are stored
+as UTC midnight without changing the intended calendar date.
+
+To include PostgreSQL coverage locally, point the tests at a disposable server:
+
+```powershell
+$env:POSTGRES_TEST_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Password=<local-test-password>;SSL Mode=Disable"
+dotnet test .\tests\UpskillTracker.Tests\UpskillTracker.Tests.csproj --configuration Release --filter FullyQualifiedName~LearningRadarInitializationTests
+```
+
+The fixture accepts only loopback hosts and creates and removes its own uniquely
+named test database. Without this variable, PostgreSQL integration coverage is
+reported as skipped; SQLite regression coverage still runs. Never use production
+credentials or data for these tests.
 
 ## GitHub Copilot SDK setup
 

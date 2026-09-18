@@ -2,7 +2,7 @@
 title: Copilot project memory
 description: Persistent summary of the Azure AI Upskilling Hub application, GitHub configuration, deployment model, and maintenance instructions for future coding sessions
 author: Microsoft
-ms.date: 2026-09-07
+ms.date: 2026-09-18
 ms.topic: reference
 keywords:
   - copilot
@@ -109,6 +109,8 @@ When making meaningful changes, update this file and also update
   * local development uses SQLite in the project data path
   * Azure uses a privately networked PostgreSQL Flexible Server
   * the web app authenticates to PostgreSQL with its managed identity
+  * learning-radar `targetDate` values must be parsed as invariant `yyyy-MM-dd` calendar dates at UTC midnight; an unspecified `DateTime.Kind` crashes PostgreSQL startup imports
+  * startup coverage must include imports after the one-time plan refresh is already applied, because that refresh can mask invalid radar timestamps on a fresh database
 
 ## Important source files
 
@@ -201,9 +203,10 @@ File: [workflows/ci.yml](workflows/ci.yml)
   * setup .NET 8
   * compile Bicep
   * restore and build the .NET regression project
-  * run .NET tests and isolated browser journeys
+  * run .NET tests against SQLite and a disposable PostgreSQL 16 service, plus isolated browser journeys
   * retain validation artifacts for seven days
 * Also exposes `workflow_call`; CD uses this same job as a required dependency
+* `POSTGRES_TEST_CONNECTION_STRING` enables PostgreSQL integration coverage locally; the fixture requires a loopback host and creates/deletes only its own uniquely named test database
 
 ### CD workflow
 
@@ -246,6 +249,7 @@ File: [workflows/cost-control-tag.yml](workflows/cost-control-tag.yml)
 
 ## Known platform notes
 
+* The September 18, 2026 503 outage was a confirmed PostgreSQL seed-import crash (`DateTime.Kind=Unspecified`), not an App Service deployment timeout or a Blob Storage startup failure; keep exact-commit readiness checks rather than relaxing them
 * `azd deploy` has previously failed due to `Microsoft.Web` deployment history `504 Gateway Timeout`
 * The direct GitHub Actions CD workflow is the more reliable deployment path right now
 * CD verifies both the Azure URL and the custom-domain HTTPS endpoint before reporting full deployment success

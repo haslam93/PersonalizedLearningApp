@@ -17,6 +17,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Npgsql;
 using UpskillTracker.Data;
 using UpskillTracker.Services;
 
@@ -28,22 +29,44 @@ internal sealed class PortalApplicationFactory : WebApplicationFactory<Program>
     public const string TestPin = "123456";
     private readonly string directory = Directory.CreateTempSubdirectory("upskill-pin-tests-").FullName;
     private readonly Dictionary<string, string?> configuration;
+    private readonly bool usePostgres;
 
     public AdjustableTimeProvider Clock { get; } = new();
     public string ConnectionString { get; }
 
-    public PortalApplicationFactory(string? pin = TestPin, bool configureOAuth = false, bool appServiceProxy = false)
+    public PortalApplicationFactory(
+        string? pin = TestPin,
+        bool configureOAuth = false,
+        bool appServiceProxy = false,
+        string? postgresConnectionString = null)
     {
-        ConnectionString = new SqliteConnectionStringBuilder
+        usePostgres = postgresConnectionString is not null;
+        if (usePostgres)
         {
-            DataSource = Path.Combine(directory, "local-test.db")
-        }.ToString();
+            var connection = new NpgsqlConnectionStringBuilder(postgresConnectionString);
+            if (connection.Host is not ("localhost" or "127.0.0.1" or "::1"))
+            {
+                throw new ArgumentException("PostgreSQL tests must use a local disposable server.", nameof(postgresConnectionString));
+            }
+
+            connection.Database = $"upskill_tests_{Guid.NewGuid():N}";
+            connection.Pooling = false;
+            ConnectionString = connection.ConnectionString;
+        }
+        else
+        {
+            ConnectionString = new SqliteConnectionStringBuilder
+            {
+                DataSource = Path.Combine(directory, "local-test.db")
+            }.ToString();
+        }
+
         configuration = new Dictionary<string, string?>
         {
             ["environment"] = "Testing",
             ["WEBSITE_INSTANCE_ID"] = appServiceProxy ? "local-test-app-service-instance" : "",
             ["AccessPin"] = pin ?? "",
-            ["Storage:Provider"] = "Sqlite",
+            ["Storage:Provider"] = usePostgres ? "Postgres" : "Sqlite",
             ["Storage:ConnectionString"] = ConnectionString,
             ["Storage:EnableLegacySqliteImport"] = "false",
             ["Storage:UseManagedIdentity"] = "false",
@@ -78,7 +101,7 @@ internal sealed class PortalApplicationFactory : WebApplicationFactory<Program>
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<IDbContextFactory<TrackerDbContext>>();
-            services.AddSingleton<IDbContextFactory<TrackerDbContext>>(new IsolatedDbFactory(ConnectionString));
+            services.AddSingleton<IDbContextFactory<TrackerDbContext>>(new IsolatedDbFactory(ConnectionString, usePostgres));
             services.RemoveAll<IDataProtectionProvider>();
             services.AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider());
             services.RemoveAll<TimeProvider>();
@@ -121,15 +144,36 @@ internal sealed class PortalApplicationFactory : WebApplicationFactory<Program>
     public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync();
-        using var connection = new SqliteConnection(ConnectionString);
-        SqliteConnection.ClearPool(connection);
+        if (usePostgres)
+        {
+            await using var db = new IsolatedDbFactory(ConnectionString, usePostgres).CreateDbContext();
+            await db.Database.EnsureDeletedAsync();
+        }
+        else
+        {
+            using var connection = new SqliteConnection(ConnectionString);
+            SqliteConnection.ClearPool(connection);
+        }
+
         Directory.Delete(directory, recursive: true);
     }
 
-    private sealed class IsolatedDbFactory(string connectionString) : IDbContextFactory<TrackerDbContext>
+    private sealed class IsolatedDbFactory(string connectionString, bool usePostgres) : IDbContextFactory<TrackerDbContext>
     {
-        public TrackerDbContext CreateDbContext() => new(
-            new DbContextOptionsBuilder<TrackerDbContext>().UseSqlite(connectionString).Options);
+        public TrackerDbContext CreateDbContext()
+        {
+            var options = new DbContextOptionsBuilder<TrackerDbContext>();
+            if (usePostgres)
+            {
+                options.UseNpgsql(connectionString);
+            }
+            else
+            {
+                options.UseSqlite(connectionString);
+            }
+
+            return new TrackerDbContext(options.Options);
+        }
     }
 
     private sealed class OfflineHandler : HttpMessageHandler

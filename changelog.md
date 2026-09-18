@@ -2,7 +2,7 @@
 title: Changelog
 description: Chronological record of major product, infrastructure, deployment, authentication, and documentation changes for Hammad's Learning Portal
 author: Microsoft
-ms.date: 2026-09-07
+ms.date: 2026-09-18
 ms.topic: reference
 keywords:
   - changelog
@@ -12,6 +12,15 @@ keywords:
   - deployment
 estimated_reading_time: 6
 ---
+
+## 2026-09-18
+
+### Fixed production startup and deployment readiness
+
+* Traced the App Service 503 and failing CD readiness check to a PostgreSQL exception while importing new weekly learning-radar items into an existing database
+* Parse radar dates using the invariant `yyyy-MM-dd` schema format and store UTC midnight, preserving calendar dates without changing existing learning progress, notes, or evidence
+* Added SQLite culture regression checks and real PostgreSQL 16 startup/import coverage, including repeat initialization and preservation of existing work
+* Run PostgreSQL coverage in the reusable CI job required by CD; retain the exact-commit readiness gate instead of hiding the startup crash with longer timeouts or unrelated authentication fallbacks
 
 ## 2026-09-07
 
