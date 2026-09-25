@@ -532,6 +532,62 @@
       "link": "https://azure.github.io/AppService/2026/09/10/managed-instance-ga-and-markdown-for-agents.html",
       "source": "Azure App Service Blog",
       "addedOn": "2026-09-11"
+    },
+    {
+      "title": "Audit upcoming GitHub Copilot model deprecations before October 19",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "GitHub will deprecate several Copilot models on 2026-10-19, including Gemini 3.7 Flash, GPT-5.5, GPT-5.4, GPT-5.4 mini, GPT-5 mini, and Grok 4.5. Their replacements are already identified in the announcement. Review model policies, confirm the suggested alternatives are enabled, and test any saved workflows or demos against the replacement models before the cutoff.",
+      "targetDate": "2026-10-09",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 4,
+      "link": "https://github.blog/changelog/2026-09-18-upcoming-deprecation-of-selected-github-copilot-models-in-mid-october",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-09-25"
+    },
+    {
+      "title": "Review default enablement policy for new GitHub Copilot features",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "GitHub introduced a global default policy for generally available Copilot features and supported client capabilities in Business and Enterprise. Starting 2026-10-22, any eligible feature left unconfigured will inherit the enterprise default of Enabled, Disabled, or Let organizations decide. Study how this interacts with feature policies, code review defaults, and MCP server access before the policy begins taking effect.",
+      "targetDate": "2026-10-16",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1.5,
+      "priority": 4,
+      "link": "https://github.blog/changelog/2026-09-24-default-enablement-of-copilot-features-for-copilot-business-and-enterprise",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-09-25"
+    },
+    {
+      "title": "Try local sandboxing in the GitHub Copilot app",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "The GitHub Copilot app now has public-preview local sandboxing for project sessions. You can define filesystem allow/deny lists, outbound network rules, and whether Git or GitHub CLI credentials are available, and the shell fails closed if the requested policy cannot be enforced. Lab it on a real repo to understand how much agent autonomy you can safely permit on a developer workstation.",
+      "targetDate": "2026-10-23",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 3,
+      "link": "https://github.blog/changelog/2026-09-23-local-sandboxing-in-the-github-copilot-app",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-09-25"
+    },
+    {
+      "title": "Build an AG-UI and resilient-execution prototype with Microsoft Agent Framework",
+      "domain": "Agent Framework",
+      "category": "Agents",
+      "description": "Microsoft Agent Framework added new building blocks for production-style agents across .NET and Python: AG-UI integration for interactive front ends, Foundry memory integration, CodeAct execution through Hyperlight, and recoverable long-running workflows with checkpointing and reconnect. Build a small prototype that streams tool activity to a UI and survives an interrupted background run.",
+      "targetDate": "2026-10-23",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 3,
+      "priority": 3,
+      "link": "https://devblogs.microsoft.com/agent-framework/interactive-experiences-memory-and-resilient-execution/",
+      "source": "Microsoft Agent Framework Blog",
+      "addedOn": "2026-09-25"
     }
   ]
 }
