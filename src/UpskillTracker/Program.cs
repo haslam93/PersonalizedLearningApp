@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.Json;
+using Azure;
 using Azure.Core;
 using Azure.Identity;
 using Azure.Storage.Blobs;
@@ -12,6 +13,7 @@ using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
 using Npgsql;
 using UpskillTracker.Components;
@@ -293,6 +295,7 @@ static void ConfigureDbContext(IServiceCollection services, StorageOptions stora
 
 static void ConfigureDataProtection(IServiceCollection services, StorageOptions storageOptions, TokenCredential credential)
 {
+    var dataProtectionBlobStartupTimeout = TimeSpan.FromSeconds(20);
     var dataProtectionBuilder = services.AddDataProtection()
         .SetApplicationName(string.IsNullOrWhiteSpace(storageOptions.DataProtectionApplicationName)
             ? "UpskillTracker"
@@ -303,8 +306,30 @@ static void ConfigureDataProtection(IServiceCollection services, StorageOptions 
         return;
     }
 
-    var blobClient = CreateAndEnsureKeyBlobClientAsync(storageOptions.KeyBlobUri, credential).GetAwaiter().GetResult();
-    dataProtectionBuilder.PersistKeysToAzureBlobStorage(blobClient);
+    try
+    {
+        using var startupTimeout = new CancellationTokenSource(dataProtectionBlobStartupTimeout);
+        var blobClient = CreateAndEnsureKeyBlobClientAsync(storageOptions.KeyBlobUri, credential, startupTimeout.Token)
+            .GetAwaiter().GetResult();
+        dataProtectionBuilder.PersistKeysToAzureBlobStorage(blobClient);
+    }
+    catch (Exception exception) when (exception is OperationCanceledException or RequestFailedException or AuthenticationFailedException)
+    {
+        // Persisting keys to blob storage is best-effort at startup: a slow or unavailable dependency here
+        // (e.g. transient managed-identity token acquisition delays) must not prevent Kestrel from binding
+        // and serving traffic. Fall back to ephemeral, process-local keys so the app can still start.
+        // Operational tradeoff: ephemeral keys do not survive process restarts, so any protected payloads
+        // (auth cookies, antiforgery tokens, etc.) issued before the restart become invalid afterwards.
+        // A standalone bootstrap logger is used (rather than building the app's service provider here) to
+        // avoid creating a second copy of singleton services this early in startup; it still writes to the
+        // console, which App Service captures the same way as the rest of the app's startup diagnostics.
+        using var bootstrapLoggerFactory = LoggerFactory.Create(logging => logging.AddSimpleConsole());
+        bootstrapLoggerFactory.CreateLogger("DataProtectionStartup").LogCritical(
+            exception,
+            "Could not reach Azure Blob Storage for data protection keys within {Timeout}. " +
+            "Continuing with ephemeral, process-local keys; previously issued protected payloads will be invalidated.",
+            dataProtectionBlobStartupTimeout);
+    }
 }
 
 static TokenCredential CreateTokenCredential(StorageOptions storageOptions)
@@ -353,18 +378,20 @@ static NpgsqlDataSource CreatePostgresDataSource(StorageOptions storageOptions, 
     return dataSourceBuilder.Build();
 }
 
-static async Task<BlobClient> CreateAndEnsureKeyBlobClientAsync(string keyBlobUri, TokenCredential credential)
+static async Task<BlobClient> CreateAndEnsureKeyBlobClientAsync(string keyBlobUri, TokenCredential credential, CancellationToken cancellationToken)
 {
     var uri = new Uri(keyBlobUri);
     var blobUri = new Azure.Storage.Blobs.BlobUriBuilder(uri);
     var serviceClient = new BlobServiceClient(new Uri($"{uri.Scheme}://{uri.Host}"), credential);
     var containerClient = serviceClient.GetBlobContainerClient(blobUri.BlobContainerName);
-    await containerClient.CreateIfNotExistsAsync(PublicAccessType.None);
+    await containerClient.CreateIfNotExistsAsync(PublicAccessType.None, cancellationToken: cancellationToken);
 
     var blobClient = containerClient.GetBlobClient(blobUri.BlobName);
-    if (!await blobClient.ExistsAsync())
+    if (!await blobClient.ExistsAsync(cancellationToken))
     {
-        await blobClient.UploadAsync(BinaryData.FromString("<?xml version=\"1.0\" encoding=\"utf-8\"?><repository />"));
+        await blobClient.UploadAsync(
+            BinaryData.FromString("<?xml version=\"1.0\" encoding=\"utf-8\"?><repository />"),
+            cancellationToken: cancellationToken);
     }
 
     return blobClient;
