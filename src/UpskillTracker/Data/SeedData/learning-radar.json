@@ -588,6 +588,48 @@
       "link": "https://devblogs.microsoft.com/agent-framework/interactive-experiences-memory-and-resilient-execution/",
       "source": "Microsoft Agent Framework Blog",
       "addedOn": "2026-09-25"
+    },
+    {
+      "title": "Explore HydraFusion multi-model workflows in GitHub Copilot",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "HydraFusion research preview expands from Copilot CLI into VS Code and the GitHub Copilot app. Rather than exposing one model, it orchestrates multiple models and automatically picks between single-model, cascade, and parallel workflows based on the task. Study when the orchestration improves quality or speed, then compare it against a fixed-model session on a real coding task.",
+      "targetDate": "2026-10-23",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 3,
+      "link": "https://github.blog/changelog/2026-09-30-hydrafusion-in-vs-code-and-the-github-copilot-app",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-10-02"
+    },
+    {
+      "title": "Build agentic UI with the new Blazor AI components",
+      "domain": "App Innovation",
+      "category": "Blazor",
+      "description": "The new Blazor AI components give .NET apps first-class UI primitives for streamed model output, tool activity, human approvals, shared state, and other agentic interactions. This is a practical building block for turning back-end agents into usable product experiences. Build a small Blazor front end that surfaces tool calls and approval checkpoints instead of treating the agent as a plain chat box.",
+      "targetDate": "2026-10-16",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 3,
+      "priority": 4,
+      "link": "https://devblogs.microsoft.com/dotnet/build-agentic-ui-blazor/",
+      "source": ".NET Blog",
+      "addedOn": "2026-10-02"
+    },
+    {
+      "title": "Build .NET integrations with the Azure Connectors SDK",
+      "domain": "Integration Services",
+      "category": "Logic Apps",
+      "description": "The Azure Connectors SDK brings Logic Apps connectors into ordinary .NET applications, making it easier to call SaaS systems and enterprise services without hand-rolling every integration. For an App Innovation engineer, this creates a direct path from custom .NET apps and agents into the same connector ecosystem used by Logic Apps. Build a small integration that uses a connector-triggered or connector-backed workflow from code and capture where it beats bespoke API wrappers.",
+      "targetDate": "2026-10-16",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 3,
+      "priority": 4,
+      "link": "https://techcommunity.microsoft.com/blog/integrationsonazureblog/bring-azure-logic-apps-connectors-into-your-net-applications-with-the-azure-conn/4555823",
+      "source": "Integrations on Azure Blog",
+      "addedOn": "2026-10-02"
     }
   ]
 }
