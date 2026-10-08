@@ -40,9 +40,15 @@ Azure App Service.
 
 For the Mermaid version of the architecture, see [arch.md](arch.md).
 
-## Portal screenshot
+## Portal screenshots
 
-![Hammad's Learning Portal](docs/images/portal-home.png)
+Before the blue theme:
+
+![Hammad's Learning Portal before the blue theme](docs/images/portal-home-before.png)
+
+After the blue theme:
+
+![Hammad's Learning Portal with the blue theme](docs/images/portal-home.png)
 
 ![Active recall with an example explanation and a scheduled review](docs/images/active-recall.png)
 

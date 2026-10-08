@@ -204,8 +204,10 @@ test("protected, persistent, accessible learning journeys", { timeout: 240000 },
         });
 
         await t.test("light and dark themes persist and keyboard focus is visible", async () => {
+            assert.equal(await page.locator("html").evaluate(element => getComputedStyle(element).getPropertyValue("--cp-accent").trim()), "#305dff");
             await page.getByRole("button", { name: "Toggle light and dark theme", exact: true }).click();
             assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");
+            assert.equal(await page.locator("html").evaluate(element => getComputedStyle(element).getPropertyValue("--cp-accent").trim()), "#8eafff");
             await page.reload();
             await page.locator(".note-card").first().waitFor();
             assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");
@@ -256,7 +258,7 @@ test("protected, persistent, accessible learning journeys", { timeout: 240000 },
             await page.goto(`${url}/auth/pin?clawpilotTheme=dark`);
             await page.locator("input[type=password]").waitFor();
             assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");
-            assert.equal(await page.locator("input[type=password]").evaluate(input => getComputedStyle(input).backgroundColor), "rgb(52, 50, 49)");
+            assert.equal(await page.locator("input[type=password]").evaluate(input => getComputedStyle(input).backgroundColor), "rgb(26, 36, 51)");
             await page.screenshot({ path: path.join(artifacts, "pin-mobile-dark.png"), fullPage: true });
         });
 
