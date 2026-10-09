@@ -588,6 +588,62 @@
       "link": "https://devblogs.microsoft.com/agent-framework/interactive-experiences-memory-and-resilient-execution/",
       "source": "Microsoft Agent Framework Blog",
       "addedOn": "2026-09-25"
+    },
+    {
+      "title": "Lab GitHub Copilot computer use for GUI-only workflows",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "GitHub Copilot computer use entered public preview in Copilot CLI and the Copilot app for macOS and Windows. It can read accessible app content and visual context, click controls, type, scroll, and navigate workflows across desktop applications with user approval. Practice it on one GUI-only or legacy workflow to understand where it expands automation beyond APIs, CLIs, and MCP servers.",
+      "targetDate": "2026-10-23",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 4,
+      "link": "https://github.blog/changelog/2026-10-01-github-copilot-can-now-interact-with-desktop-apps",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-10-09"
+    },
+    {
+      "title": "Automate Copilot code review with the new REST and GraphQL APIs",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "GitHub Copilot code review can now be requested through REST and GraphQL APIs, and each request can set its own review effort level. The feature is generally available and makes it practical to trigger Copilot reviews from internal tooling, scripts, and workflow automation rather than only from the GitHub UI. Build one sample automation and compare Balanced versus Lite review effort on the same pull request.",
+      "targetDate": "2026-10-30",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 4,
+      "link": "https://github.blog/changelog/2026-10-02-copilot-code-review-api-support-and-new-default-effort-level",
+      "source": "GitHub Changelog",
+      "addedOn": "2026-10-09"
+    },
+    {
+      "title": "Prototype agentic UX with the new Blazor AI components",
+      "domain": "App Innovation",
+      "category": "Blazor",
+      "description": "The .NET team introduced experimental Blazor AI components for building agentic UI experiences that render agent interactions as content blocks and observable state. They are designed to work with Microsoft.Extensions.AI, the AG-UI .NET SDK, Microsoft Agent Framework, Foundry, and Aspire. Build a small prototype in this repo or a scratch app to see how streamed agent output, user approvals, and shared state could fit a Blazor front end.",
+      "targetDate": "2026-11-06",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 3,
+      "priority": 3,
+      "link": "https://devblogs.microsoft.com/dotnet/build-agentic-ui-blazor/",
+      "source": ".NET Blog",
+      "addedOn": "2026-10-09"
+    },
+    {
+      "title": "Diagnose Linux App Service startup issues with az webapp troubleshoot config",
+      "domain": "App Innovation",
+      "category": "App Service",
+      "description": "Azure CLI 2.91.0 added the preview az webapp troubleshoot config command for Linux web apps. It checks common App Service settings such as stack, port binding, startup command, Always On, and health checks, then pairs the results with a recent runtime error when one exists. Lab it against a test app and capture how it changes first-response troubleshooting compared with portal-only diagnostics.",
+      "targetDate": "2026-10-30",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 3,
+      "link": "https://azure.github.io/AppService/2026/10/06/azure-cli-2-91-app-service-updates.html",
+      "source": "Azure App Service Blog",
+      "addedOn": "2026-10-09"
     }
   ]
 }
