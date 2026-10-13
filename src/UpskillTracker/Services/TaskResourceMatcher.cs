@@ -234,15 +234,21 @@ public static partial class TaskResourceMatcher
 
     private static List<ResourceEntry> GetPreferredMatches(TrainingItem item, IReadOnlyList<ResourceEntry> resources, int maxResults)
     {
+        var directLink = PrimaryLinkRegex().Match(item.Notes);
+        var directResource = directLink.Success && Uri.TryCreate(directLink.Groups["url"].Value.Trim(), UriKind.Absolute, out var uri)
+            ? resources.FirstOrDefault(resource => resource.Url.Equals(uri.AbsoluteUri, StringComparison.OrdinalIgnoreCase))
+            : null;
+        List<ResourceEntry> matches = directResource is null ? [] : [directResource];
         if (!PreferredResourcesByTaskTitle.TryGetValue(item.Title, out var preferredTitles))
         {
-            return [];
+            return matches.Take(maxResults).ToList();
         }
 
-        return preferredTitles
+        return matches.Concat(preferredTitles
             .Select(title => resources.FirstOrDefault(resource => resource.Title.Equals(title, StringComparison.OrdinalIgnoreCase)))
             .Where(resource => resource is not null)
-            .Cast<ResourceEntry>()
+            .Cast<ResourceEntry>())
+            .DistinctBy(resource => resource.Id)
             .Take(maxResults)
             .ToList();
     }
@@ -320,4 +326,7 @@ public static partial class TaskResourceMatcher
 
     [GeneratedRegex("[A-Za-z0-9.+#-]+")]
     private static partial Regex TokenRegex();
+
+    [GeneratedRegex(@"^Link:[ \t]*(?<url>https://[^\r\n]+)", RegexOptions.Multiline | RegexOptions.IgnoreCase)]
+    private static partial Regex PrimaryLinkRegex();
 }

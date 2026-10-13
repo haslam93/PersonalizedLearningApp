@@ -31,14 +31,28 @@
                     <span>@focus.ProgressPercent% recorded progress</span>
                     <span>~@LearningInsightsBuilder.RemainingHours(focus).ToString("0.#")h remaining</span>
                 </div>
-                <p class="focus-reason">Why this step: project priorities, due dates, and active work come before optional learning.</p>
+                <p class="focus-reason">@(Session.FocusItemId == focus.Id
+                    ? "You chose this product step. Your main plan has not been rescheduled."
+                    : "Why this step: project priorities, due dates, and active work come before optional learning.")</p>
                 <div class="studio-actions">
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow"
-                               OnClick="@(() => OnOpenPlan.InvokeAsync(new PlanNavigationRequest("All work", focus.Id)))">
-                        @(focus.Status == TrackerStatus.NotStarted ? "Open this step" : "Continue this step")
-                    </MudButton>
+                    @if (focus.Status is TrackerStatus.NotStarted or TrackerStatus.InProgress)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow"
+                                   OnClick="StartSessionAsync" Disabled="@(Session.IsStarting || TrackerService.HasRecentTransientReadFailure)">
+                            @(Session.IsStarting ? "Starting session..." : $"{(focus.Status == TrackerStatus.NotStarted ? "Start" : "Continue")} a {sessionMinutes}-minute session")
+                        </MudButton>
+                    }
+                    <MudButton Variant="Variant.Text" OnClick="@(() => OnOpenPlan.InvokeAsync(new PlanNavigationRequest("All work", focus.Id)))">Open in plan</MudButton>
                     <a class="studio-text-link" href="#recall-practice">Try active recall <span aria-hidden="true">&darr;</span></a>
                 </div>
+                @if (Session.FocusItemId is not null)
+                {
+                    <button type="button" class="studio-text-button" @onclick="ResetFocus">Return to the recommended step</button>
+                }
+                @if (Session.StartMessage is not null)
+                {
+                    <p class="recall-saved" role="status">@Session.StartMessage</p>
+                }
 
                 <div class="session-budget">
                     <strong>Make room for a focused session</strong>
@@ -255,7 +269,8 @@
     private string? savedMessage { get => Session.SavedMessage; set => Session.SavedMessage = value; }
 
     private DateTime Today => BrowserTimeZone.ToLocal(DateTime.UtcNow).Date;
-    private TrainingItem? NextItem => Snapshot.FocusItems.FirstOrDefault();
+    private TrainingItem? NextItem => Snapshot.TrainingItems.FirstOrDefault(
+        item => item.Id == Session.FocusItemId && item.Status != TrackerStatus.Completed) ?? Snapshot.FocusItems.FirstOrDefault();
     private RecallReview? SelectedReview => reviews.FirstOrDefault(review => review.Item.Id == selectedReviewId);
     private int LearnMinutes => sessionMinutes / 3;
     private int RecallMinutes => sessionMinutes == 15 ? 3 : sessionMinutes / 6;
@@ -278,6 +293,44 @@
         selectedReviewId = id;
         referenceRevealed = false;
         savedMessage = null;
+    }
+
+    private void ResetFocus()
+    {
+        Session.FocusItemId = null;
+        Session.StartMessage = null;
+    }
+
+    private async Task StartSessionAsync()
+    {
+        if (Session.IsStarting || NextItem is not { } item) return;
+        var chosenFocus = Session.FocusItemId;
+        Session.IsStarting = true;
+        try
+        {
+            var started = await TrackerService.StartTrainingItemAsync(item.Id);
+            if (started.Status != TrackerStatus.InProgress)
+            {
+                Snackbar.Add("This step is now blocked or complete. Open Plan to choose how to proceed.", Severity.Info);
+                return;
+            }
+
+            if (Session.FocusItemId == chosenFocus)
+            {
+                selectedReviewId = started.Id;
+                referenceRevealed = false;
+                Session.StartMessage = "Session started. Open one reference, try a small example, then save a takeaway below. Starting does not add progress, completed learning, or study minutes.";
+            }
+        }
+        catch (TrackerStorageUnavailableException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+        finally
+        {
+            Session.IsStarting = false;
+            await Session.RefreshAsync();
+        }
     }
 
     private async Task SaveReflectionAsync()

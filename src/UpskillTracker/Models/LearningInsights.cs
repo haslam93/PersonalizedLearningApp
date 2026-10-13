@@ -20,7 +20,10 @@ public sealed record RecallReview(TrainingItem Item, DateTime DueDate, DateTime?
 
 public sealed class LearningStudioSession
 {
-    public int SessionMinutes { get; set; } = 30;
+    public int SessionMinutes { get; set; } = 15;
+    public int? FocusItemId { get; set; }
+    public bool IsStarting { get; set; }
+    public string? StartMessage { get; set; }
     public int SelectedReviewId { get; set; }
     public bool IsSaving { get; set; }
     public string? SavedMessage { get; set; }

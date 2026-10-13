@@ -2,7 +2,7 @@
 title: Hammad's Learning Portal architecture
 description: High-level architecture for the Blazor learning portal, durable learning history, personal tools, GitHub Copilot SDK integration, and Azure hosting flow
 author: Microsoft
-ms.date: 2026-09-07
+ms.date: 2026-10-13
 ms.topic: overview
 keywords:
   - architecture
@@ -22,7 +22,7 @@ the grounded GitHub Copilot chat path.
 flowchart TB
     User[User browser]
     Pin[PIN gate in MainLayout]
-  UI[Blazor components\nDashboard, Plan, Certifications, Timeline,\nHistory, My Tools, Resources, Notes, Copilot]
+  UI[Blazor components\nDashboard, Products, Plan, Certifications, Timeline,\nHistory, My Tools, Resources, Notes, Copilot]
   Tracker[TrackerService]
   Activity[LearningActivities\nappend-only history]
   Feed[AnnouncementFeedService]
@@ -61,6 +61,9 @@ flowchart TB
 * The portal's expiring, revocable cookie session is separate from the GitHub identity used by Copilot. Session/rate-limit state is process-local; restarting requires PIN re-entry.
 * Interactive Razor components render the actionable dashboard, editable tracker tabs, Learning History, personal tools, and the Copilot chat workspace.
 * `LearningStudio` turns tracker data into a ranked next step, a visual learning/applying/recalling session guide, a topic progress map, and browser-local weekly activity.
+* Products uses `LearningProductCatalog` for consistent feed classification and product catch-up, with separate IQ capability views, shared read states, sandbox shortcuts, and bounded lab briefs.
+* Choosing a product step changes only the circuit's learning focus. Starting changes only a NotStarted item's status and records one start event, not progress, completion, or study minutes.
+* The OneNote bridge stores a private tagged resource and exports selected notes through the clipboard. It never calls Graph or copies notebook content between tenants; Copilot resource reads and edits exclude these shortcuts.
 * Recall reflections reuse the Notes table and existing History recorder, with exact training-item/confidence tags and self-assessed review intervals based on the reflection's local creation day.
 * Home owns temporary recall drafts across bookmarkable tab changes. Completing an in-flight save only clears the submitted draft and refreshes the currently mounted Dashboard.
 * `AnnouncementFeedService` loads and memory-caches two announcement streams: official Microsoft sources and curated thought-leader or industry sources.
@@ -98,4 +101,6 @@ flowchart LR
 * Serialized production deployment checks that the commit is still current on main, then polls an uncached database/schema readiness endpoint for that exact build.
 * The published artifact includes the platform-matching Copilot CLI required by the .NET SDK on Azure App Service.
 * The CD workflow passes PIN, GitHub OAuth, and Copilot model settings into Bicep so Azure app settings remain aligned with source-controlled infrastructure.
+* The RG-scoped template inherits group tags rather than defaulting to an empty map. An hourly OIDC monitor checks PostgreSQL state/tags without fighting governance; only explicit authorized manual dispatch performs bounded temporary recovery.
+* The weekly research agent proposes at most three items/four hours in a threat-checked draft PR; deterministic schema and guard checks run in CI before deployment.
 * Infrastructure runs on relevant changes or a manual force switch. Existing TLS thumbprints are preserved, and Actions provisions/binds a managed certificate when necessary before confirming custom-domain HTTPS.

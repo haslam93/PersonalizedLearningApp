@@ -138,6 +138,41 @@ test("protected, persistent, accessible learning journeys", { timeout: 240000 },
             await dashboard(page);
         });
 
+        await t.test("product catch-up hands a small step to the dashboard without inventing progress", async () => {
+            await page.getByRole("button", { name: "15 min", exact: true }).click();
+            await page.getByRole("tab", { name: "Products", exact: true }).click();
+            await page.waitForURL(/view=products/);
+            const card = page.locator('[data-product="github"]');
+            await card.getByRole("button", { name: "Choose this step", exact: true }).waitFor();
+            assert.equal(await page.locator(".product-card").count(), 10);
+            await noHorizontalOverflow(page);
+            const title = (await card.locator(".product-next").innerText()).replace("Next learning step:", "").trim();
+            await page.evaluate(() => Object.defineProperty(navigator, "clipboard", {
+                configurable: true, value: { writeText: async text => { window.testCopiedText = text; } }
+            }));
+            await card.getByRole("button", { name: "Copy lab brief", exact: true }).click();
+            await page.waitForFunction(() => typeof window.testCopiedText === "string");
+            assert.match(await page.evaluate(() => window.testCopiedText), /GitHub - 15-minute learning start/);
+            await page.waitForFunction(() => [...document.querySelectorAll("#product-updates button")]
+                .some(button => button.textContent.trim() === "Refresh updates" && !button.disabled));
+            assert.doesNotMatch(await page.locator(".product-grid").innerText(), /Checking updates/);
+            await page.screenshot({ path: path.join(artifacts, "products-desktop.png"), fullPage: true });
+            await card.getByRole("button", { name: "Choose this step", exact: true }).click();
+            await dashboard(page);
+            assert.equal((await page.locator("#focus-title").innerText()).trim(), title);
+            const before = await page.locator(".focus-context").innerText();
+            await page.getByRole("button", { name: /^(Start|Continue) a 15-minute session$/ }).click();
+            await page.locator(".focus-session [role=status]").filter({ hasText: "Session started." }).waitFor();
+            const after = await page.locator(".focus-context").innerText();
+            assert.equal(after.match(/\d+% recorded progress/)[0], before.match(/\d+% recorded progress/)[0]);
+            assert.match(await page.locator(".focus-session [role=status]").innerText(), /does not add progress/);
+            await page.getByRole("button", { name: "Open learning history", exact: true }).click();
+            await page.waitForURL(/view=history/);
+            await page.locator(".history-intro-card").waitFor();
+            await page.goBack();
+            await dashboard(page);
+        });
+
         await t.test("recall reveals saved context and persists a scheduled reflection", async () => {
             const recall = page.locator("#recall-practice");
             await recall.getByLabel("Your explanation, from memory", { exact: true }).fill("An agent can plan work and call tools, but needs explicit permission boundaries, reproducible evaluations, and human review before consequential actions.");
@@ -174,6 +209,43 @@ test("protected, persistent, accessible learning journeys", { timeout: 240000 },
             await page.getByRole("button", { name: "Delete", exact: true }).click();
             await page.getByRole("button", { name: "Keep note", exact: true }).click();
             await note.waitFor();
+        });
+
+        await t.test("the private OneNote shortcut persists and copying never calls Graph", async () => {
+            const cloudRequests = [];
+            const inspect = request => {
+                if (/graph\.microsoft\.com|example\.sharepoint\.com/.test(request.url())) cloudRequests.push(request.url());
+            };
+            page.on("request", inspect);
+            const notebookUrl = "https://example.sharepoint.com/personal/learner/learning.one?web=1";
+            await page.getByText("Set your OneNote web link", { exact: true }).click();
+            await page.getByLabel("OneNote notebook or Learning page web link", { exact: true }).fill(notebookUrl);
+            await page.getByRole("button", { name: "Save notebook link", exact: true }).click();
+            await page.getByRole("link", { name: "Open learning notebook", exact: true }).waitFor();
+            await page.reload();
+            const link = page.getByRole("link", { name: "Open learning notebook", exact: true });
+            await link.waitFor();
+            assert.equal(await link.getAttribute("href"), notebookUrl);
+            await page.getByLabel("Search notes", { exact: true }).fill("explicit permission boundaries");
+            await page.waitForFunction(() => document.querySelectorAll(".notes-library-card .note-card").length === 1);
+            const note = page.locator(".note-card").filter({ hasText: "explicit permission boundaries" });
+            await page.evaluate(() => Object.defineProperty(navigator, "clipboard", {
+                configurable: true, value: { writeText: async text => { window.testCopiedText = text; } }
+            }));
+            await note.getByRole("button", { name: "Copy for OneNote", exact: true }).click();
+            await page.waitForFunction(() => typeof window.testCopiedText === "string");
+            const copied = await page.evaluate(() => window.testCopiedText);
+            assert.match(copied, /explicit permission boundaries/);
+            assert.match(copied, /Source: http:\/\/127\.0\.0\.1:\d+\/\?view=notes/);
+            await page.evaluate(() => Object.defineProperty(navigator, "clipboard", {
+                configurable: true, value: { writeText: async () => { throw new Error("Clipboard denied by test"); } }
+            }));
+            await note.getByRole("button", { name: "Copy for OneNote", exact: true }).click();
+            const fallback = page.getByLabel("Note text to copy", { exact: true });
+            await fallback.waitFor();
+            assert.match(await fallback.inputValue(), /explicit permission boundaries/);
+            assert.deepEqual(cloudRequests, []);
+            page.off("request", inspect);
         });
 
         await t.test("announcement tracking sends the real antiforgery token", async () => {
@@ -222,6 +294,7 @@ test("protected, persistent, accessible learning journeys", { timeout: 240000 },
             await page.setViewportSize({ width: 390, height: 844 });
             const views = [
                 ["dashboard", ".learning-studio"],
+                ["products", ".products-intro-card"],
                 ["plan", ".planner-item-card"],
                 ["certifications", ".certification-intro-card"],
                 ["timeline", ".timeline-intro-card"],
@@ -237,6 +310,7 @@ test("protected, persistent, accessible learning journeys", { timeout: 240000 },
                 await page.locator(selector).first().waitFor();
                 await noHorizontalOverflow(page);
                 assert.equal(await page.locator("#blazor-error-ui").isVisible(), false, `${view} crashed`);
+                if (view === "products") await page.screenshot({ path: path.join(artifacts, "products-mobile.png"), fullPage: true });
             }
             await page.goto(`${url}/?clawpilotTheme=light`);
             await dashboard(page);

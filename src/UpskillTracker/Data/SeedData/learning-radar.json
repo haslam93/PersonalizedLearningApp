@@ -644,6 +644,36 @@
       "link": "https://azure.github.io/AppService/2026/10/06/azure-cli-2-91-app-service-updates.html",
       "source": "Azure App Service Blog",
       "addedOn": "2026-10-09"
+    },
+    {
+      "title": "Compare Jev and Microsoft-Decision-1 for calibrated routing",
+      "domain": "Microsoft Foundry",
+      "category": "Decision models",
+      "description": "Understand TypeSafe's Jev System One model and Microsoft-Decision-1 as typed decision-scoring interfaces, not chat models or mathematical optimization solvers. Compare choice, score, and yes/no probabilities, define low-confidence human handoff, and measure errors on labeled synthetic routing examples. A guaranteed response shape is not a guarantee of a correct decision. Treat provider speed and calibration claims as hypotheses to test.",
+      "targetDate": "2026-10-30",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 4,
+      "link": "https://learn.microsoft.com/en-us/azure/foundry/foundry-models/how-to/use-foundry-models-microsoft-decision",
+      "source": "Microsoft Command Line and TypeSafe official documentation",
+      "notes": "First 15 minutes: read the two API overviews and define three routing labels plus five synthetic tickets; write the expected answers before trying a model. Jev: https://docs.typesafe.ai/introduction and https://typesafe.ai/blog/introducing-system-one-models-and-jev. Microsoft announcement: https://commandline.microsoft.com/microsoft-decision-1-model-foundry/. Done when: a 20-case labeled comparison records accuracy, probability calibration, latency, and a justified handoff threshold. Prerequisites: Jev early-access availability and an existing authorized Foundry deployment if running calls; do not buy access or deploy automatically. Without access, finish the request/response and evaluation design first.",
+      "addedOn": "2026-10-13"
+    },
+    {
+      "title": "Explain Foundry IQ versus Fabric IQ with a small knowledge scenario",
+      "domain": "Microsoft Foundry",
+      "category": "Foundry IQ and Fabric IQ",
+      "description": "Distinguish Foundry IQ's reusable, permission-aware knowledge bases and cited agentic retrieval from Fabric IQ's business context over OneLake, semantic models, and ontology relationships. Sketch where a synthetic policy document and a Customer-Order-Shipment model belong. Check feature-level GA versus preview status rather than treating either IQ name as a single maturity claim.",
+      "targetDate": "2026-11-06",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1.5,
+      "priority": 3,
+      "link": "https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/what-is-foundry-iq",
+      "source": "Microsoft Foundry and Microsoft Fabric documentation",
+      "notes": "First 15 minutes: read both overviews and draw two boxes: cited document retrieval and shared business meaning. Fabric IQ: https://learn.microsoft.com/en-us/fabric/iq/overview. Done when: one diagram maps a synthetic policy, three entities, their relationships, citations, and permission boundaries to the correct capability, with one failure case for each. Prerequisites: none for this design exercise. Use the Diamond profile only for an existing authorized sandbox; do not connect a work notebook, create capacity, or publish an agent.",
+      "addedOn": "2026-10-13"
     }
   ]
 }

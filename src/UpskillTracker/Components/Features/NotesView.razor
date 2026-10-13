@@ -1,6 +1,9 @@
 @inject UpskillTracker.Services.TrackerService TrackerService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+@inject ILogger<NotesView> Logger
 
 <div class="section-shell">
     <MudPaper Class="surface-card section-intro-card notes-intro-card mb-4" Elevation="0">
@@ -11,6 +14,27 @@
                 Keep short structured notes near your plan so the dashboard and Copilot tab always have better context to work with.
             </MudText>
         </MudStack>
+    </MudPaper>
+
+    <MudPaper Class="surface-card content-card mb-4 notebook-bridge" Elevation="0">
+        <MudText Typo="Typo.h6">Bring your learning notebook along</MudText>
+        <MudText Typo="Typo.body2" Class="section-summary mb-3">Copy a saved takeaway, open OneNote, and paste it into your Learning page. This is a manual bridge, not background or two-way sync; no Graph permissions or cross-tenant data transfer.</MudText>
+        @if (notebookResource is not null)
+        {
+            <a class="studio-text-link" href="@notebookResource.Url" target="_blank" rel="noopener noreferrer">Open learning notebook</a>
+        }
+        <details class="product-lab mt-3">
+            <summary>Set your OneNote web link</summary>
+                <MudTextField T="string" @bind-Value="notebookUrl" Label="OneNote notebook or Learning page web link" Variant="Variant.Outlined" MaxLength="500"
+                              HelperText="Paste your SharePoint, OneNote, or OneDrive HTTPS link. It stays in the protected resource library, not in source code." />
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="mt-3" OnClick="SaveNotebookAsync"
+                           Disabled="@(savingNotebook || TrackerService.HasRecentTransientReadFailure)">Save notebook link</MudButton>
+                <MudText Typo="Typo.caption" Class="section-summary">Manage or remove the saved link in Resources under Learning notebook.</MudText>
+        </details>
+        @if (exportText is not null)
+        {
+            <MudTextField T="string" Value="@exportText" Label="Note text to copy" Lines="6" ReadOnly="true" Variant="Variant.Outlined" Class="mt-3" />
+        }
     </MudPaper>
 
 <MudGrid Class="section-grid">
@@ -27,7 +51,7 @@
             }
             @foreach (var note in FilteredNotes)
             {
-                <MudPaper Class="note-card mb-3" Elevation="0">
+                <MudPaper @key="note.Id" Class="note-card mb-3" Elevation="0">
                     <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
                         <div>
                             <MudText Typo="Typo.subtitle2">@note.Title</MudText>
@@ -42,6 +66,8 @@
                         </MudStack>
                     </MudStack>
                     <MudText Typo="Typo.body2" Class="mt-3 preserve-lines">@note.Content</MudText>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.ContentCopy" OnClick="@(() => CopyForNotebookAsync(note))">Copy for OneNote</MudButton>
                 </MudPaper>
             }
         </MudPaper>
@@ -81,6 +107,10 @@
     private UpskillTracker.Models.NoteEntry editingNote = CreateEmptyNote();
     private string searchText = string.Empty;
     private bool pinnedOnly;
+    private UpskillTracker.Models.ResourceEntry? notebookResource;
+    private string notebookUrl = string.Empty;
+    private string? exportText;
+    private bool savingNotebook;
 
     protected override async Task OnInitializedAsync()
     {
@@ -94,6 +124,8 @@
     private async Task LoadAsync()
     {
         notes = await TrackerService.GetNotesAsync();
+        notebookResource = UpskillTracker.Services.LearningNotebookBridge.FindNotebook(await TrackerService.GetResourcesAsync());
+        notebookUrl = notebookResource?.Url ?? string.Empty;
         if (editingNote.Id != 0)
         {
             var refreshed = notes.FirstOrDefault(note => note.Id == editingNote.Id);
@@ -107,6 +139,56 @@
     private void BeginEdit(UpskillTracker.Models.NoteEntry note)
     {
         editingNote = note.Clone();
+    }
+
+    private async Task SaveNotebookAsync()
+    {
+        var url = notebookUrl.Trim();
+        if (!UpskillTracker.Services.LearningNotebookBridge.IsValidNotebookUrl(url))
+        {
+            Snackbar.Add("Use a OneNote, SharePoint, or OneDrive HTTPS web link of at most 500 characters.", Severity.Warning);
+            return;
+        }
+
+        savingNotebook = true;
+        try
+        {
+            var resource = notebookResource?.Clone() ?? new UpskillTracker.Models.ResourceEntry
+            {
+                Title = "My OneNote learning notebook",
+                Section = "Learning notebook",
+                Kind = UpskillTracker.Models.ResourceKind.Other,
+                Tags = UpskillTracker.Services.LearningNotebookBridge.ResourceTag,
+                Summary = "Private notebook shortcut. Copy learning notes manually; no automatic sync."
+            };
+            resource.Url = url;
+            await TrackerService.SaveResourceAsync(resource);
+            notebookResource = resource;
+            Snackbar.Add("Notebook link saved. No notebook content has been read or sent.", Severity.Success);
+        }
+        catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+        finally { savingNotebook = false; }
+    }
+
+    private async Task CopyForNotebookAsync(UpskillTracker.Models.NoteEntry note)
+    {
+        var text = UpskillTracker.Services.LearningNotebookBridge.BuildNoteText(
+            note, Navigation.ToAbsoluteUri("?view=notes").AbsoluteUri);
+        exportText = null;
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("upskillTracker.copyText", text);
+            Snackbar.Add("Note copied. Open your learning notebook and paste it; OneNote has not been changed automatically.", Severity.Success);
+        }
+        catch (JSException ex)
+        {
+            Logger.LogWarning(ex, "Clipboard access failed for a learning note.");
+            exportText = text;
+            Snackbar.Add("Clipboard access is unavailable. Select and copy the displayed note text.", Severity.Warning);
+        }
     }
 
     private void CreateNew()

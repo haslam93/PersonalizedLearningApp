@@ -2,26 +2,42 @@ name: cost-control-tag
 
 on:
   schedule:
-    # Check each morning after the nightly cost-control window.
-    - cron: '0 6 * * *'
+    # Avoid the busiest minute; schedules are best-effort, not an availability SLA.
+    - cron: '17 * * * *'
   workflow_dispatch:
+    inputs:
+      temporaryRecovery:
+        description: Explicit authorized temporary tag repair and stopped-server recovery; does not renew an exemption
+        required: false
+        default: false
+        type: boolean
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cost-control-tag.yml'
+      - 'scripts/ensure-postgres-available.sh'
 
 permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: learning-portal-postgres-guard
+  cancel-in-progress: false
+
 env:
   AZURE_RESOURCE_GROUP: hammadlearningapp
-  COST_CONTROL_TAG_NAME: CostControl
-  COST_CONTROL_TAG_VALUE: Ignore
 
 jobs:
-  restore-postgres-cost-control:
+  check-postgres-cost-control:
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 25
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Sign in to Azure with OIDC
         uses: azure/login@v2
         with:
@@ -29,102 +45,10 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Start stopped PostgreSQL server and restore CostControl tag
+      - name: Check PostgreSQL availability and CostControl tag
         env:
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          POSTGRES_GUARD_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.temporaryRecovery && 'recover' || 'check' }}
           SERVER_READY_MAX_ATTEMPTS: '40'
           SERVER_READY_RETRY_DELAY: '30'
-        run: |
-          set -euo pipefail
-
-          subscription_id="${{ secrets.AZURE_SUBSCRIPTION_ID }}"
-          resource_group="${{ env.AZURE_RESOURCE_GROUP }}"
-          tag_name="${{ env.COST_CONTROL_TAG_NAME }}"
-          tag_value="${{ env.COST_CONTROL_TAG_VALUE }}"
-          max_attempts="${SERVER_READY_MAX_ATTEMPTS}"
-          retry_delay="${SERVER_READY_RETRY_DELAY}"
-
-          az account set --subscription "$subscription_id"
-
-          mapfile -t server_names < <(
-            az postgres flexible-server list \
-              --resource-group "$resource_group" \
-              --query "[].name" \
-              --output tsv
-          )
-
-          if [ "${#server_names[@]}" -eq 0 ]; then
-            echo "::error::No Azure PostgreSQL Flexible Server was found in resource group ${resource_group}."
-            exit 1
-          fi
-
-          if [ "${#server_names[@]}" -ne 1 ]; then
-            echo "::error::Expected one Azure PostgreSQL Flexible Server in ${resource_group}, found ${#server_names[@]}."
-            printf 'Found server: %s\n' "${server_names[@]}"
-            exit 1
-          fi
-
-          server_name="${server_names[0]}"
-          started_by_workflow=false
-          start_requested=false
-          server_state=""
-
-          for ((attempt = 1; attempt <= max_attempts; attempt++)); do
-            server_state=$(az postgres flexible-server show \
-              --resource-group "$resource_group" \
-              --name "$server_name" \
-              --query state \
-              --output tsv)
-
-            echo "PostgreSQL server ${server_name} state: ${server_state}"
-
-            case "${server_state,,}" in
-              ready)
-                if [ "$started_by_workflow" = false ]; then
-                  echo "PostgreSQL is already running; no action is required."
-                  exit 0
-                fi
-                break
-                ;;
-              stopped)
-                if [ "$start_requested" = false ]; then
-                  echo "PostgreSQL is stopped; starting ${server_name}."
-                  az postgres flexible-server start \
-                    --resource-group "$resource_group" \
-                    --name "$server_name"
-                  start_requested=true
-                  started_by_workflow=true
-                fi
-                ;;
-              starting|stopping|updating)
-                echo "PostgreSQL is transitioning; waiting for a stable state."
-                ;;
-              disabled|dropping)
-                echo "::error::PostgreSQL cannot be started from state ${server_state}."
-                exit 1
-                ;;
-              *)
-                echo "::error::Unexpected PostgreSQL state: ${server_state}."
-                exit 1
-                ;;
-            esac
-
-            if [ "$attempt" -eq "$max_attempts" ]; then
-              echo "::error::PostgreSQL did not reach Ready within $((max_attempts * retry_delay / 60)) minutes."
-              exit 1
-            fi
-
-            sleep "$retry_delay"
-          done
-
-          server_id=$(az postgres flexible-server show \
-            --resource-group "$resource_group" \
-            --name "$server_name" \
-            --query id \
-            --output tsv)
-
-          az tag update \
-            --resource-id "$server_id" \
-            --operation Merge \
-            --tags "${tag_name}=${tag_value}"
-
-          echo "PostgreSQL is ready and ${tag_name}=${tag_value} has been applied to ${server_name}."
+        run: bash scripts/ensure-postgres-available.sh

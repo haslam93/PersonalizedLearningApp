@@ -2,7 +2,7 @@
 title: Hammad's Learning Portal
 description: Personal learning and certification tracker with actionable planning, learning history, personal tools, GitHub Copilot chat, and Azure deployment automation
 author: Microsoft
-ms.date: 2026-09-18
+ms.date: 2026-10-13
 ms.topic: overview
 keywords:
   - learning portal
@@ -62,6 +62,56 @@ It is designed to help you:
 
 ## Main app features
 
+### Product catch-up and small learning starts
+
+**Products** (`?view=products`) separates Microsoft Foundry, Foundry IQ, Fabric,
+Fabric IQ, GitHub, API Management, App Service, Copilot Studio, Container Apps,
+and Agent Framework. Each product combines unread official updates, a next
+unfinished plan step, an official reference, and a copyable 15-minute lab brief.
+Counts describe the bounded current feed, not every release or your proficiency.
+IQ updates also appear in their parent product. Fabric and Copilot Studio now
+have dedicated feed coverage; mixed Azure blogs are classified by content rather
+than assigning every article to App Service or APIM.
+
+Choose a product step to make it the Dashboard focus without moving deadlines.
+The default session budget is 15 minutes. **Start a session** records
+`InProgress` and one start event, preserving progress, notes, and evidence.
+Continuing does not create another start; blocked and completed work are not
+silently reopened. Study time, progress, and completion remain explicit.
+
+Workspace links use the current browser profile. Open the portal in the Diamond
+Edge profile to use its existing tenant workspaces; the app does not provision
+resources, change permissions, publish agents, or ingest M365 data. Lab briefs
+use synthetic or public data and do not require new paid capacity.
+
+Two optional, 3.5-hour learning items cover
+[Jev](https://docs.typesafe.ai/introduction) versus
+[Microsoft-Decision-1](https://learn.microsoft.com/en-us/azure/foundry/foundry-models/how-to/use-foundry-models-microsoft-decision)
+and Foundry IQ versus Fabric IQ. Both include a 15-minute first step, access
+prerequisites, and a concrete completion artifact. Typed outputs are not
+guarantees of correct decisions; evaluate accuracy and calibration on labeled
+examples. New radar items also import their primary reference into Resources,
+where that exact reference ranks ahead of generic matches.
+
+### OneNote learning notebook bridge
+
+In **Notes**, expand **Set your OneNote web link** and save your notebook or
+Learning page's HTTPS web link. It is a `learning-notebook`-tagged Resource,
+stored behind the portal PIN in the existing database, never hardcoded into the
+repository. **Copy for OneNote** copies a saved note, its tags, and its portal
+source link; **Open learning notebook** lets you paste it into your page.
+If clipboard access is denied, the app displays selectable text instead of
+claiming a successful copy. Manage or delete the shortcut in Resources.
+
+This is deliberately manual, not two-way or background synchronization.
+[Graph's OneNote API requires delegated authentication](https://learn.microsoft.com/en-us/graph/integrate-with-onenote);
+it no longer supports app-only authentication. Connecting a Microsoft work
+notebook through a different lab tenant is not implicit permission to copy its
+contents. The app performs no notebook content reads or Graph writes, and its
+Copilot resource tools omit private notebook shortcuts and cannot modify them.
+Ordinary notes you choose to save in the app still participate in its existing
+GitHub Copilot grounding; follow your work-data policies.
+
 ### Long-term LLM foundations
 
 The plan includes a Stretch sequence from Andrej Karpathy, after the existing Python
@@ -91,7 +141,7 @@ matching items or re-adding items deleted after the update.
 
 ### Feature overview
 
-* A focused learning dashboard with a ranked next step, matching references, and a visual Learn / Apply / Recall session guide for 15, 30, or 60 minutes
+* A focused learning dashboard with a ranked or explicitly chosen product step, one-click session start, matching references, and a visual Learn / Apply / Recall guide for 15, 30, or 60 minutes
 * An interactive topic map with average recorded progress and completion counts; each topic opens its exact Plan filter
 * Active recall grounded in your own plan descriptions, notes, and evidence, with self-assessed 1-, 3-, or 7-day review intervals
 * Recall drafts that survive tab changes during the current visit, plus saved reflections in Notes and durable Learning History
@@ -202,6 +252,7 @@ appropriate Blazor session affinity; MFA requires a real identity provider.
 
 ```powershell
 dotnet test .\tests\UpskillTracker.Tests\UpskillTracker.Tests.csproj --configuration Release
+node --test .\tests\automation\learning-radar.test.cjs .\tests\automation\postgres-guard.test.cjs
 Set-Location .\tests\browser
 npm ci
 npx playwright install chromium
@@ -210,7 +261,8 @@ npm test
 
 The browser suite launches its own local app with a temporary SQLite database
 and a randomly generated test PIN. It exercises learning navigation, recall
-persistence, cancellation of deletion, themes, and all ten tabs at mobile
+persistence, product-to-session handoff, notebook-link persistence and copying,
+cancellation of deletion, themes, and all eleven tabs at mobile
 width. It never connects to the production database. To use an installed Edge
 browser locally instead of downloading Chromium, set
 `$env:PLAYWRIGHT_CHANNEL = "msedge"` before `npm test`.
@@ -491,8 +543,46 @@ database configuration or error details.
 * Azure deployment script: [scripts/deploy-azure.ps1](scripts/deploy-azure.ps1)
 * Publish profile helper: [scripts/get-publish-profile.ps1](scripts/get-publish-profile.ps1)
 
-The radar explicitly uses `gpt-5.4` rather than relying on a changing Copilot
-engine default. The September 4 failure artifact reported that the default
+The radar explicitly uses `gpt-5.6-sol`, GitHub's
+[recommended replacement for GPT-5.4 before its October 19 retirement](https://github.blog/changelog/2026-09-18-upcoming-deprecation-of-selected-github-copilot-models-in-mid-october/),
+rather than relying on a changing Copilot engine default.
+The September 4 failure artifact reported that the default
 `claude-sonnet-4.6` was unavailable to the `agentic-workflows` integrator.
 Research still produces draft pull requests for human review; it does not
-silently modify your saved plan or bypass threat detection.
+silently modify your saved plan or bypass threat detection. Each proposal is
+limited to three items and four estimated hours, covers Fabric/IQ and Copilot
+Studio alongside the original products, and must include small starts and
+completion criteria. Checkboxes in PR descriptions do not control import:
+remove rejected JSON objects and require passing CI before merging. CI checks
+the complete catalog against its schema without installing another validator.
+
+### PostgreSQL cost-control monitoring and authorized recovery
+
+The guard runs at minute 17 each hour, on manual dispatch, and when its source
+changes on main. Scheduled and push-triggered runs are **read-only**: they check
+both runtime state and the expected tag, and fail clearly if either is missing.
+They never automatically restart a stopped resource or repeatedly restore an
+expired exemption.
+
+An authorized operator can manually dispatch with **temporaryRecovery** enabled.
+That explicit run merges and verifies the tag even on a Ready server, starts
+only a stopped server, polls within a bounded budget, and verifies again after
+recovery. It preserves other tags; discovery, CLI, and verification failures
+fail rather than producing a green no-op. This is temporary maintenance, not
+exemption renewal.
+
+CD's direct `resources.bicep` deployment now inherits resource-group tags by
+default rather than replacing them with an empty map. Infrastructure does not
+force a perpetual server exemption. The bootstrap template's configured tags
+are still subject to the hosting environment's governance. The compiled
+`infra/main.json` is regenerated with the same inheritance policy.
+
+`CostControl=Ignore` is a convention consumed by your cost automation, not an
+Azure guarantee that nobody can stop the server, and re-applying it does not
+renew a finite governance exemption. Do not automate around the hosting
+environment's cost rules; arrange an approved always-on hosting option when
+this application needs permanent availability. GitHub schedules can be delayed
+and monitoring is not an availability SLA. The October 13 review confirmed
+nightly stop calls and a later tag write by the same governance caller after
+GitHub had repaired the tag. The current tag was restored for the investigation,
+without a restart, but that is not a permanent fix.

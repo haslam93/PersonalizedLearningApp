@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "15714997806868238453"
+      "templateHash": "11116246783902580000"
     }
   },
   "parameters": {
@@ -218,7 +218,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "243574067756574417"
+              "templateHash": "9601969956274480502"
             }
           },
           "parameters": {
@@ -238,9 +238,9 @@
             },
             "tags": {
               "type": "object",
-              "defaultValue": {},
+              "defaultValue": "[resourceGroup().tags]",
               "metadata": {
-                "description": "Tags to apply to all resources."
+                "description": "Resource tags, inherited from the resource group by default. Cost-control tags do not renew governance exemptions."
               }
             },
             "accessPin": {

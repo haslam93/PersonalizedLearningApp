@@ -81,6 +81,62 @@ public sealed class TrackerLearningTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task StartingASessionPreservesUserWorkAndDoesNotInventProgress()
+    {
+        var item = new TrainingItem
+        {
+            Title = "A small learning start", Domain = "GitHub", ProgressPercent = 0,
+            Notes = "Keep my notes", Evidence = "Keep my evidence",
+            TargetDate = new DateTime(2027, 1, 4, 0, 0, 0, DateTimeKind.Utc)
+        };
+        await tracker.SaveTrainingItemAsync(item);
+        await tracker.StartTrainingItemAsync(item.Id);
+        await tracker.StartTrainingItemAsync(item.Id);
+
+        var saved = Assert.Single(await tracker.GetTrainingItemsAsync());
+        Assert.Equal(TrackerStatus.InProgress, saved.Status);
+        Assert.Equal(0, saved.ProgressPercent);
+        Assert.Equal(item.Notes, saved.Notes);
+        Assert.Equal(item.Evidence, saved.Evidence);
+        Assert.Equal(item.TargetDate, saved.TargetDate);
+        Assert.Null(saved.CompletedUtc);
+        Assert.Equal(LearningActivityType.ItemStarted, Assert.Single((await tracker.GetLearningHistoryAsync()).Activities).Type);
+    }
+
+    [Theory]
+    [InlineData(TrackerStatus.Blocked)]
+    [InlineData(TrackerStatus.Completed)]
+    public async Task StartingASessionCannotUnblockOrReopenWork(TrackerStatus status)
+    {
+        var item = new TrainingItem { Title = "Keep this state", Domain = "Fabric", Status = status };
+        await tracker.SaveTrainingItemAsync(item);
+        var before = (await tracker.GetLearningHistoryAsync()).TotalActivities;
+        var returned = await tracker.StartTrainingItemAsync(item.Id);
+        Assert.Equal(status, returned.Status);
+        Assert.Equal(before, (await tracker.GetLearningHistoryAsync()).TotalActivities);
+    }
+
+    [Fact]
+    public async Task PrivateNotebookLinksStayOutOfCopilotResourceAndDashboardReads()
+    {
+        var notebook = new ResourceEntry
+        {
+            Title = "Private notebook", Section = "Learning notebook", IsPinned = true,
+            Url = "https://example.sharepoint.com/learning", Tags = "learning-notebook"
+        };
+        var reference = new ResourceEntry
+        {
+            Title = "Public reference", Section = "Fabric", IsPinned = true,
+            Url = "https://learn.microsoft.com/en-us/fabric/"
+        };
+        await tracker.SaveResourceAsync(notebook);
+        await tracker.SaveResourceAsync(reference);
+        Assert.Equal(2, (await tracker.GetResourcesAsync()).Count);
+        Assert.Equal(reference.Id, Assert.Single(await tracker.GetResourcesAsync(includeNotebookLinks: false)).Id);
+        Assert.Equal(reference.Id, Assert.Single((await tracker.GetDashboardSnapshotAsync(includeNotebookLinks: false)).PinnedResources).Id);
+        Assert.Equal(2, (await tracker.GetDashboardSnapshotAsync()).PinnedResources.Count);
+    }
+    [Fact]
     public async Task CompletionNormalizesProgressAndIsNotDoubleCountedOnResave()
     {
         var item = new TrainingItem { Title = "A completed lab", Domain = "Fabric", Status = TrackerStatus.Completed, ProgressPercent = 5 };

@@ -1,0 +1,204 @@
+@using UpskillTracker.Models
+@using UpskillTracker.Services
+@inject TrackerService TrackerService
+@inject AnnouncementFeedService AnnouncementFeedService
+@inject BrowserTimeZoneService BrowserTimeZone
+@inject IJSRuntime JSRuntime
+@inject ISnackbar Snackbar
+@inject ILogger<ProductLearningView> Logger
+
+<div class="section-shell">
+    <MudPaper Class="surface-card section-intro-card products-intro-card mb-4" Elevation="0">
+        <MudText Typo="Typo.overline" Class="section-kicker">Products</MudText>
+        <MudText Typo="Typo.h5">Catch up by product</MudText>
+        <MudText Typo="Typo.body2" Class="section-summary">One useful update. One small lab. Choose a step without rescheduling your commitments.</MudText>
+        <MudText Typo="Typo.caption" Class="section-summary">Open the portal in your Diamond Edge profile to use that tenant's workspaces. These links do not provision resources, grant access, or connect work data.</MudText>
+    </MudPaper>
+
+    @if (TrackerService.HasRecentTransientReadFailure)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-4">@TrackerService.DatabaseUnavailableMessage</MudAlert>
+    }
+    @if (feedError is not null)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-4">@feedError</MudAlert>
+    }
+
+    <div class="product-grid">
+        @foreach (var catchUp in CatchUp)
+        {
+            var product = catchUp.Product;
+            <article @key="product.Key" class="studio-card product-card" data-product="@product.Key">
+                <h3>@product.Name</h3>
+                <p class="studio-footnote">@product.Focus</p>
+                <button type="button" class="studio-text-button" aria-pressed="@(selectedProductKey == product.Key ? "true" : "false")"
+                        @onclick="@(() => SelectProductAsync(product.Key))">
+                    @(loadingFeed ? "Checking updates..." : feedError is not null && announcements.Count == 0
+                        ? "Updates unavailable" : TrackerService.HasRecentTransientReadFailure ? "Read state unavailable"
+                        : $"{catchUp.UnreadUpdates} unread / {catchUp.Updates.Count} recent updates")
+                </button>
+                <p class="studio-footnote">@(loadingPlan ? "Loading your plan..." : $"{catchUp.UnfinishedItems} unfinished plan items")</p>
+                @if (catchUp.NextItem is { } next)
+                {
+                    <p class="product-next"><strong>Next learning step:</strong> @next.Title</p>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                               OnClick="@(() => OnChooseLearning.InvokeAsync(next.Id))">Choose this step</MudButton>
+                }
+                <details class="product-lab">
+                    <summary>First 15 minutes</summary>
+                    <p>@product.FirstStep</p>
+                    <a href="@product.DocumentationUrl" target="_blank" rel="noopener noreferrer">Official reference</a>
+                </details>
+                <div class="studio-actions">
+                    <a class="studio-text-link" href="@product.WorkspaceUrl" target="_blank" rel="noopener noreferrer">Open workspace</a>
+                    <button type="button" class="studio-text-button" @onclick="@(() => CopyLabAsync(product))">Copy lab brief</button>
+                </div>
+            </article>
+        }
+    </div>
+
+    @if (copyFallback is not null)
+    {
+        <MudTextField T="string" Value="@copyFallback" Label="Lab brief to copy" Lines="6" ReadOnly="true" Variant="Variant.Outlined" Class="my-4" />
+    }
+
+    <section id="product-updates" class="studio-card mt-4" aria-labelledby="product-updates-title">
+        <MudStack Row="true" Wrap="Wrap.Wrap" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <h3 id="product-updates-title">@SelectedProduct.Product.Name updates</h3>
+            <MudButton Variant="Variant.Text" OnClick="RefreshAsync" Disabled="@loadingFeed">Refresh updates</MudButton>
+        </MudStack>
+        <p class="studio-footnote">Official sources only. Counts cover the current cached feed, not every release. IQ updates can also appear under their parent product.</p>
+        <MudCheckBox T="bool" @bind-Value="includeSeen" Label="Include seen updates" />
+        @if (loadingFeed)
+        {
+            <MudSkeleton Height="160px" />
+        }
+        else if (VisibleUpdates.Count == 0)
+        {
+            <p class="studio-empty">No matching unread updates in the current feed. This is not a claim that you are fully caught up; check the official reference or include seen updates.</p>
+        }
+        @foreach (var announcement in VisibleUpdates)
+        {
+            <div @key="announcement.Url" class="product-update">
+                <a href="@announcement.Url" target="_blank" rel="noopener noreferrer" @onclick="@(() => TrackOpenedAsync(announcement))">@announcement.Title</a>
+                <p class="studio-footnote">@announcement.Source / @BrowserTimeZone.ToLocal(announcement.PublishedUtc).ToString("MMM d, yyyy")</p>
+                <p>@announcement.Summary</p>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                           Disabled="@TrackerService.HasRecentTransientReadFailure"
+                           OnClick="@(() => MarkSeenAsync(announcement))">@(IsSeen(announcement) ? "Mark unread" : "Mark as seen")</MudButton>
+                <MudButton Variant="Variant.Text" Size="Size.Small"
+                           Disabled="@(TrackerService.HasRecentTransientReadFailure || states.GetValueOrDefault(announcement.Url)?.IsSavedToResources == true)"
+                           OnClick="@(() => SaveResourceAsync(announcement))">Save to resources</MudButton>
+            </div>
+        }
+    </section>
+</div>
+
+@code {
+    [Parameter] public EventCallback<int> OnChooseLearning { get; set; }
+    private List<TrainingItem> items = [];
+    private IReadOnlyList<AnnouncementItem> announcements = [];
+    private Dictionary<string, AnnouncementState> states = new(StringComparer.OrdinalIgnoreCase);
+    private string selectedProductKey = "foundry";
+    private bool loadingFeed = true;
+    private bool loadingPlan = true;
+    private bool includeSeen;
+    private string? feedError;
+    private string? copyFallback;
+
+    private IReadOnlyList<ProductCatchUp> CatchUp => LearningProductCatalog.BuildCatchUp(
+        announcements, states, items, BrowserTimeZone.ToLocal(DateTime.UtcNow).Date);
+    private ProductCatchUp SelectedProduct => CatchUp.First(product => product.Product.Key == selectedProductKey);
+    private IReadOnlyList<AnnouncementItem> VisibleUpdates => SelectedProduct.Updates
+        .Where(item => includeSeen || !IsSeen(item)).Take(6).ToList();
+    private bool IsSeen(AnnouncementItem item) => states.GetValueOrDefault(item.Url)?.IsSeen == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var planTask = TrackerService.GetTrainingItemsAsync();
+        var feedTask = LoadFeedAsync(false);
+        items = await planTask;
+        loadingPlan = false;
+        StateHasChanged();
+        await feedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await BrowserTimeZone.InitializeAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task SelectProductAsync(string key)
+    {
+        selectedProductKey = key;
+        includeSeen = false;
+        await JSRuntime.InvokeVoidAsync("scrollToElement", "product-updates");
+    }
+
+    private Task RefreshAsync() => LoadFeedAsync(true);
+
+    private async Task LoadFeedAsync(bool refresh)
+    {
+        loadingFeed = true;
+        feedError = null;
+        try
+        {
+            announcements = refresh ? await AnnouncementFeedService.RefreshAsync()
+                : await AnnouncementFeedService.GetAnnouncementsAsync();
+            states = await TrackerService.GetAnnouncementStateLookupAsync(announcements);
+        }
+        catch (HttpRequestException ex)
+        {
+            Logger.LogWarning(ex, "Product announcement refresh failed.");
+            feedError = announcements.Count > 0 ? "Refresh failed. Previously loaded updates are still shown."
+                : "Live updates are unavailable. Your plan and official learning references are still available.";
+        }
+        finally
+        {
+            loadingFeed = false;
+        }
+    }
+
+    private async Task TrackOpenedAsync(AnnouncementItem item)
+    {
+        try { states[item.Url] = await TrackerService.MarkAnnouncementOpenedAsync(item); }
+        catch (TrackerStorageUnavailableException ex) { Snackbar.Add(ex.Message, Severity.Warning); }
+    }
+
+    private async Task MarkSeenAsync(AnnouncementItem item)
+    {
+        try { states[item.Url] = await TrackerService.SetAnnouncementSeenAsync(item, !IsSeen(item)); }
+        catch (TrackerStorageUnavailableException ex) { Snackbar.Add(ex.Message, Severity.Warning); }
+    }
+
+    private async Task SaveResourceAsync(AnnouncementItem item)
+    {
+        try
+        {
+            await TrackerService.SaveAnnouncementAsResourceAsync(item);
+            states = await TrackerService.GetAnnouncementStateLookupAsync(announcements);
+            Snackbar.Add("Update saved to Resources. Saving does not complete a learning step.", Severity.Success);
+        }
+        catch (TrackerStorageUnavailableException ex) { Snackbar.Add(ex.Message, Severity.Warning); }
+    }
+
+    private async Task CopyLabAsync(LearningProduct product)
+    {
+        copyFallback = null;
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("upskillTracker.copyText", product.LabBrief);
+            Snackbar.Add("Lab brief copied. Paste it into your sandbox assistant or learning notebook.", Severity.Success);
+        }
+        catch (JSException ex)
+        {
+            Logger.LogWarning(ex, "Clipboard access failed for a learning lab brief.");
+            copyFallback = product.LabBrief;
+            Snackbar.Add("Clipboard access is unavailable. Select and copy the displayed lab brief.", Severity.Warning);
+        }
+    }
+}

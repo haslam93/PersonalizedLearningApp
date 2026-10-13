@@ -1905,6 +1905,10 @@ public static class DatabaseInitializer
             .Select(title => title.Trim())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        var resourceUrls = (await db.Resources.AsNoTracking().Select(resource => resource.Url).ToListAsync())
+            .Concat(db.Resources.Local.Select(resource => resource.Url))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         foreach (var entry in document.Items)
         {
             if (string.IsNullOrWhiteSpace(entry.Title))
@@ -1941,6 +1945,22 @@ public static class DatabaseInitializer
                 Priority = entry.Priority is >= 1 and <= 5 ? entry.Priority.Value : 3,
                 Notes = Truncate(notes, 4000)
             });
+
+            if (Uri.TryCreate(entry.Link?.Trim(), UriKind.Absolute, out var sourceUri) &&
+                sourceUri.Scheme == Uri.UriSchemeHttps && sourceUri.AbsoluteUri.Length <= 500 &&
+                resourceUrls.Add(sourceUri.AbsoluteUri))
+            {
+                db.Resources.Add(new ResourceEntry
+                {
+                    Title = Truncate($"{title} - reference", 140),
+                    Section = Truncate(entry.Domain?.Trim() ?? "Learning Radar", 80),
+                    Url = sourceUri.AbsoluteUri,
+                    Kind = ResourceKind.Documentation,
+                    Summary = Truncate(entry.Description?.Trim() ?? string.Empty, 1500),
+                    Tags = Truncate(entry.Category?.Trim() ?? string.Empty, 300),
+                    SortOrder = 100
+                });
+            }
 
             logger.LogInformation("Learning radar import queued new training item: {Title}", title);
         }

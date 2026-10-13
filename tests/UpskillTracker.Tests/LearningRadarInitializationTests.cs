@@ -41,6 +41,7 @@ public sealed class LearningRadarInitializationTests
         var expectedDate = DateOnly.ParseExact(
             Assert.IsType<string>(entry.GetProperty("targetDate").GetString()),
             "yyyy-MM-dd", CultureInfo.InvariantCulture).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var sourceUrl = new Uri(Assert.IsType<string>(entry.GetProperty("link").GetString())).AbsoluteUri;
         var personalItem = new TrainingItem
         {
             Title = "Local-only custom learning plan",
@@ -59,6 +60,7 @@ public sealed class LearningRadarInitializationTests
                 metadata => metadata.Key == "fabric-opentext-events-priorities-v2"));
             // Simulate an existing installation receiving a new radar catalog item.
             db.TrainingItems.Remove(await db.TrainingItems.SingleAsync(item => item.Title == title));
+            db.Resources.RemoveRange(await db.Resources.Where(resource => resource.Url == sourceUrl).ToListAsync());
             db.TrainingItems.Add(personalItem);
             await db.SaveChangesAsync();
             expectedCount = await db.TrainingItems.CountAsync() + 1;
@@ -80,6 +82,7 @@ public sealed class LearningRadarInitializationTests
         {
             var imported = await db.TrainingItems.SingleAsync(item => item.Title == title);
             Assert.Equal(expectedDate, imported.TargetDate);
+            Assert.Single(await db.Resources.Where(resource => resource.Url == sourceUrl).ToListAsync());
             if (db.Database.IsNpgsql())
             {
                 Assert.Equal(DateTimeKind.Utc, imported.TargetDate.Kind);

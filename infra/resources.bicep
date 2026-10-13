@@ -6,8 +6,8 @@ param location string = resourceGroup().location
 @description('Azure location for PostgreSQL resources when the app region is quota restricted.')
 param postgresLocation string = 'centralus'
 
-@description('Tags to apply to all resources.')
-param tags object = {}
+@description('Resource tags, inherited from the resource group by default. Cost-control tags do not renew governance exemptions.')
+param tags object = resourceGroup().tags
 
 @description('Access PIN shown by the app login screen. Stored as a secure app setting in Azure.')
 @secure()

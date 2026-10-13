@@ -16,7 +16,7 @@ public class TrackerService(
 
     public DateTimeOffset? DatabaseUnavailableSinceUtc => databaseAvailabilityState.LastFailureUtc;
 
-    public async Task<DashboardSnapshot> GetDashboardSnapshotAsync()
+    public async Task<DashboardSnapshot> GetDashboardSnapshotAsync(bool includeNotebookLinks = true)
     {
         return await ExecuteReadAsync(async db =>
         {
@@ -105,7 +105,7 @@ public class TrackerService(
                 UpcomingItems = upcomingItems,
                 FocusItems = focusItems,
                 TrainingItems = trainingItems,
-                PinnedResources = pinnedResources,
+                PinnedResources = includeNotebookLinks ? pinnedResources : LearningNotebookBridge.WithoutNotebookLinks(pinnedResources),
                 RecentNotes = recentNotes,
                 NeedToWatchVideos = needToWatchVideos
             };
@@ -202,15 +202,19 @@ public class TrackerService(
         }, "import certification");
     }
 
-    public async Task<List<ResourceEntry>> GetResourcesAsync()
+    public async Task<List<ResourceEntry>> GetResourcesAsync(bool includeNotebookLinks = true)
     {
-        return await ExecuteReadAsync(db => db.Resources
-            .AsNoTracking()
-            .OrderBy(resource => resource.Section)
-            .ThenByDescending(resource => resource.IsPinned)
-            .ThenBy(resource => resource.SortOrder)
-            .ThenBy(resource => resource.Title)
-            .ToListAsync(), new List<ResourceEntry>(), "resources");
+        return await ExecuteReadAsync(async db =>
+        {
+            var resources = await db.Resources
+                .AsNoTracking()
+                .OrderBy(resource => resource.Section)
+                .ThenByDescending(resource => resource.IsPinned)
+                .ThenBy(resource => resource.SortOrder)
+                .ThenBy(resource => resource.Title)
+                .ToListAsync();
+            return includeNotebookLinks ? resources : LearningNotebookBridge.WithoutNotebookLinks(resources);
+        }, new List<ResourceEntry>(), "resources");
     }
 
     public async Task<List<NoteEntry>> GetNotesAsync()
@@ -367,6 +371,26 @@ public class TrackerService(
             await db.SaveChangesAsync();
             return existingResource;
         }, "save announcement as resource");
+    }
+
+    public async Task<TrainingItem> StartTrainingItemAsync(int id)
+    {
+        return await ExecuteWriteAsync(async db =>
+        {
+            var item = await db.TrainingItems.SingleAsync(item => item.Id == id);
+            if (item.Status == TrackerStatus.NotStarted)
+            {
+                var now = DateTime.UtcNow;
+                item.Status = TrackerStatus.InProgress;
+                item.LastStatusChangedUtc = now;
+                item.UpdatedUtc = now;
+                await db.SaveChangesAsync();
+                await LearningActivityRecorder.TryRecordAsync(db,
+                    BuildTrainingActivity(item, LearningActivityType.ItemStarted, now), logger);
+            }
+
+            return item.Clone();
+        }, "start a learning session");
     }
 
     public async Task SaveTrainingItemAsync(TrainingItem item)

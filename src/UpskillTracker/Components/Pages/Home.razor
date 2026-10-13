@@ -17,6 +17,9 @@
 	<MudTabPanel Text="Dashboard" Icon="@Icons.Material.Filled.Dashboard">
 		<DashboardView LearningSession="@learningSession" OnOpenPlan="NavigateToPlanAsync" OnOpenHistory="NavigateToHistoryAsync" OnOpenHistoryDate="NavigateToHistoryDateAsync" />
 	</MudTabPanel>
+	<MudTabPanel Text="Products" Icon="@Icons.Material.Filled.Category">
+		<ProductLearningView OnChooseLearning="ChooseLearningAsync" />
+	</MudTabPanel>
 	<MudTabPanel Text="Plan" Icon="@Icons.Material.Filled.Checklist">
 		<TrainingPlannerView NavigationRequest="@planNavigationRequest" NavigationRequestId="@planNavigationToken" />
 	</MudTabPanel>
@@ -50,7 +53,7 @@
 	[SupplyParameterFromQuery(Name = "view")]
 	public string? RequestedView { get; set; }
 
-	private static readonly string[] TabKeys = ["dashboard", "plan", "certifications", "timeline", "history", "tools", "resources", "videos", "notes", "copilot"];
+	private static readonly string[] TabKeys = ["dashboard", "products", "plan", "certifications", "timeline", "history", "tools", "resources", "videos", "notes", "copilot"];
 	private string? appliedView;
 	private readonly UpskillTracker.Models.LearningStudioSession learningSession = new();
 	private int activeTabIndex;
@@ -81,20 +84,27 @@
 	{
 		planNavigationRequest = request;
 		planNavigationToken++;
-		return SelectTabAsync(1);
+		return SelectTabAsync(Array.IndexOf(TabKeys, "plan"));
+	}
+
+	private Task ChooseLearningAsync(int id)
+	{
+		learningSession.FocusItemId = id;
+		learningSession.StartMessage = null;
+		return SelectTabAsync(0);
 	}
 
 	private Task NavigateToHistoryAsync()
 	{
 		historyRequestedDate = null;
 		historyNavigationToken++;
-		return SelectTabAsync(4);
+		return SelectTabAsync(Array.IndexOf(TabKeys, "history"));
 	}
 
 	private Task NavigateToHistoryDateAsync(DateTime date)
 	{
 		historyRequestedDate = date.Date;
 		historyNavigationToken++;
-		return SelectTabAsync(4);
+		return SelectTabAsync(Array.IndexOf(TabKeys, "history"));
 	}
 }

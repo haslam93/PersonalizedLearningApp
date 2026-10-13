@@ -813,16 +813,14 @@ else if (snapshot is not null)
 
     private async Task StartItemAsync(UpskillTracker.Models.TrainingItem item)
     {
-        var updatedItem = item.Clone();
-        updatedItem.Status = UpskillTracker.Models.TrackerStatus.InProgress;
-        updatedItem.ProgressPercent = Math.Max(5, updatedItem.ProgressPercent);
-
         try
         {
-            await TrackerService.SaveTrainingItemAsync(updatedItem);
+            var updatedItem = await TrackerService.StartTrainingItemAsync(item.Id);
             snapshot = await TrackerService.GetDashboardSnapshotAsync();
             learningHistory = await TrackerService.GetLearningHistoryAsync();
-            Snackbar.Add($"Started \"{updatedItem.Title}\".", Severity.Success);
+            Snackbar.Add(updatedItem.Status == TrackerStatus.InProgress
+                ? $"Started \"{updatedItem.Title}\". Progress stays unchanged until you record it."
+                : "This step is now blocked or complete. Review it in Plan.", Severity.Info);
         }
         catch (UpskillTracker.Services.TrackerStorageUnavailableException ex)
         {

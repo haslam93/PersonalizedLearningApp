@@ -61,6 +61,9 @@ jobs:
           cache: npm
           cache-dependency-path: tests/browser/package-lock.json
 
+      - name: Validate database guard and learning-radar schema
+        run: node --test tests/automation/*.test.cjs
+
       - name: Install browser test dependencies
         working-directory: tests/browser
         run: npm ci && npx playwright install --with-deps chromium

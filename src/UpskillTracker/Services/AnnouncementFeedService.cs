@@ -1,4 +1,5 @@
 using System.Net;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Microsoft.Extensions.Caching.Memory;
@@ -18,8 +19,10 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
         new("Azure Updates", "https://www.microsoft.com/releasecommunications/api/v2/azure/rss", AnnouncementStream.MicrosoftOfficial, "Azure platform"),
         new("Microsoft Foundry Blog", "https://devblogs.microsoft.com/foundry/feed/", AnnouncementStream.MicrosoftOfficial, "Azure AI Foundry"),
         new("GitHub Copilot Blog", "https://github.blog/tag/github-copilot/feed/", AnnouncementStream.MicrosoftOfficial, "GitHub Copilot"),
-        new("Apps on Azure Blog", "https://techcommunity.microsoft.com/t5/s/gxcuf89792/rss/board?board.id=AppsonAzureBlog", AnnouncementStream.MicrosoftOfficial, "App Service"),
-        new("Azure Integration Services Blog", "https://techcommunity.microsoft.com/t5/s/gxcuf89792/rss/board?board.id=IntegrationsonAzureBlog", AnnouncementStream.MicrosoftOfficial, "Azure API Management"),
+        new("Apps on Azure Blog", "https://techcommunity.microsoft.com/t5/s/gxcuf89792/rss/board?board.id=AppsonAzureBlog", AnnouncementStream.MicrosoftOfficial, "App Innovation"),
+        new("Azure Integration Services Blog", "https://techcommunity.microsoft.com/t5/s/gxcuf89792/rss/board?board.id=IntegrationsonAzureBlog", AnnouncementStream.MicrosoftOfficial, "Integration Services"),
+        new("Microsoft Fabric Blog", "https://community.fabric.microsoft.com/t5/s/rss/board?board.id=fbc_fabricupdatesblogs", AnnouncementStream.MicrosoftOfficial, "Microsoft Fabric"),
+        new("Microsoft Power Platform Blog", "https://www.microsoft.com/en-us/power-platform/blog/feed/", AnnouncementStream.MicrosoftOfficial, "Power Platform"),
         new("Yina Arenas", "https://azure.microsoft.com/en-us/blog/author/yina-arenas/feed/", AnnouncementStream.MicrosoftOfficial, "Azure AI Foundry"),
         new("Simon Willison", "https://simonwillison.net/atom/everything/", AnnouncementStream.IndustryInsights, "Developer Tools"),
         new("OpenAI News", "https://openai.com/news/rss.xml", AnnouncementStream.IndustryInsights, "Industry"),
@@ -51,7 +54,7 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
         var feedResults = await Task.WhenAll(fetchTasks);
         if (feedResults.All(result => !result.Succeeded))
         {
-            throw new HttpRequestException("None of the announcement sources could be reached. Previously loaded updates have been kept.");
+            throw new HttpRequestException("No usable announcements could be loaded. Previously loaded updates have been kept.");
         }
 
         var announcements = feedResults
@@ -61,7 +64,8 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
             .GroupBy(item => item.Source, StringComparer.OrdinalIgnoreCase)
             .SelectMany(group => group.OrderByDescending(item => item.PublishedUtc).Take(MaxItemsPerSource))
             .GroupBy(item => item.Stream)
-            .SelectMany(group => group.OrderByDescending(item => item.PublishedUtc).Take(MaxItemsPerStream))
+            .SelectMany(group => group.OrderByDescending(item => item.PublishedUtc)
+                .Take(group.Key == AnnouncementStream.MicrosoftOfficial ? FeedSources.Length * MaxItemsPerSource : MaxItemsPerStream))
             .OrderByDescending(item => item.PublishedUtc)
             .ToList();
 
@@ -85,7 +89,11 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
                 FeedSourceKind.HtmlPage => ParseHtmlPage(payload, source),
                 _ => ParseFeed(XDocument.Parse(payload, LoadOptions.PreserveWhitespace), source)
             };
-            return new FeedFetchResult(items, true);
+            if (items.Count == 0)
+            {
+                logger.LogWarning("No usable announcements were returned by {FeedUrl}", source.FeedUrl);
+            }
+            return new FeedFetchResult(items, items.Count > 0);
         }
         catch (Exception ex) when (ex is HttpRequestException or System.Xml.XmlException ||
             ex is OperationCanceledException && !cancellationToken.IsCancellationRequested)
@@ -103,7 +111,7 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
         {
             "rss" => ParseRss(document, source),
             "feed" => ParseAtom(document, source),
-            _ => []
+            _ => throw new System.Xml.XmlException("Expected an RSS or Atom announcement feed.")
         };
     }
 
@@ -152,7 +160,10 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
 
     private static AnnouncementItem? CreateAnnouncement(FeedSource source, string? title, string? url, string? summary, string? publishedValue)
     {
-        if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(url))
+        if (string.IsNullOrWhiteSpace(title) || !Uri.TryCreate(url?.Trim(), UriKind.Absolute, out var uri) ||
+            uri.Scheme is not ("https" or "http") ||
+            !DateTimeOffset.TryParse(publishedValue, CultureInfo.InvariantCulture,
+                DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeUniversal, out var published))
         {
             return null;
         }
@@ -166,15 +177,13 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
             return null;
         }
 
-        _ = DateTimeOffset.TryParse(publishedValue, out var published);
-
         return new AnnouncementItem
         {
             Stream = source.Stream,
             Title = WebUtility.HtmlDecode(title.Trim()),
-            Url = url.Trim(),
+            Url = uri.AbsoluteUri,
             Summary = normalizedSummary,
-            PublishedUtc = (published == default ? DateTimeOffset.UtcNow : published).UtcDateTime,
+            PublishedUtc = published.UtcDateTime,
             Source = source.Name,
             Topic = topic,
             SourceUrl = source.FeedUrl
@@ -183,6 +192,18 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
 
     private static string ResolveTopic(FeedSource source, string combinedText)
     {
+        if (source.DefaultTopic == "Power Platform")
+        {
+            return LearningProductCatalog.Products.First(product => product.Key == "copilot-studio").Matches(combinedText)
+                ? "Copilot Studio" : string.Empty;
+        }
+
+        var product = LearningProductCatalog.ResolveTopic(combinedText);
+        if (product is not null && source.Stream == AnnouncementStream.MicrosoftOfficial)
+        {
+            return product;
+        }
+
         if (!string.Equals(source.DefaultTopic, "Azure platform", StringComparison.OrdinalIgnoreCase))
         {
             return source.DefaultTopic;
@@ -191,11 +212,6 @@ public partial class AnnouncementFeedService(HttpClient httpClient, IMemoryCache
         if (ContainsAny(combinedText, "foundry", "azure ai foundry", "azure ai studio"))
         {
             return "Azure AI Foundry";
-        }
-
-        if (ContainsAny(combinedText, "copilot", "github copilot"))
-        {
-            return "GitHub Copilot";
         }
 
         if (ContainsAny(combinedText, "api management", "apim", "ai gateway"))

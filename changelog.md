@@ -2,7 +2,7 @@
 title: Changelog
 description: Chronological record of major product, infrastructure, deployment, authentication, and documentation changes for Hammad's Learning Portal
 author: Microsoft
-ms.date: 2026-09-18
+ms.date: 2026-10-13
 ms.topic: reference
 keywords:
   - changelog
@@ -12,6 +12,32 @@ keywords:
   - deployment
 estimated_reading_time: 6
 ---
+
+## 2026-10-13
+
+### Reviewed reliability and agentic learning workflows
+
+* Confirmed automated PostgreSQL stop actions and a missing live CostControl tag; restored `CostControl=Ignore` without a restart
+* Identified a governance tag write after GitHub repair, so a perpetual renewal loop is not a legitimate availability fix
+* Fixed CD's empty-tag default by inheriting group tags and regenerating the compiled template, without forcing perpetual database exemptions
+* Replaced the Ready-server green no-op with an hourly, serialized, read-only PostgreSQL state/tag monitor; explicit authorized manual dispatch supports bounded temporary recovery with fake-CLI regression coverage
+* Replaced the radar's soon-retired GPT-5.4 model with GitHub's recommended GPT-5.6 Sol replacement and regenerated its lockfile
+* Broadened research to Fabric/IQ, Copilot Studio, and decision models; capped weekly additions at three items/four hours, required small starts and completion artifacts, and added schema checks to CI
+
+### Made learning easier to start and catch up
+
+* Added a dedicated Products view with current-feed unread counts, separate Foundry IQ/Fabric IQ views, existing next steps, official references, sandbox shortcuts, and copyable lab briefs
+* Added Fabric and Copilot Studio feed coverage; stopped classifying whole mixed blogs as App Service/APIM, dropping older product sources behind a global official-feed cap, or assigning today's date to undated news
+* Defaulted to a 15-minute session and added a direct start action without invented progress, automatic completion, duplicate starts, or lost notes/evidence
+* Added two optional, 3.5-hour learning items on Jev/Microsoft-Decision-1 and Foundry IQ/Fabric IQ, using verified public documentation and synthetic-data exercises
+* Imported exact primary references for new radar items and ranked those links ahead of generic topic matches
+
+### Added a deliberately lightweight OneNote bridge
+
+* Added a private notebook/page shortcut stored in the existing protected Resource library and explicit copy-for-OneNote actions with a visible clipboard-denial fallback
+* Kept notebook links out of Copilot's resource context and blocked Copilot edits to notebook shortcuts
+* Deferred automatic Graph sync and cross-tenant service integration: neither notebook reads, permission grants, publishing, nor paid provisioning are performed
+* Extended .NET regressions and isolated desktop/mobile journeys for product handoff, truthful session starts, notebook persistence, copying, and eleven-tab navigation
 
 ## 2026-09-18
 

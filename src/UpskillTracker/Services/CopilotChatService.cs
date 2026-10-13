@@ -250,6 +250,7 @@ Rules:
 - Ground factual answers in the tracker tools before making claims about the user's progress, notes, or resources.
 - Prefer existing tracker data over generic advice when the user asks about their learning plan.
 - Never invent IDs, task names, or saved resources.
+- Private learning-notebook shortcuts are omitted from these tools. Manage them in Notes or Resources; never fetch their contents.
 - Use save tools only for small, explicit changes the user clearly asked you to make.
 - When a save would create or overwrite meaningful content, ask the user for confirmation first if they have not already been explicit.
 - Keep responses concise, practical, and focused on the user's learning work.
@@ -266,7 +267,7 @@ Rules:
         [
             AIFunctionFactory.Create(
                 async () =>
-                    await UseTrackerServiceAsync(trackerService => trackerService.GetDashboardSnapshotAsync()),
+                    await UseTrackerServiceAsync(trackerService => trackerService.GetDashboardSnapshotAsync(includeNotebookLinks: false)),
                 "get_dashboard_snapshot",
                 "Returns dashboard metrics, focus items, upcoming tasks, pinned resources, and recent notes."),
 
@@ -278,9 +279,9 @@ Rules:
 
             AIFunctionFactory.Create(
                 async () =>
-                    await UseTrackerServiceAsync(trackerService => trackerService.GetResourcesAsync()),
+                    await UseTrackerServiceAsync(trackerService => trackerService.GetResourcesAsync(includeNotebookLinks: false)),
                 "get_resources",
-                "Returns all saved learning resources with sections, tags, and links."),
+                "Returns saved learning resources with sections, tags, and links, excluding private notebook shortcuts."),
 
             AIFunctionFactory.Create(
                 async () =>
@@ -293,7 +294,7 @@ Rules:
                     await UseTrackerServiceAsync(async trackerService =>
                     {
                     var items = await trackerService.GetTrainingItemsAsync();
-                    var resources = await trackerService.GetResourcesAsync();
+                    var resources = await trackerService.GetResourcesAsync(includeNotebookLinks: false);
                     var item = items.FirstOrDefault(candidate => candidate.Id == trainingItemId)
                         ?? throw new ArgumentException($"Training item {trainingItemId} was not found.", nameof(trainingItemId));
 
@@ -414,6 +415,11 @@ Rules:
                     resource.Notes = Pick(notes, resource.Notes);
                     resource.SortOrder = sortOrder ?? resource.SortOrder;
 
+                    if (LearningNotebookBridge.IsNotebookResource(resource))
+                    {
+                        throw new ArgumentException("Manage private learning-notebook shortcuts in Notes or Resources, not through Copilot.");
+                    }
+
                     Validate(resource);
                     await trackerService.SaveResourceAsync(resource);
 
@@ -516,7 +522,12 @@ Rules:
         }
 
         var resources = await trackerService.GetResourcesAsync();
-        return resources.FirstOrDefault(resource => resource.Id == id.Value)?.Clone();
+        var resource = resources.FirstOrDefault(resource => resource.Id == id.Value);
+        if (resource is not null && LearningNotebookBridge.IsNotebookResource(resource))
+        {
+            throw new ArgumentException("Manage private learning-notebook shortcuts in Notes or Resources, not through Copilot.");
+        }
+        return resource?.Clone();
     }
 
     private sealed class RuntimeSession(string authSessionId, string accessToken) : IAsyncDisposable

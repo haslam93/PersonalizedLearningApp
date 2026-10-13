@@ -1,5 +1,12 @@
 window.upskillTracker = window.upskillTracker || {};
 
+window.upskillTracker.copyText = async function (text) {
+    if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard access is unavailable. Select and copy the displayed text instead.");
+    }
+    await navigator.clipboard.writeText(text);
+};
+
 window.upskillTracker.openAnnouncement = async function (announcement) {
     if (!announcement || !announcement.url) {
         throw new Error("An announcement URL is required.");

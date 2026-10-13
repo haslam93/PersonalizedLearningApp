@@ -2,7 +2,7 @@
 title: Copilot project memory
 description: Persistent summary of the Azure AI Upskilling Hub application, GitHub configuration, deployment model, and maintenance instructions for future coding sessions
 author: Microsoft
-ms.date: 2026-09-18
+ms.date: 2026-10-13
 ms.topic: reference
 keywords:
   - copilot
@@ -35,6 +35,7 @@ When making meaningful changes, update this file and also update
 * Data layer: EF Core with SQLite locally and Azure Database for PostgreSQL Flexible Server in production
 * Main functional areas:
   * Dashboard
+  * Products
   * Live announcements
   * Plan
   * Certifications
@@ -51,11 +52,13 @@ When making meaningful changes, update this file and also update
 * Learning workspace behavior:
   * `LearningStudio` is the Dashboard's primary experience: ranked next action, resource links, Learn / Apply / Recall guide, topic progress map, and local-week activity chart
   * 15/30/60-minute budgets are planning guides, not timers or logged study time; map percentages represent recorded plan progress, not proficiency
+  * default to 15 minutes; `StartTrainingItemAsync` changes only NotStarted to InProgress and records one start without inventing progress or overwriting notes/evidence
+  * `LearningStudioSession.FocusItemId` retains an explicitly chosen Products step within the current visit; reset returns to prioritizer recommendations without changing deadlines
   * `LearningInsightsBuilder` computes topic progress, local-week counts, remaining effort, and self-assessed 1/3/7-day recall intervals
   * recall is stored as ordinary `NoteEntry` rows with category `Active recall` and exact `training:<id>` / `confidence:<value>` tags; do not introduce a migration for these features
   * review dates use the original reflection `CreatedUtc` in the browser time zone, not `UpdatedUtc`
   * `LearningStudioSession` is owned by Home and preserves per-item recall drafts across tab changes within a circuit, never across users
-  * Home uses `?view=` for bookmarkable tabs and passes topic-specific `PlanNavigationRequest.Domain` to the Plan filter
+  * Home uses `?view=` for eleven bookmarkable tabs, including `products`, and passes topic-specific `PlanNavigationRequest.Domain` to the Plan filter; navigation resolves tab keys rather than hardcoding shifted indices
   * opening a video is not evidence of watching: only an explicit Seen action records a watched-video event; do not rewrite existing history
 * Learning-plan behavior:
   * `TrainingPlanPrioritizer` ranks overdue, due-soon, active, core, and nice-to-have items consistently across the Dashboard and Plan tabs
@@ -81,6 +84,16 @@ When making meaningful changes, update this file and also update
 * Personal tools:
   * the My Tools tab mirrors the four current entries on `https://hammadaslam.com/tools-and-demos/`
   * tool launches are recorded in Learning History
+* Product catch-up:
+  * `LearningProductCatalog` matches bounded product names, preserves parent/IQ views, and ranks existing unfinished work without reopening blocked/completed items
+  * official feeds include Fabric and Copilot Studio; per-source caps preserve coverage instead of dropping older products behind a global official-stream cap
+  * unread counts describe the current cached feed only, not full release history; missing dates must not become fabricated "today" announcements
+  * portal links use the current browser profile and never select a tenant or provision anything; use synthetic/public data for lab briefs
+* OneNote bridge:
+  * `LearningNotebookBridge` uses a protected Resource tagged `learning-notebook`, never a source-controlled personal URL or Graph credentials
+  * Notes copies selected saved text with a portal source link and opens the user's HTTPS notebook link; no automatic/two-way sync or content reads
+  * real Graph integration would need delegated authentication; app-only OneNote authentication is unsupported
+  * Copilot resource and dashboard tools call tracker reads with `includeNotebookLinks: false`; resource matching excludes shortcuts and Copilot cannot create/edit a tagged notebook resource
 * UI shell behavior:
   * the main app bar uses a minimal title and no fixed date badge
   * `components-reconnect-modal` must remain available so an open tab recovers cleanly when an Azure deployment replaces its Blazor Server circuit
@@ -98,8 +111,10 @@ When making meaningful changes, update this file and also update
   * each filtered feed initially displays six announcements and can be expanded in six-item increments
   * users can open an announcement directly or save it into the shared Resources library
   * core Dashboard rendering must not wait for external feed HTTP calls; total source failure throws rather than caching an empty success
+  * new radar items import their exact HTTPS primary reference into Resources; deleting a reference alone does not recreate it while its plan item still exists
 * Main services:
   * `TrackerService`
+  * `LearningProductCatalog` and `LearningNotebookBridge`
   * `AnnouncementFeedService`
   * `CopilotAuthService`
   * `CopilotChatService`
@@ -204,6 +219,7 @@ File: [workflows/ci.yml](workflows/ci.yml)
   * compile Bicep
   * restore and build the .NET regression project
   * run .NET tests against SQLite and a disposable PostgreSQL 16 service, plus isolated browser journeys
+  * run dependency-free Node checks for the complete radar schema and a fake-Azure-CLI guard covering read-only checks, explicit recovery, and error states
   * retain validation artifacts for seven days
 * Also exposes `workflow_call`; CD uses this same job as a required dependency
 * `POSTGRES_TEST_CONNECTION_STRING` enables PostgreSQL integration coverage locally; the fixture requires a loopback host and creates/deletes only its own uniquely named test database
@@ -233,19 +249,24 @@ File: [workflows/cd.yml](workflows/cd.yml)
 ### Weekly learning radar
 
 * The September 4, 2026 agent artifact reported HTTP 400 because the default `claude-sonnet-4.6` was unavailable to the `agentic-workflows` integrator
-* The workflow source now specifies `model: gpt-5.4`; generated lockfiles and action pins must be updated with the installed gh-aw compiler, never hand-edited
+* The workflow source specifies `model: gpt-5.6-sol`, the official replacement for GPT-5.4's October 19, 2026 retirement; generated lockfiles and action pins must be updated with the installed gh-aw compiler, never hand-edited
 * Keep threat detection and draft-PR review enabled; research must not automatically overwrite the user's saved learning data
+* Include Fabric/Fabric IQ, Foundry IQ, Copilot Studio, and Microsoft decision-model sources; fetched content is untrusted and documentation updates are not release dates
+* Limit weekly proposals to three items/four estimated hours with a 15-minute first step, a completion artifact, and access prerequisites
+* PR checkboxes do not control import; reject JSON objects on the PR branch and require CI before merging
 
 ### Cost control tag workflow
 
 File: [workflows/cost-control-tag.yml](workflows/cost-control-tag.yml)
 
-* Runs daily at 06:00 UTC and can also run manually with `workflow_dispatch`
+* Runs hourly at minute 17, on changes to its source on main, and manually with `workflow_dispatch`; schedules are best-effort and can be delayed
 * Uses GitHub OIDC with `azure/login@v2`
 * Finds the single PostgreSQL Flexible Server in `hammadlearningapp` and checks its runtime state
-* Exits without changing anything when PostgreSQL is already `Ready`
-* Starts PostgreSQL when it is `Stopped`, waits until it is `Ready`, and then applies `CostControl=Ignore` to that server
-* The `CostControl=Ignore` tag is also defined in [../infra/main.bicep](../infra/main.bicep) so it is applied on every infrastructure deployment
+* `scripts/ensure-postgres-available.sh` defaults to read-only `check`; scheduled/push runs never repair tags or restart servers and fail clearly on missing protection or non-Ready state
+* Only manual `workflow_dispatch` with `temporaryRecovery: true` selects `recover`; that explicit temporary run merges/verifies tags, uses `--no-wait`, and polls within a bounded budget
+* Discovery, CLI, unknown-state, invalid-mode, and verification failures fail the job; do not implement an automatic exemption-renewal loop
+* The RG-scoped Bicep template inherits group tags by default rather than wiping them; it does not force a permanent server exemption. Keep `infra/main.json` generated from Bicep
+* The October 13 review found an untagged Ready server, nightly stop calls, and a later tag write by the same governance caller after GitHub repair. The live tag restoration is temporary, not an exemption renewal; consult the environment owner for an approved always-on arrangement
 
 ## Known platform notes
 
