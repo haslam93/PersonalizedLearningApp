@@ -38,6 +38,7 @@ estimated_reading_time: 6
 * Kept notebook links out of Copilot's resource context and blocked Copilot edits to notebook shortcuts
 * Deferred automatic Graph sync and cross-tenant service integration: neither notebook reads, permission grants, publishing, nor paid provisioning are performed
 * Extended .NET regressions and isolated desktop/mobile journeys for product handoff, truthful session starts, notebook persistence, copying, and eleven-tab navigation
+* Covered keyboard activation of overflowed workspace tabs so runner font differences do not make a clipped tab's pointer target invalidate the learning journeys
 
 ## 2026-09-18
 

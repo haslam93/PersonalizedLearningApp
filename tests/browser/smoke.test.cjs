@@ -173,12 +173,21 @@ test("protected, persistent, accessible learning journeys", { timeout: 240000 },
             await dashboard(page);
         });
 
+        await t.test("overflowed workspace tabs stay reachable with keyboard activation", async () => {
+            await page.setViewportSize({ width: 1100, height: 1100 });
+            await page.getByRole("tab", { name: "Notes", exact: true }).press("Enter");
+            await page.getByLabel("Search notes", { exact: true }).waitFor();
+            await page.getByRole("tab", { name: "Dashboard", exact: true }).press("Enter");
+            await dashboard(page);
+            await page.setViewportSize({ width: 1440, height: 1100 });
+        });
+
         await t.test("recall reveals saved context and persists a scheduled reflection", async () => {
             const recall = page.locator("#recall-practice");
             await recall.getByLabel("Your explanation, from memory", { exact: true }).fill("An agent can plan work and call tools, but needs explicit permission boundaries, reproducible evaluations, and human review before consequential actions.");
             await page.getByRole("tab", { name: "Notes", exact: true }).click();
             await page.getByLabel("Search notes", { exact: true }).waitFor();
-            await page.getByRole("tab", { name: "Dashboard", exact: true }).click();
+            await page.getByRole("tab", { name: "Dashboard", exact: true }).press("Enter");
             await dashboard(page);
             assert.match(await recall.getByLabel("Your explanation, from memory", { exact: true }).inputValue(), /explicit permission boundaries/);
             assert.equal(await page.locator("#recall-reference").count(), 0);
