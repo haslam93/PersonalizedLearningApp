@@ -674,6 +674,51 @@
       "source": "Microsoft Foundry and Microsoft Fabric documentation",
       "notes": "First 15 minutes: read both overviews and draw two boxes: cited document retrieval and shared business meaning. Fabric IQ: https://learn.microsoft.com/en-us/fabric/iq/overview. Done when: one diagram maps a synthetic policy, three entities, their relationships, citations, and permission boundaries to the correct capability, with one failure case for each. Prerequisites: none for this design exercise. Use the Diamond profile only for an existing authorized sandbox; do not connect a work notebook, create capacity, or publish an agent.",
       "addedOn": "2026-10-13"
+    },
+    {
+      "title": "Test the App Service PHP and Nginx image migration",
+      "domain": "App Innovation",
+      "category": "App Service",
+      "description": "Azure App Service is moving its PHP images from deprecated deb.sury.org Nginx packages to official nginx.org packages, with the Standard-channel rollout starting October 14. Default configurations should continue to work, but custom modules, directives, paths, and startup commands can break. Test the change before it reaches a production workload and capture reusable migration guidance.",
+      "targetDate": "2026-10-23",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 1,
+      "priority": 4,
+      "link": "https://azure.github.io/AppService/2026/10/09/php-nginx-update.html",
+      "source": "Azure App Service Blog",
+      "notes": "First 15 minutes: read the compatibility list and inspect a sample or existing authorized PHP app for custom load_module directives, Nginx paths, and startup commands. Done when: a compatibility checklist records smoke-test results on the Latest channel, affected settings, and either approval or a dated remediation plan; use a synthetic sample if no app is available. Prerequisites: an existing authorized PHP App Service test app and deployment slot for live validation; do not provision resources. The documentation-only checklist needs no Azure access.",
+      "addedOn": "2026-10-16"
+    },
+    {
+      "title": "Pilot Fabric Policies for granular governance (Preview)",
+      "domain": "Microsoft Fabric",
+      "category": "Governance",
+      "description": "Fabric Policies introduces tenant- and capacity-scoped allow-based governance through Policy Sets, the Policies Center, audit events, and REST APIs. Learn how its complete allow rules affect item creation and security-sensitive workspace settings before considering a broader rollout.",
+      "targetDate": "2026-10-30",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 3,
+      "link": "https://community.fabric.microsoft.com/t5/Fabric-Updates-Blog/Fabric-Policies-Granular-governance-at-scale-Preview/ba-p/5368144",
+      "source": "Microsoft Fabric Blog",
+      "notes": "First 15 minutes: read the preview announcement and sketch one allow rule for a synthetic security group, item type, and workspace. Done when: a policy design records scope, exceptions, rollback, and expected allow/deny outcomes, plus test evidence from an existing nonproduction capacity if available. Prerequisites: none for the design; live validation requires an existing supported Fabric capacity, capacity-backed test workspace, administrator access, and test identities. Do not create capacity or request permissions.",
+      "addedOn": "2026-10-16"
+    },
+    {
+      "title": "Benchmark Gemini 4 Argon in GitHub Copilot",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "Gemini 4 Argon is generally available in GitHub Copilot through a gradual rollout for complex coding, agentic, and reasoning work. Run a controlled comparison against the current default before changing team guidance, and treat Copilot availability as distinct from general Gemini API availability.",
+      "targetDate": "2026-11-06",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 1,
+      "priority": 3,
+      "link": "https://github.blog/changelog/2026-10-13-gemini-4-argon-in-github-copilot",
+      "source": "GitHub Changelog",
+      "notes": "First 15 minutes: confirm Argon is visible under the existing Copilot policy, then choose one public-repository coding task with tests and write success criteria before running it. Done when: a one-page comparison records prompt, completion quality, tests passed, latency, token usage, and estimated cost versus the current default. Prerequisites: Copilot Pro+, Max, Business, or Enterprise, completed rollout, and administrator model enablement where applicable; without access, produce the benchmark plan only. No direct Gemini API availability is assumed.",
+      "addedOn": "2026-10-16"
     }
   ]
 }
