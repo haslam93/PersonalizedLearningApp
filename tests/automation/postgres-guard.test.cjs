@@ -75,6 +75,13 @@ if (process.env.FAKE_AZ_PROCESS === "1") {
         }
     }
 
+    test("cost-control automation remains manual-only while the hosting arrangement is unresolved", () => {
+        const workflow = fs.readFileSync(path.resolve(__dirname, "..", "..", ".github", "workflows", "cost-control-tag.yml"), "utf8");
+        const triggers = workflow.match(/^on:\r?\n([\s\S]*?)(?=^\S)/m);
+        assert.ok(triggers, "The workflow must declare explicit triggers.");
+        assert.deepEqual([...triggers[1].matchAll(/^ {2}([a-z_]+):/gm)].map(match => match[1]), ["workflow_dispatch"]);
+    });
+
     test("a running server with missing tags is repaired without restarting it", () => {
         const result = run();
         assert.equal(result.status, 0, result.stderr);

@@ -2,7 +2,7 @@
 title: Changelog
 description: Chronological record of major product, infrastructure, deployment, authentication, and documentation changes for Hammad's Learning Portal
 author: Microsoft
-ms.date: 2026-10-13
+ms.date: 2026-10-19
 ms.topic: reference
 keywords:
   - changelog
@@ -12,6 +12,14 @@ keywords:
   - deployment
 estimated_reading_time: 6
 ---
+
+## 2026-10-19
+
+### Disabled recurring cost-control failures
+
+* Confirmed successful Azure OIDC login followed by intentional `PostgreSQL state=Ready, CostControl=missing` failures; the database is running, but the expected governance tag is absent
+* Disabled the cost-control workflow in GitHub Actions and removed scheduled/push triggers, retaining manual checks and authorized temporary recovery only after explicit re-enabling
+* Kept the fail-closed guard, database state, and Azure tags unchanged rather than silently renewing an exemption; documented the need for an approved hosting arrangement and covered the manual-only trigger configuration
 
 ## 2026-10-13
 

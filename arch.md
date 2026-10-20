@@ -2,7 +2,7 @@
 title: Hammad's Learning Portal architecture
 description: High-level architecture for the Blazor learning portal, durable learning history, personal tools, GitHub Copilot SDK integration, and Azure hosting flow
 author: Microsoft
-ms.date: 2026-10-13
+ms.date: 2026-10-19
 ms.topic: overview
 keywords:
   - architecture
@@ -101,6 +101,6 @@ flowchart LR
 * Serialized production deployment checks that the commit is still current on main, then polls an uncached database/schema readiness endpoint for that exact build.
 * The published artifact includes the platform-matching Copilot CLI required by the .NET SDK on Azure App Service.
 * The CD workflow passes PIN, GitHub OAuth, and Copilot model settings into Bicep so Azure app settings remain aligned with source-controlled infrastructure.
-* The RG-scoped template inherits group tags rather than defaulting to an empty map. An hourly OIDC monitor checks PostgreSQL state/tags without fighting governance; only explicit authorized manual dispatch performs bounded temporary recovery.
+* The RG-scoped template inherits group tags rather than defaulting to an empty map. The PostgreSQL cost-control workflow is disabled after recurring missing-tag failures; its source is manual-only pending an approved hosting arrangement. Explicit authorized manual dispatch can perform bounded temporary recovery after re-enabling it.
 * The weekly research agent proposes at most three items/four hours in a threat-checked draft PR; deterministic schema and guard checks run in CI before deployment.
 * Infrastructure runs on relevant changes or a manual force switch. Existing TLS thumbprints are preserved, and Actions provisions/binds a managed certificate when necessary before confirming custom-domain HTTPS.

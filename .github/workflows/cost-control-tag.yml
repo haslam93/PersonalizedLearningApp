@@ -1,9 +1,9 @@
 name: cost-control-tag
 
+# Disabled in GitHub Actions on 2026-10-19: the server is Ready but its
+# CostControl tag is missing. Automatic exemption renewal is not authorized.
+# Keep manual-only until the environment owner approves the hosting arrangement.
 on:
-  schedule:
-    # Avoid the busiest minute; schedules are best-effort, not an availability SLA.
-    - cron: '17 * * * *'
   workflow_dispatch:
     inputs:
       temporaryRecovery:
@@ -11,12 +11,6 @@ on:
         required: false
         default: false
         type: boolean
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/cost-control-tag.yml'
-      - 'scripts/ensure-postgres-available.sh'
-
 permissions:
   contents: read
   id-token: write

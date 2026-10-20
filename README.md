@@ -2,7 +2,7 @@
 title: Hammad's Learning Portal
 description: Personal learning and certification tracker with actionable planning, learning history, personal tools, GitHub Copilot chat, and Azure deployment automation
 author: Microsoft
-ms.date: 2026-10-13
+ms.date: 2026-10-19
 ms.topic: overview
 keywords:
   - learning portal
@@ -556,15 +556,20 @@ completion criteria. Checkboxes in PR descriptions do not control import:
 remove rejected JSON objects and require passing CI before merging. CI checks
 the complete catalog against its schema without installing another validator.
 
-### PostgreSQL cost-control monitoring and authorized recovery
+### PostgreSQL cost-control workflow (disabled)
 
-The guard runs at minute 17 each hour, on manual dispatch, and when its source
-changes on main. Scheduled and push-triggered runs are **read-only**: they check
-both runtime state and the expected tag, and fail clearly if either is missing.
-They never automatically restart a stopped resource or repeatedly restore an
-expired exemption.
+The workflow was **disabled in GitHub Actions on October 19, 2026**. Repeated
+runs authenticated successfully but failed with `PostgreSQL state=Ready,
+CostControl=missing`. The database is running; this is an intentional governance
+check, not a login or script failure. Automatically restoring the tag would not
+establish an approved exemption.
 
-An authorized operator can manually dispatch with **temporaryRecovery** enabled.
+Scheduled and push triggers have also been removed from the source so that
+re-enabling the workflow cannot silently resume recurring failures. Obtain an
+approved hosting/exemption arrangement from the environment owner before
+re-enabling it. Manual dispatch defaults to a read-only state/tag check.
+
+After re-enabling, an authorized operator can dispatch with **temporaryRecovery** enabled.
 That explicit run merges and verifies the tag even on a Ready server, starts
 only a stopped server, polls within a bounded budget, and verifies again after
 recovery. It preserves other tags; discovery, CLI, and verification failures
@@ -584,5 +589,6 @@ environment's cost rules; arrange an approved always-on hosting option when
 this application needs permanent availability. GitHub schedules can be delayed
 and monitoring is not an availability SLA. The October 13 review confirmed
 nightly stop calls and a later tag write by the same governance caller after
-GitHub had repaired the tag. The current tag was restored for the investigation,
-without a restart, but that is not a permanent fix.
+GitHub had repaired the tag. The tag was restored during that investigation
+without a restart, but was missing again on October 19. Disabling the workflow
+does not change database state, repair the tag, or prevent governance shutdowns.

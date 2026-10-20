@@ -2,7 +2,7 @@
 title: Copilot project memory
 description: Persistent summary of the Azure AI Upskilling Hub application, GitHub configuration, deployment model, and maintenance instructions for future coding sessions
 author: Microsoft
-ms.date: 2026-10-13
+ms.date: 2026-10-19
 ms.topic: reference
 keywords:
   - copilot
@@ -259,10 +259,11 @@ File: [workflows/cd.yml](workflows/cd.yml)
 
 File: [workflows/cost-control-tag.yml](workflows/cost-control-tag.yml)
 
-* Runs hourly at minute 17, on changes to its source on main, and manually with `workflow_dispatch`; schedules are best-effort and can be delayed
+* Disabled in GitHub Actions on October 19, 2026 after repeated `PostgreSQL state=Ready, CostControl=missing` failures; Azure login succeeds and the database is running
+* Scheduled and push triggers have been removed; the source retains only `workflow_dispatch`. Obtain an approved hosting/exemption arrangement before explicitly re-enabling it
 * Uses GitHub OIDC with `azure/login@v2`
 * Finds the single PostgreSQL Flexible Server in `hammadlearningapp` and checks its runtime state
-* `scripts/ensure-postgres-available.sh` defaults to read-only `check`; scheduled/push runs never repair tags or restart servers and fail clearly on missing protection or non-Ready state
+* `scripts/ensure-postgres-available.sh` defaults to read-only `check` and fails clearly on missing protection or non-Ready state; disabling the workflow does not repair tags or prevent governance shutdowns
 * Only manual `workflow_dispatch` with `temporaryRecovery: true` selects `recover`; that explicit temporary run merges/verifies tags, uses `--no-wait`, and polls within a bounded budget
 * Discovery, CLI, unknown-state, invalid-mode, and verification failures fail the job; do not implement an automatic exemption-renewal loop
 * The RG-scoped Bicep template inherits group tags by default rather than wiping them; it does not force a permanent server exemption. Keep `infra/main.json` generated from Bicep
