@@ -674,6 +674,51 @@
       "source": "Microsoft Foundry and Microsoft Fabric documentation",
       "notes": "First 15 minutes: read both overviews and draw two boxes: cited document retrieval and shared business meaning. Fabric IQ: https://learn.microsoft.com/en-us/fabric/iq/overview. Done when: one diagram maps a synthetic policy, three entities, their relationships, citations, and permission boundaries to the correct capability, with one failure case for each. Prerequisites: none for this design exercise. Use the Diamond profile only for an existing authorized sandbox; do not connect a work notebook, create capacity, or publish an agent.",
       "addedOn": "2026-10-13"
+    },
+    {
+      "title": "Audit emergency App Service runtime security updates",
+      "domain": "App Innovation",
+      "category": "App Service",
+      "description": "Azure App Service shipped emergency Linux updates for Node.js and Python on October 22 after high-severity runtime and CA-certificate fixes, following critical PHP updates on October 21. Built-in Linux images are updated, but custom containers and bring-your-own runtimes require rebuilds, while the Windows Node.js rollout is still in progress. Turn the release details into a repeatable runtime-verification and remediation checklist.",
+      "targetDate": "2026-10-30",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1.5,
+      "priority": 4,
+      "link": "https://azure.github.io/AppService/2026/10/22/node-python-emergency-release-app-service-linux.html",
+      "source": "Azure App Service Blog",
+      "notes": "First 15 minutes: read the Linux Node.js/Python announcement and record the fixed runtime versions, then note which hosting modes update automatically. Done when: a one-page runbook maps Linux built-in stacks, Windows stacks, custom containers, and bring-your-own runtimes to a version-check command, remediation owner, and rollback check; include the October 21 PHP advisory and October 22 Windows Node.js advisory. Prerequisites: none for the runbook; applying it requires authorized access to an existing App Service inventory. Do not deploy or rebuild resources for this exercise.",
+      "addedOn": "2026-10-23"
+    },
+    {
+      "title": "Plan the Foundry data-agent migration to Fabric IQ",
+      "domain": "Microsoft Foundry",
+      "category": "Fabric IQ",
+      "description": "The existing Fabric data-agent custom connection in Microsoft Foundry becomes unsupported on November 6, 2026. Its replacement is the preview Fabric IQ tool through OneLake Catalog and MCP endpoints, with support for multiple data agents. Learn the new integration shape and produce a migration plan before the retirement date without treating the preview replacement as generally available.",
+      "targetDate": "2026-10-30",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1.5,
+      "priority": 4,
+      "link": "https://community.fabric.microsoft.com/t5/Fabric-Updates-Blog/Retiring-the-Fabric-data-agent-custom-tool-in-Microsoft-Foundry/ba-p/5374418",
+      "source": "Microsoft Fabric Blog",
+      "notes": "First 15 minutes: read the retirement announcement and sketch the old custom-connection path beside the new Fabric IQ tool and MCP path. Done when: a migration worksheet inventories dependencies, captures a synthetic before-and-after tool configuration using the preview API shape, lists validation and rollback checks, and records the November 6 deadline. Prerequisites: none for the worksheet; execution requires existing authorized Foundry and Fabric access. Do not create capacity, publish an agent, or connect personal notebooks.",
+      "addedOn": "2026-10-23"
+    },
+    {
+      "title": "Automate GitHub Copilot model-policy audits with the GA API",
+      "domain": "GitHub Copilot",
+      "category": "Copilot",
+      "description": "GitHub's generally available Copilot model-policy REST API now supports enterprise, organization, enterprise-team, and agent-app policy reads and updates. Learn the endpoint hierarchy and design a read-first audit that can detect model-policy drift, complementing the existing plan items for model retirements and default feature enablement.",
+      "targetDate": "2026-11-13",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 1,
+      "priority": 3,
+      "link": "https://github.blog/changelog/2026-10-19-copilot-model-policy-api-for-enterprise-orgs-and-teams",
+      "source": "GitHub Changelog",
+      "notes": "First 15 minutes: read the announcement, list the enterprise and organization GET endpoints, and draft a redacted sample response. Done when: a read-only script or request collection exports model policies and flags one synthetic drift case, with PATCH requests documented but disabled. Prerequisites: none for a mocked artifact; running it requires an existing GitHub Enterprise Cloud account and an appropriately scoped administrator token. Do not request access or change live policies.",
+      "addedOn": "2026-10-23"
     }
   ]
 }
