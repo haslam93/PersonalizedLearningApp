@@ -674,6 +674,36 @@
       "source": "Microsoft Foundry and Microsoft Fabric documentation",
       "notes": "First 15 minutes: read both overviews and draw two boxes: cited document retrieval and shared business meaning. Fabric IQ: https://learn.microsoft.com/en-us/fabric/iq/overview. Done when: one diagram maps a synthetic policy, three entities, their relationships, citations, and permission boundaries to the correct capability, with one failure case for each. Prerequisites: none for this design exercise. Use the Diamond profile only for an existing authorized sandbox; do not connect a work notebook, create capacity, or publish an agent.",
       "addedOn": "2026-10-13"
+    },
+    {
+      "title": "Build a read-only automation with GitHub Agentic Workflows GA",
+      "domain": "GitHub Copilot",
+      "category": "Agentic Workflows",
+      "description": "GitHub Agentic Workflows is generally available for defining reasoning-driven repository automation in natural-language Markdown that compiles to standard GitHub Actions. Build a constrained issue-triage workflow to learn the GA security model, generated workflow, model routing, and budget controls without granting write access.",
+      "targetDate": "2026-11-13",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 4,
+      "link": "https://github.blog/changelog/2026-10-28-github-agentic-workflows-generally-available",
+      "source": "GitHub Changelog",
+      "notes": "First 15 minutes: read the GA announcement, choose a public or synthetic non-production issue set, and sketch a read-only triage instruction with explicit allowed outputs. Done when: a workflow Markdown definition, its generated Actions YAML, and evidence from one successful test run are saved with a short note on permissions and budget limits. Prerequisites: a GitHub repository with Actions enabled; the default Copilot CLI engine requires an eligible Copilot license. Do not enable write permissions or use sensitive issue data.",
+      "addedOn": "2026-10-30"
+    },
+    {
+      "title": "Prototype a Fabric data-engineering task with Project Osmos",
+      "domain": "Microsoft Fabric",
+      "category": "Data Engineering",
+      "description": "Project Osmos is a preview data-engineering agent for Microsoft Fabric that can inspect Lakehouse data, execute PySpark, preserve task state, iterate on implementation, and validate outputs against explicit requirements. Use a small synthetic medallion scenario to assess where managed agent execution can accelerate Fabric engineering while retaining reviewable validation evidence.",
+      "targetDate": "2026-11-20",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 3,
+      "link": "https://community.fabric.microsoft.com/t5/Fabric-Updates-Blog/Introducing-the-data-engineering-agent-for-Fabric-Project-Osmos/ba-p/5377944",
+      "source": "Microsoft Fabric Blog",
+      "notes": "First 15 minutes: read the preview announcement and write a synthetic bronze-to-silver task with three acceptance checks, including no duplicate business keys. Done when: the task plan and first validation report are captured, or, without preview access, a reviewed task specification documents inputs, expected tables, validation rules, and human approval points. Prerequisites: execution requires an eligible paid Fabric capacity, a development workspace and Lakehouse, Contributor access, enabled tenant AI settings, Azure CLI, Git, and a supported coding agent with Skills for Fabric; trial capacity is unsupported. Do not provision capacity or request permissions.",
+      "addedOn": "2026-10-30"
     }
   ]
 }
