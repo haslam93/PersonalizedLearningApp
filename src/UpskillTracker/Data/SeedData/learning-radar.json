@@ -674,6 +674,51 @@
       "source": "Microsoft Foundry and Microsoft Fabric documentation",
       "notes": "First 15 minutes: read both overviews and draw two boxes: cited document retrieval and shared business meaning. Fabric IQ: https://learn.microsoft.com/en-us/fabric/iq/overview. Done when: one diagram maps a synthetic policy, three entities, their relationships, citations, and permission boundaries to the correct capability, with one failure case for each. Prerequisites: none for this design exercise. Use the Diamond profile only for an existing authorized sandbox; do not connect a work notebook, create capacity, or publish an agent.",
       "addedOn": "2026-10-13"
+    },
+    {
+      "title": "Regression-test Azure CLI 2.92 App Service output changes",
+      "domain": "App Innovation",
+      "category": "App Service",
+      "description": "Azure CLI 2.92 restores appServicePlanId in az webapp show and az webapp list output and removes serverFarmId. Automation updated around the temporary serverFarmId shape can break after upgrade, so identify affected JMESPath queries and make their expected contract explicit before adopting the release.",
+      "targetDate": "2026-11-13",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 1,
+      "priority": 4,
+      "link": "https://azure.github.io/AppService/2026/11/03/azure-cli-2-92-app-service-updates.html",
+      "source": "Azure App Service Blog",
+      "notes": "First 15 minutes: read the compatibility note and search a test script or synthetic fixture for appServicePlanId and serverFarmId. Done when: a small regression test runs the relevant JMESPath queries against representative pre-2.92 and 2.92 JSON fixtures and documents the required script change. Prerequisites: none for fixture-based testing; Azure CLI 2.92.0 and an existing authorized App Service app are optional for live confirmation.",
+      "addedOn": "2026-11-06"
+    },
+    {
+      "title": "Explore Copilot Studio Work IQ and customer conversation agents",
+      "domain": "Copilot Studio",
+      "category": "Agents",
+      "description": "Work IQ grounding in Copilot Studio is generally available, while the Customer Conversation harness is in preview and persistent proactive agents remain a Frontier private preview. Learn the maturity boundaries and design a support-agent flow that combines governed work context, specialist delegation, and human escalation without assuming private-preview access.",
+      "targetDate": "2026-11-20",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1.5,
+      "priority": 3,
+      "link": "https://www.microsoft.com/en-us/copilot/blog/copilot-studio/new-and-improved-agents-that-are-persistent-agents-for-customer-conversations-and-improved-maker-experience-in-microsoft-copilot-studio/",
+      "source": "Microsoft Copilot Studio Blog",
+      "notes": "First 15 minutes: read the announcement and label each capability GA, preview, or Frontier private preview. Done when: a one-page design for a synthetic order-support scenario shows Work IQ grounding, one specialist agent, an escalation path, data boundaries, and which steps depend on preview access. Prerequisites: none for the design artifact; an enabled Copilot Studio tenant, usage billing or Copilot Credits, and applicable tenant settings are required only for an optional build.",
+      "addedOn": "2026-11-06"
+    },
+    {
+      "title": "Lab OneLake as native storage for Azure Databricks",
+      "domain": "Microsoft Fabric",
+      "category": "OneLake and Databricks",
+      "description": "Microsoft Fabric now generally supports OneLake as native storage for Azure Databricks Unity Catalog-managed data. Understand the Azure Databricks Storage item, managed-identity connection, external-location flow, and the separate Fabric and Unity Catalog permission planes before recommending the pattern.",
+      "targetDate": "2026-11-27",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 1.5,
+      "priority": 3,
+      "link": "https://community.fabric.microsoft.com/t5/Fabric-Updates-Blog/Use-OneLake-as-native-storage-for-Azure-Databricks-Generally/ba-p/5377939",
+      "source": "Microsoft Fabric Updates Blog",
+      "notes": "First 15 minutes: read the GA announcement and sketch the Fabric item, Access Connector managed identity, OneLake external location, and Unity Catalog relationship. Done when: a synthetic architecture diagram and permission matrix explain setup order, independent authorization in Fabric and Unity Catalog, and one managed-table validation query. Prerequisites: none for the design artifact; an existing authorized Fabric capacity, Azure Databricks workspace, and Access Connector are required only for an optional live lab. Do not provision resources.",
+      "addedOn": "2026-11-06"
     }
   ]
 }
