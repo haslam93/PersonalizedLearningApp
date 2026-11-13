@@ -674,6 +674,51 @@
       "source": "Microsoft Foundry and Microsoft Fabric documentation",
       "notes": "First 15 minutes: read both overviews and draw two boxes: cited document retrieval and shared business meaning. Fabric IQ: https://learn.microsoft.com/en-us/fabric/iq/overview. Done when: one diagram maps a synthetic policy, three entities, their relationships, citations, and permission boundaries to the correct capability, with one failure case for each. Prerequisites: none for this design exercise. Use the Diamond profile only for an existing authorized sandbox; do not connect a work notebook, create capacity, or publish an agent.",
       "addedOn": "2026-10-13"
+    },
+    {
+      "title": "Build a restart-safe agent workflow with the Durable Task extension GA",
+      "domain": "Agent Framework",
+      "category": "Durable agents",
+      "description": "The Durable Task extension for Microsoft Agent Framework is generally available for .NET and Python. It persists agent sessions and workflow progress, resumes after worker restarts without repeating recorded model calls, and supports long waits for approvals or external events. Design a small approval workflow that demonstrates how durable execution changes reliability and inference-cost behavior.",
+      "targetDate": "2026-11-27",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 1.5,
+      "priority": 4,
+      "link": "https://techcommunity.microsoft.com/blog/appsonazureblog/durable-task-extension-for-microsoft-agent-framework-is-now-generally-available/4571100",
+      "source": "Apps on Azure Blog",
+      "notes": "First 15 minutes: read the GA announcement and sketch a three-step synthetic content-review workflow with one human approval event and one deliberate restart point. Done when: a small .NET or Python sample, or an executable test design if no backend is available, shows the persisted session reference, expected replay behavior, and evidence that completed model calls are not repeated after recovery. Prerequisites: an existing Agent Framework development environment and Durable Task backend for execution; Azure Functions or self-hosting is supported. Do not deploy or provision resources for this item.",
+      "addedOn": "2026-11-13"
+    },
+    {
+      "title": "Evaluate agentic mode in Azure Content Understanding preview",
+      "domain": "Microsoft Foundry",
+      "category": "Content Understanding",
+      "description": "Azure Content Understanding agentic mode is in preview for API version 2026-06-01-preview. It adds a document-native reasoning loop that can navigate evidence, inspect tables and charts, calculate, and validate results when a single extraction pass is insufficient. Compare it with standard mode to learn when higher accuracy justifies additional tokens and latency.",
+      "targetDate": "2026-12-04",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 1.5,
+      "priority": 3,
+      "link": "https://devblogs.microsoft.com/foundry/when-one-pass-isnt-enough-agentic-mode-in-azure-content-understanding/",
+      "source": "Microsoft Foundry Blog",
+      "notes": "First 15 minutes: read the announcement, download or create one public synthetic multipage table, and define the expected calculation plus two evidence checks before using a model. Done when: a comparison sheet records standard-versus-agentic accuracy, latency, token usage, and a justified selection rule, with the analyzer config showing API 2026-06-01-preview and workflow agentic. Prerequisites: an existing authorized Content Understanding project and supported completion-model deployment to run calls. Without access, complete the fixture, expected answers, request payloads, and evaluation rubric; do not provision resources.",
+      "addedOn": "2026-11-13"
+    },
+    {
+      "title": "Assess App Service plan start and stop public preview",
+      "domain": "App Innovation",
+      "category": "App Service",
+      "description": "App Service plan-level start and stop is in public preview for Premium v4 and Premium memory-optimized v4 plans. The 2026-07-15 REST operations stop or start all apps and slots in an eligible plan, with compute billing paused while stopped. Assess where scheduled shutdown is safe and what startup readiness controls an AI application needs.",
+      "targetDate": "2026-11-20",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1,
+      "priority": 3,
+      "link": "https://azure.github.io/AppService/2026/11/10/app-service-plan-start-stop-public-preview.html",
+      "source": "Azure App Service Blog",
+      "notes": "First 15 minutes: read the preview announcement and list the supported tiers, scaling restriction, billing boundary, and two workloads that must not be interrupted. Done when: a one-page runbook contains example 2026-07-15 start and stop requests, a synthetic overnight schedule, health and warm-up checks, rollback steps, and a cost-assumption table. Prerequisites: none for the runbook. Execution requires an existing eligible Premium v4 or Premium memory-optimized v4 plan with App Service automatic scaling disabled; do not create or stop a plan for this item.",
+      "addedOn": "2026-11-13"
     }
   ]
 }
