@@ -674,6 +674,51 @@
       "source": "Microsoft Foundry and Microsoft Fabric documentation",
       "notes": "First 15 minutes: read both overviews and draw two boxes: cited document retrieval and shared business meaning. Fabric IQ: https://learn.microsoft.com/en-us/fabric/iq/overview. Done when: one diagram maps a synthetic policy, three entities, their relationships, citations, and permission boundaries to the correct capability, with one failure case for each. Prerequisites: none for this design exercise. Use the Diamond profile only for an existing authorized sandbox; do not connect a work notebook, create capacity, or publish an agent.",
       "addedOn": "2026-10-13"
+    },
+    {
+      "title": "Lab Microsoft Copilot SDK 2.0 session isolation and resumable journals",
+      "domain": "GitHub Copilot",
+      "category": "Copilot SDK",
+      "description": "Microsoft Copilot SDK 2.0 renames the GitHub Copilot SDK and adds a Rust in-process runtime, isolated multi-session execution, resumable journals, per-session credentials and files, and host tool allowlists. Prototype its session boundary and restart behavior to assess safer, denser agent services without assuming one container per session.",
+      "targetDate": "2026-12-11",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 1.5,
+      "priority": 4,
+      "link": "https://commandline.microsoft.com/microsoft-copilot-sdk-2-0-github/",
+      "source": "Microsoft Command Line",
+      "notes": "First 15 minutes: read the runtime and isolation sections, then sketch the credentials, files, tools, and journal boundary for two synthetic tenants. Done when: a minimal two-session sample uses different tool allowlists and synthetic files, resumes one journal after restart, and records any cross-session isolation risks. Prerequisites: a supported SDK runtime, GitHub credentials authorized for Copilot, and local durable storage; do not use customer repositories or secrets.",
+      "addedOn": "2026-11-20"
+    },
+    {
+      "title": "Design an enforceable Agent Controls policy for a synthetic tool call",
+      "domain": "Microsoft Foundry",
+      "category": "Agent governance",
+      "description": "Agent Controls is a public-preview Azure-managed policy runtime that combines Rego rules, Content Safety classifiers, and LLM judges to return allow, deny, or transform verdicts with audit receipts. Learn the critical enforcement boundary: a successful policy response is not protection unless the application applies its verdict before executing the action.",
+      "targetDate": "2026-12-04",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 1.5,
+      "priority": 4,
+      "link": "https://commandline.microsoft.com/introducing-agent-controls-an-enterprise-control-plane-for-agent-behavior/",
+      "source": "Microsoft Command Line",
+      "notes": "First 15 minutes: read the verdict and enforcement flow, then define allow, deny, and transform outcomes for a synthetic refund tool. Done when: a policy draft, six synthetic test cases, and a sequence diagram show where the app blocks execution and stores an audit receipt. Prerequisites: none for the design artifact; calling the managed preview requires an authorized Azure subscription, RBAC, Azure AI Content Safety, and Agent Hooks integration.",
+      "addedOn": "2026-11-20"
+    },
+    {
+      "title": "Evaluate Foundry Managed Compute for production open-model inference",
+      "domain": "Microsoft Foundry",
+      "category": "Model inference",
+      "description": "Foundry Managed Compute is generally available for Microsoft-managed dedicated GPU inference across more than 150 open models, with managed serving, prompt reuse, supply-chain controls, multiple accelerator options, and US and EU Data Zones. Build a decision-ready evaluation plan before accepting hourly GPU cost and quota commitments.",
+      "targetDate": "2026-12-18",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1,
+      "priority": 3,
+      "link": "https://devblogs.microsoft.com/foundry/managed-compute-ga/",
+      "source": "Microsoft Foundry Blog",
+      "notes": "First 15 minutes: read the GA announcement and list the accelerator, data-zone, serving, and pricing assumptions that need validation for one public-data inference scenario. Done when: a one-page deployment decision memo includes an OpenAI-compatible request sketch, a synthetic benchmark matrix, quota and cost questions, and clear go/no-go criteria. Prerequisites: none for the memo; deployment testing requires an authorized Foundry project, deployment permissions, GPU quota, and approval for hourly GPU charges.",
+      "addedOn": "2026-11-20"
     }
   ]
 }
