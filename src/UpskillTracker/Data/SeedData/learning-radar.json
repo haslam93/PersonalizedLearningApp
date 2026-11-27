@@ -674,6 +674,51 @@
       "source": "Microsoft Foundry and Microsoft Fabric documentation",
       "notes": "First 15 minutes: read both overviews and draw two boxes: cited document retrieval and shared business meaning. Fabric IQ: https://learn.microsoft.com/en-us/fabric/iq/overview. Done when: one diagram maps a synthetic policy, three entities, their relationships, citations, and permission boundaries to the correct capability, with one failure case for each. Prerequisites: none for this design exercise. Use the Diamond profile only for an existing authorized sandbox; do not connect a work notebook, create capacity, or publish an agent.",
       "addedOn": "2026-10-13"
+    },
+    {
+      "title": "Lab the preview .NET DocumentExtractionClient with a local PDF",
+      "domain": ".NET AI",
+      "category": "Document extraction",
+      "description": "The new preview Microsoft.Extensions.DocumentExtraction API provides a common ExtractAsync contract and structured ExtractionDocument result across local parsers, vision models, and hosted document services. Test the local PdfPig provider to understand how the abstraction preserves headings, tables, images, and source locations before content enters a RAG or agent data-ingestion pipeline.",
+      "targetDate": "2026-12-18",
+      "lane": "Stretch",
+      "type": "Lab",
+      "estimatedHours": 2,
+      "priority": 3,
+      "link": "https://devblogs.microsoft.com/dotnet/document-extraction-dotnet-preview/",
+      "source": ".NET Blog",
+      "notes": "First 15 minutes: open the official sample and run 01-extract.cs against its public Tokens, Explained PDF with the local PdfPig provider. Done when: a short comparison records the extracted outline, one table, source page metadata, and one provider-swap decision for a RAG pipeline. Prerequisites: .NET 11 SDK or the sample GitHub Codespace; no Azure access is needed for PdfPig. Use only the public sample document.",
+      "addedOn": "2026-11-27"
+    },
+    {
+      "title": "Audit Agent Framework Python dependencies after the unauthorized package releases",
+      "domain": "Agent Framework",
+      "category": "Software supply chain",
+      "description": "Microsoft reported that unauthorized agent-framework Python meta-package versions 1.26.1 and 1.26.2 contained credential-stealing code and were removed from PyPI. Learn the affected scope, practice checking immutable dependency evidence, and document exact-version pinning so future agent builds do not silently consume an unsafe release.",
+      "targetDate": "2026-12-04",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 1,
+      "priority": 4,
+      "link": "https://devblogs.microsoft.com/agent-framework/microsoft-agent-framework-repository-update/",
+      "source": "Microsoft Agent Framework Blog",
+      "notes": "First 15 minutes: read the Microsoft notice and search a synthetic lockfile plus sample CI log for agent-framework 1.26.1 or 1.26.2. Done when: a one-page audit checklist identifies affected versions, evidence locations, the safe 1.26.0 pin, and the escalation path if an affected install is found. Prerequisites: none for the synthetic exercise; reviewing a real environment requires authorized access to its lockfiles, build logs, images, mirrors, and caches. Do not inspect or rotate credentials as part of this learning item.",
+      "addedOn": "2026-11-27"
+    },
+    {
+      "title": "Review the Copilot code review billing default before December 30",
+      "domain": "GitHub Copilot",
+      "category": "Governance and cost",
+      "description": "GitHub will change unset Copilot code review billing for licensed members from member entitlement to organization billing on December 30, 2026. Understand the policy options, AI Credits dependency, and spend impact so an organization can make an explicit governance decision instead of accepting a new cost default.",
+      "targetDate": "2026-12-11",
+      "lane": "Stretch",
+      "type": "Learning",
+      "estimatedHours": 0.5,
+      "priority": 4,
+      "link": "https://github.blog/changelog/2026-11-25-copilot-code-review-billing-will-default-to-the-organization",
+      "source": "GitHub Changelog",
+      "notes": "First 15 minutes: read the changelog and write a two-row Member versus Organization billing comparison, including AI Credits paid usage and billing-lock behavior. Done when: a short decision record names the preferred setting, owner, review date, and expected cost effect without changing any live policy. Prerequisites: none for the comparison; viewing or changing an actual enterprise or organization setting requires authorized GitHub admin access.",
+      "addedOn": "2026-11-27"
     }
   ]
 }
